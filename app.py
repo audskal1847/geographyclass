@@ -14,7 +14,7 @@ UPLOAD_DIR = "uploads"
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# 📌 과목 및 반 목록 세팅 (요청사항 반영)
+# 📌 과목 및 반 목록 세팅
 SUBJECTS = [
     "3학년 여행지리", 
     "2학년 도시의 미래 탐구"
@@ -25,9 +25,9 @@ CLASSES_MAP = {
     "2학년 도시의 미래 탐구": ["2G(2-1반)", "2H(2-2반)", "2I(2-8반)"]
 }
 
-# 관리자 계정 세팅
+# 📌 단일 관리자 계정 세팅 (요청사항 6 반영)
 ADMIN_ACCOUNTS = {
-    "admin": {"pw": "admin00", "name": "정현경(관리자)"}
+    "audskal": {"pw": "1847", "name": "김명남(관리자)"}
 }
 
 # 📌 범용 수업용 핵심 활동지 3종
@@ -40,6 +40,16 @@ ACTIVITIES = [
 INFO_BOX = "<div style='background-color: #f0f4f8; padding: 15px; border-radius: 8px; font-size: 17px; font-weight: 600; color: #222; margin-bottom: 15px; border-left: 5px solid #0056b3; line-height: 1.5;'>{}</div>"
 
 db_lock = threading.Lock()
+
+# --- [토큰 관리: 새로고침 방지 (요청사항 2, 3 반영)] ---
+def encode_token(user_key):
+    return base64.b64encode(user_key.encode('utf-8')).decode('utf-8')
+
+def decode_token(token):
+    try:
+        return base64.b64decode(token.encode('utf-8')).decode('utf-8')
+    except:
+        return None
 
 # --- [2] 데이터 입출력 및 초기화 함수 ---
 def load_json(file_path, default_value):
@@ -64,6 +74,7 @@ def init_system():
     with db_lock:
         users = load_json(USERS_FILE, {})
         users_changed = False
+        # 관리자 계정 초기화/업데이트
         for adm_id, adm_info in ADMIN_ACCOUNTS.items():
             if adm_id not in users or users[adm_id].get("password") != adm_info["pw"]:
                 users[adm_id] = {
@@ -71,6 +82,13 @@ def init_system():
                     "role": "관리자", "subject": "전체", "class_group": "관리자", "approved": True
                 }
                 users_changed = True
+        
+        # 기존 임시 관리자 계정 삭제 (요청사항 6 반영)
+        keys_to_delete = [k for k in users.keys() if users[k].get("role") == "관리자" and k not in ADMIN_ACCOUNTS]
+        for k in keys_to_delete:
+            del users[k]
+            users_changed = True
+
         if users_changed: save_json(USERS_FILE, users)
         
         default_tabs = [f"{i}차시" for i in range(1, 4)]
@@ -100,8 +118,85 @@ def display_pdf(file_path):
         st.markdown(f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="450" type="application/pdf"></iframe>', unsafe_allow_html=True)
     else: st.info(f"💡 수업 자료 파일('{file_path}')이 폴더에 없습니다. 파일을 업로드하면 이곳에 표시됩니다.")
 
-# --- [3] 활동지 렌더링 함수들 (범용 수업용 개편) ---
-def render_activity1(user_key):
+# --- [공통 HTML 생성기 (다운로드용)] ---
+def generate_portfolio_html(student_answers, u_name, u_class, view_subj, app_config):
+    html = f"""<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>{u_name} 포트폴리오</title>
+    <style>
+        body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; }}
+        h1 {{ text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; }}
+        h2 {{ color: #2c3e50; border-left: 5px solid #3498db; padding-left: 10px; margin-top: 40px; }}
+        table {{ width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; }}
+        th, td {{ border: 1px solid #bdc3c7; padding: 10px; text-align: left; }}
+        th {{ background-color: #ecf0f1; text-align: center; }}
+        .content-box {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #e9ecef; white-space: pre-wrap; }}
+    </style></head><body>
+    <h1>📚 {view_subj} 학습 포트폴리오</h1>
+    <div style="text-align: right; margin-bottom: 30px;"><b>반:</b> {u_class} | <b>이름:</b> {u_name}</div>
+    """
+    for act in ACTIVITIES:
+        ans = student_answers.get(act, {})
+        if not ans: continue
+        html += f"<h2>▶ {act}</h2>"
+        if act == ACTIVITIES[0]:
+            html += f"<p><b>일자:</b> {ans.get('date','')} | <b>주제:</b> {ans.get('topic','')}</p>"
+            html += "<table><tr><th>핵심 키워드</th><th>내용 요약</th></tr>"
+            for row in ans.get("df1", []): html += f"<tr><td>{row.get('핵심 키워드','')}</td><td>{row.get('내용 요약','')}</td></tr>"
+            html += f"</table><p><b>질문/성찰:</b></p><div class='content-box'>{ans.get('reflection','')}</div>"
+        elif act == ACTIVITIES[1]:
+            html += f"<p><b>주제:</b> {ans.get('title','')}</p><p><b>동기:</b> {ans.get('motive','')}</p>"
+            html += "<table><tr><th>단계</th><th>세부 계획</th><th>예상시간</th></tr>"
+            for row in ans.get("df", []): html += f"<tr><td>{row.get('단계','')}</td><td>{row.get('세부 계획 및 역할','')}</td><td>{row.get('예상 소요시간','')}</td></tr>"
+            html += f"</table><p><b>예상 결과물:</b></p><div class='content-box'>{ans.get('outcome','')}</div>"
+        elif act == ACTIVITIES[2]:
+            html += "<table><tr><th>평가 항목</th><th>자기 평가</th><th>구체적 근거</th></tr>"
+            for row in ans.get("df", []): html += f"<tr><td>{row.get('평가 항목','')}</td><td>{row.get('자기 평가 (상/중/하)','')}</td><td>{row.get('구체적 근거','')}</td></tr>"
+            html += f"</table><p><b>배우고 느낀 점:</b></p><div class='content-box'>{ans.get('learned','')}</div>"
+            html += f"<p><b>후속 활동:</b></p><div class='content-box'>{ans.get('next_step','')}</div>"
+
+    html += "<h2>📝 수업 차시별 제출 자료</h2>"
+    for t_name in app_config.get("tabs", []):
+        for q in app_config["questions"].get(t_name, []):
+            ans_text = student_answers.get(t_name, {}).get(q["id"], {}).get("text", "")
+            if ans_text:
+                html += f"<h3>[{t_name}] {q.get('label', '')}</h3><div class='content-box'>{ans_text}</div>"
+    
+    html += "</body></html>"
+    return html
+
+def generate_activity_html(act_name, ans, u_name):
+    # 단일 활동지만 출력하는 HTML
+    html = f"""<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>{u_name} - {act_name}</title>
+    <style>
+        body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; }}
+        h2 {{ color: #2c3e50; border-left: 5px solid #3498db; padding-left: 10px; }}
+        table {{ width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; }}
+        th, td {{ border: 1px solid #bdc3c7; padding: 10px; text-align: left; }}
+        th {{ background-color: #ecf0f1; text-align: center; }}
+        .content-box {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #e9ecef; white-space: pre-wrap; }}
+    </style></head><body>
+    <div style="text-align: right; margin-bottom: 20px;"><b>이름:</b> {u_name}</div>
+    <h2>▶ {act_name}</h2>
+    """
+    if act_name == ACTIVITIES[0]:
+        html += f"<p><b>일자:</b> {ans.get('date','')} | <b>주제:</b> {ans.get('topic','')}</p>"
+        html += "<table><tr><th>핵심 키워드</th><th>내용 요약</th></tr>"
+        for row in ans.get("df1", []): html += f"<tr><td>{row.get('핵심 키워드','')}</td><td>{row.get('내용 요약','')}</td></tr>"
+        html += f"</table><p><b>질문/성찰:</b></p><div class='content-box'>{ans.get('reflection','')}</div>"
+    elif act_name == ACTIVITIES[1]:
+        html += f"<p><b>주제:</b> {ans.get('title','')}</p><p><b>동기:</b> {ans.get('motive','')}</p>"
+        html += "<table><tr><th>단계</th><th>세부 계획</th><th>예상시간</th></tr>"
+        for row in ans.get("df", []): html += f"<tr><td>{row.get('단계','')}</td><td>{row.get('세부 계획 및 역할','')}</td><td>{row.get('예상 소요시간','')}</td></tr>"
+        html += f"</table><p><b>예상 결과물:</b></p><div class='content-box'>{ans.get('outcome','')}</div>"
+    elif act_name == ACTIVITIES[2]:
+        html += "<table><tr><th>평가 항목</th><th>자기 평가</th><th>구체적 근거</th></tr>"
+        for row in ans.get("df", []): html += f"<tr><td>{row.get('평가 항목','')}</td><td>{row.get('자기 평가 (상/중/하)','')}</td><td>{row.get('구체적 근거','')}</td></tr>"
+        html += f"</table><p><b>배우고 느낀 점:</b></p><div class='content-box'>{ans.get('learned','')}</div>"
+        html += f"<p><b>후속 활동:</b></p><div class='content-box'>{ans.get('next_step','')}</div>"
+    html += "</body></html>"
+    return html
+
+# --- [3] 활동지 렌더링 함수들 ---
+def render_activity1(user_key, u_name):
     category = ACTIVITIES[0]
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
     st.markdown(INFO_BOX.format("오늘 수업에서 배운 내용을 정리하고, 새롭게 생긴 질문이나 호기심을 기록합니다."), unsafe_allow_html=True)
@@ -128,8 +223,16 @@ def render_activity1(user_key):
             }
             save_json(DATA_FILE, current_data)
         st.toast("🎉 배움 노트가 저장되었습니다!")
+        st.rerun()
 
-def render_activity2(user_key):
+    # 저장된 내역이 있으면 다운로드 버튼 제공 (요청사항 4)
+    if ans:
+        st.markdown("---")
+        html_data = generate_activity_html(category, ans, u_name)
+        st.download_button(f"📥 {category} 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
+
+
+def render_activity2(user_key, u_name):
     category = ACTIVITIES[1]
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
     st.markdown(INFO_BOX.format("수행평가나 프로젝트를 시작하기 전, 무엇을 어떻게 탐구할지 구체적인 계획을 세웁니다."), unsafe_allow_html=True)
@@ -153,8 +256,15 @@ def render_activity2(user_key):
             }
             save_json(DATA_FILE, current_data)
         st.toast("🎉 프로젝트 설계도가 저장되었습니다!")
+        st.rerun()
 
-def render_activity3(user_key):
+    if ans:
+        st.markdown("---")
+        html_data = generate_activity_html(category, ans, u_name)
+        st.download_button(f"📥 {category} 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
+
+
+def render_activity3(user_key, u_name):
     category = ACTIVITIES[2]
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
     st.markdown(INFO_BOX.format("학기를 마무리하며 자신의 성장을 돌아보고 학교생활기록부(세특) 작성을 위한 밑거름 자료를 만듭니다."), unsafe_allow_html=True)
@@ -181,6 +291,12 @@ def render_activity3(user_key):
             }
             save_json(DATA_FILE, current_data)
         st.toast("🎉 자기평가가 저장되었습니다!")
+        st.rerun()
+        
+    if ans:
+        st.markdown("---")
+        html_data = generate_activity_html(category, ans, u_name)
+        st.download_button(f"📥 {category} 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
 
 
 # --- 메인 공지사항 렌더링 ---
@@ -193,7 +309,6 @@ def render_class_overview(current_role, u_info):
     if materials:
         st.subheader("👨‍🏫 수업 공지 및 자료실")
         for mat in materials:
-            # 관리자는 모든 자료 보기, 학생은 자기 과목 자료만(또는 전체공지) 보기
             if mat.get("subject", "전체") in ["전체", u_info.get('subject', '')]:
                 if mat["type"] == "link": st.markdown(f"🔗 **[{mat['title']}]({mat['content']})**")
                 elif mat["type"] == "file" and os.path.exists(mat["content"]):
@@ -204,20 +319,17 @@ def render_class_overview(current_role, u_info):
     col1, col2 = st.columns(2)
     with col1:
         with st.expander("📝 상시 작성 활동지 (클릭 시 이동)", expanded=True):
-            st.caption("수업 중 또는 수행평가 진행 시 선생님의 안내에 따라 아래 버튼을 눌러 작성하세요.")
+            st.caption("수업 중 또는 수행평가 진행 시 선생님의 안내에 따라 작성하세요.")
             for act in ACTIVITIES:
                 if st.button(f"📄 {act}", use_container_width=True):
                     st.session_state.current_page = act; st.rerun()
     with col2:
         with st.expander("📚 유용한 링크모음", expanded=True):
             st.markdown(f"🔗 [학교 홈페이지 바로가기](#)", unsafe_allow_html=True)
-            st.markdown(f"🔗 [수업 질문 게시판 (패들렛 등)](#)", unsafe_allow_html=True)
-
 
 # --- [4] 메인 화면 설정 및 사이드바 로직 ---
 st.set_page_config(page_title="수업 학습 시스템", layout="wide")
 
-# CSS (기존 디자인 유지)
 st.markdown("""
 <style>
 [data-testid="stFormSubmitButton"] button, button[kind="primary"] {
@@ -236,6 +348,23 @@ init_system()
 if "logged_in" not in st.session_state: 
     st.session_state.logged_in = False
     st.session_state.user_info = None
+
+# 세션 토큰 복구 로직 (새로고침 방지)
+if "session_token" in st.query_params and not st.session_state.logged_in:
+    token = st.query_params["session_token"]
+    user_key = decode_token(token)
+    if user_key:
+        users = load_json(USERS_FILE, {})
+        if user_key in ADMIN_ACCOUNTS:
+            st.session_state.logged_in = True
+            st.session_state.user_info = {
+                "user_key": user_key, "id": user_key, "name": ADMIN_ACCOUNTS[user_key]["name"], 
+                "role": "관리자", "subject": "전체", "class_group": "관리자"
+            }
+        elif user_key in users and users[user_key].get("approved", True):
+            st.session_state.logged_in = True
+            st.session_state.user_info = users[user_key]
+            st.session_state.user_info["user_key"] = user_key
 
 if "current_page" not in st.session_state: st.session_state.current_page = "main"
 
@@ -256,6 +385,8 @@ if st.session_state.logged_in:
         st.session_state.logged_in = False
         st.session_state.user_info = None
         st.session_state.current_page = "main"
+        if "session_token" in st.query_params:
+            del st.query_params["session_token"]
         st.rerun()
 
 else:
@@ -301,6 +432,7 @@ else:
                         st.session_state.logged_in = True
                         st.session_state.user_info = users[user_key]
                         st.session_state.user_info["user_key"] = user_key
+                        st.query_params["session_token"] = encode_token(user_key)
                         st.rerun()
                     else: st.sidebar.warning("⏳ 선생님의 가입 승인을 대기 중입니다.")
                 else: st.sidebar.error("❌ 과목, 반, 학번 또는 비밀번호가 틀렸습니다.")
@@ -315,11 +447,13 @@ else:
                         "user_key": input_id, "id": input_id, "name": admin_info["name"], 
                         "role": "관리자", "subject": "전체", "class_group": "관리자"
                     }
+                    st.query_params["session_token"] = encode_token(input_id)
                     st.rerun()
                 else: st.sidebar.error("❌ 관리자 정보가 틀렸습니다.")
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("<div style='text-align: center; color: #222; font-size: 15px; font-weight: 900;'>🧑‍💻 만든 이:<br><span style='font-size: 20px; color: #000;'>G.E.M.S</span></div>", unsafe_allow_html=True)
+# 푸터 수정 (요청사항 5)
+st.sidebar.markdown("<div style='text-align: center; color: #222; font-size: 15px; font-weight: 900;'>🧑‍💻 만든 이:<br><span style='font-size: 20px; color: #000;'>신선여자고등학교 김명남</span></div>", unsafe_allow_html=True)
 
 # --- [5] 화면 분기 로직 ---
 if not st.session_state.logged_in:
@@ -341,9 +475,9 @@ else:
         st.markdown("---")
         
         if current_role == "학생":
-            if act_name == ACTIVITIES[0]: render_activity1(current_user_key)
-            elif act_name == ACTIVITIES[1]: render_activity2(current_user_key)
-            elif act_name == ACTIVITIES[2]: render_activity3(current_user_key)
+            if act_name == ACTIVITIES[0]: render_activity1(current_user_key, u_info['name'])
+            elif act_name == ACTIVITIES[1]: render_activity2(current_user_key, u_info['name'])
+            elif act_name == ACTIVITIES[2]: render_activity3(current_user_key, u_info['name'])
         else: st.warning("교사/관리자는 메인 화면의 '제출 자료 조회' 탭을 이용해주세요.")
         
         st.markdown("<br><br>", unsafe_allow_html=True)
@@ -358,7 +492,16 @@ else:
             
             with tabs_objects[0]:
                 render_class_overview(current_role, u_info)
-                
+
+                # 학생용 일괄 포트폴리오 다운로드 기능 (요청사항 4)
+                student_answers = learning_data.get(current_user_key, {})
+                if student_answers:
+                    st.markdown("---")
+                    st.subheader("📚 내 포트폴리오 전체 다운로드")
+                    html_content = generate_portfolio_html(student_answers, u_info['name'], u_info['class_group'], u_info['subject'], app_config)
+                    st.download_button(label=f"📥 {u_info['name']} 학생 포트폴리오 일괄 다운로드 (웹문서)", data=html_content.encode('utf-8-sig'), file_name=f"{u_info['name']}_전체_포트폴리오.html", mime="text/html", type="primary")
+                    st.caption("다운로드한 파일을 인터넷 창으로 열고 우클릭 ➔ 인쇄 ➔ PDF로 저장하세요.")
+
             for index, tab_name in enumerate(app_config.get("tabs", [])):
                 with tabs_objects[index + 1]:
                     st.subheader(f"📘 {tab_name} 학습 및 제출")
@@ -384,6 +527,7 @@ else:
                                 fresh_data[current_user_key][tab_name][q_id] = {"text": text_val}
                             save_json(DATA_FILE, fresh_data)
                         st.toast(f"💾 {tab_name} 자료가 성공적으로 저장되었습니다!")
+                        st.rerun()
 
         elif current_role == "관리자":
             st.title("🛠️ 관리자(교사) 대시보드")
@@ -392,7 +536,6 @@ else:
             with menu_tabs[0]:
                 render_class_overview(current_role, u_info)
 
-            # --- 회원 관리 ---
             with menu_tabs[1]:
                 all_users = load_json(USERS_FILE, {})
                 pending_users = {k: v for k, v in all_users.items() if not v.get("approved", True) and v.get("role")=="학생"}
@@ -433,7 +576,6 @@ else:
                             save_json(USERS_FILE, fresh_users)
                         st.success("삭제 완료"); st.rerun()
 
-            # --- 차시 및 자료 편집 ---
             with menu_tabs[2]:
                 st.subheader("👨‍🏫 교사용 자료 업로드 (공지사항용)")
                 with st.form("upload_mat"):
@@ -449,9 +591,7 @@ else:
                                 fresh_config["materials"].append(new_mat)
                                 save_json(CONFIG_FILE, fresh_config)
                             st.success("등록 완료!"); st.rerun()
-                st.info("💡 탭(차시) 동적 생성 및 문항 편집 기능은 기존 캠프용 시스템과 동일하게 작동하도록 설정 파일(config.json)을 통해 관리됩니다.")
 
-            # --- 학생 데이터 조회 및 다운로드 ---
             with menu_tabs[3]:
                 col_t, col_b = st.columns([8, 2])
                 with col_t: st.subheader("📥 학생 학습 활동 및 제출 자료 조회")
@@ -477,54 +617,38 @@ else:
                         if selected_student:
                             student_answers = learning_data.get(selected_student, {})
                             u_name = all_users[selected_student].get('name', '학생')
+                            u_class_selected = all_users[selected_student].get('class_group', '')
                             
-                            # HTML 포트폴리오 생성기 (변경된 3종 활동지에 맞게 작성)
-                            html_content = f"""<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>{u_name} 포트폴리오</title>
-                            <style>
-                                body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; }}
-                                h1 {{ text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; }}
-                                h2 {{ color: #2c3e50; border-left: 5px solid #3498db; padding-left: 10px; margin-top: 40px; }}
-                                table {{ width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; }}
-                                th, td {{ border: 1px solid #bdc3c7; padding: 10px; text-align: left; }}
-                                th {{ background-color: #ecf0f1; text-align: center; }}
-                                .content-box {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #e9ecef; white-space: pre-wrap; }}
-                            </style></head><body>
-                            <h1>📚 {view_subj} 학습 포트폴리오</h1>
-                            <div style="text-align: right; margin-bottom: 30px;"><b>반:</b> {all_users[selected_student].get('class_group', '')} | <b>이름:</b> {u_name}</div>
-                            """
+                            # (요청사항 1 반영) 관리자 화면에 제출 내역 직접 렌더링
+                            st.markdown(f"### 📋 {u_name} 학생 제출 내용 확인")
                             
-                            # 1. 활동지 내역 HTML 변환
                             for act in ACTIVITIES:
                                 ans = student_answers.get(act, {})
-                                if not ans: continue
-                                html_content += f"<h2>▶ {act}</h2>"
-                                if act == ACTIVITIES[0]: # 배움노트
-                                    html_content += f"<p><b>일자:</b> {ans.get('date','')} | <b>주제:</b> {ans.get('topic','')}</p>"
-                                    html_content += "<table><tr><th>핵심 키워드</th><th>내용 요약</th></tr>"
-                                    for row in ans.get("df1", []): html_content += f"<tr><td>{row.get('핵심 키워드','')}</td><td>{row.get('내용 요약','')}</td></tr>"
-                                    html_content += f"</table><p><b>질문/성찰:</b></p><div class='content-box'>{ans.get('reflection','')}</div>"
-                                elif act == ACTIVITIES[1]: # 프로젝트 설계도
-                                    html_content += f"<p><b>주제:</b> {ans.get('title','')}</p><p><b>동기:</b> {ans.get('motive','')}</p>"
-                                    html_content += "<table><tr><th>단계</th><th>세부 계획</th><th>예상시간</th></tr>"
-                                    for row in ans.get("df", []): html_content += f"<tr><td>{row.get('단계','')}</td><td>{row.get('세부 계획 및 역할','')}</td><td>{row.get('예상 소요시간','')}</td></tr>"
-                                    html_content += f"</table><p><b>예상 결과물:</b></p><div class='content-box'>{ans.get('outcome','')}</div>"
-                                elif act == ACTIVITIES[2]: # 자기평가
-                                    html_content += "<table><tr><th>평가 항목</th><th>자기 평가</th><th>구체적 근거</th></tr>"
-                                    for row in ans.get("df", []): html_content += f"<tr><td>{row.get('평가 항목','')}</td><td>{row.get('자기 평가 (상/중/하)','')}</td><td>{row.get('구체적 근거','')}</td></tr>"
-                                    html_content += f"</table><p><b>배우고 느낀 점:</b></p><div class='content-box'>{ans.get('learned','')}</div>"
-                                    html_content += f"<p><b>후속 활동:</b></p><div class='content-box'>{ans.get('next_step','')}</div>"
+                                if ans:
+                                    st.markdown(f"#### ▶ {act}")
+                                    if act == ACTIVITIES[0]:
+                                        st.write(f"- **일자:** {ans.get('date','')} | **주제:** {ans.get('topic','')}")
+                                        st.dataframe(pd.DataFrame(ans.get("df1", [])), use_container_width=True)
+                                        st.info(f"**질문/성찰:**\n{ans.get('reflection','')}")
+                                    elif act == ACTIVITIES[1]:
+                                        st.write(f"- **주제:** {ans.get('title','')} | **동기:** {ans.get('motive','')}")
+                                        st.dataframe(pd.DataFrame(ans.get("df", [])), use_container_width=True)
+                                        st.info(f"**예상 결과물:**\n{ans.get('outcome','')}")
+                                    elif act == ACTIVITIES[2]:
+                                        st.dataframe(pd.DataFrame(ans.get("df", [])), use_container_width=True)
+                                        st.info(f"**배우고 느낀점:**\n{ans.get('learned','')}\n\n**후속활동:**\n{ans.get('next_step','')}")
 
-                            # 2. 차시별 동적 탭 텍스트 박스 내역
-                            html_content += "<h2>📝 수업 차시별 제출 자료</h2>"
+                            st.markdown("#### 📝 수업 차시별 제출 자료")
                             for t_name in app_config.get("tabs", []):
                                 for q in app_config["questions"].get(t_name, []):
                                     ans_text = student_answers.get(t_name, {}).get(q["id"], {}).get("text", "")
                                     if ans_text:
-                                        html_content += f"<h3>[{t_name}] {q.get('label', '')}</h3><div class='content-box'>{ans_text}</div>"
+                                        st.markdown(f"**[{t_name}] {q.get('label', '')}**")
+                                        st.info(ans_text)
                             
-                            html_content += "</body></html>"
-                            st.download_button(label=f"📄 {u_name} 학생 포트폴리오 다운로드 (웹문서)", data=html_content.encode('utf-8-sig'), file_name=f"{u_name}_{view_subj}_포트폴리오.html", mime="text/html", type="primary")
-                            st.info("다운로드한 파일을 인터넷 창(크롬 등)으로 연 뒤, **우클릭 -> 인쇄 -> PDF로 저장** 하시면 인쇄용 파일이 만들어집니다.")
+                            st.markdown("---")
+                            html_content = generate_portfolio_html(student_answers, u_name, u_class_selected, view_subj, app_config)
+                            st.download_button(label=f"📄 {u_name} 학생 포트폴리오 일괄 다운로드 (웹문서)", data=html_content.encode('utf-8-sig'), file_name=f"{u_name}_{view_subj}_포트폴리오.html", mime="text/html", type="primary")
 
                     elif view_mode == "📅 항목별 전체 현황 (엑셀 CSV)":
                         selected_view = st.selectbox("다운로드할 활동/차시 선택", ACTIVITIES + app_config.get("tabs", []))
@@ -538,15 +662,13 @@ else:
                             u_class = u_info.get('class_group', '')
                             
                             if selected_view in ACTIVITIES:
-                                # 엑셀 출력 포맷은 활동지마다 테이블 형태이므로, 
-                                # 가로로 데이터를 펼쳐서(Flatten) 저장하기 좋게 간략화하여 추출합니다.
-                                if selected_view == ACTIVITIES[0]: # 배움노트
+                                if selected_view == ACTIVITIES[0]: 
                                     csv_data.append({"반": u_class, "학번": u_id, "이름": u_name, "일자": ans.get('date', ''), "주제": ans.get('topic', ''), "성찰": ans.get('reflection', '')})
-                                elif selected_view == ACTIVITIES[1]: # 설계도
+                                elif selected_view == ACTIVITIES[1]:
                                     csv_data.append({"반": u_class, "학번": u_id, "이름": u_name, "주제": ans.get('title', ''), "동기": ans.get('motive', ''), "예상결과물": ans.get('outcome', '')})
-                                elif selected_view == ACTIVITIES[2]: # 자기평가
+                                elif selected_view == ACTIVITIES[2]:
                                     csv_data.append({"반": u_class, "학번": u_id, "이름": u_name, "느낀점": ans.get('learned', ''), "후속활동": ans.get('next_step', '')})
-                            else: # 차시(Tab) 텍스트 입력들
+                            else:
                                 for q in app_config["questions"].get(selected_view, []):
                                     ans_text = learning_data.get(s_uid, {}).get(selected_view, {}).get(q["id"], {}).get("text", "")
                                     csv_data.append({"반": u_class, "학번": u_id, "이름": u_name, "문항": q.get('label', ''), "답변": ans_text})
