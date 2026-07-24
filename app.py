@@ -323,7 +323,7 @@ st.sidebar.markdown("<div style='text-align: center; color: #222; font-size: 15p
 
 # --- [5] 화면 분기 로직 ---
 if not st.session_state.logged_in:
-    st.title("🏫 수업 통합 학습 시스템")
+    st.title("🏫 Geography class tool")
     st.info("왼쪽 사이드바를 이용해 로그인해주세요.")
 
 else:
