@@ -1,0 +1,11 @@
+{
+    "admin": {
+        "id": "admin",
+        "password": "admin00",
+        "name": "정현경(관리자)",
+        "role": "관리자",
+        "subject": "전체",
+        "class_group": "관리자",
+        "approved": true
+    }
+}
