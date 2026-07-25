@@ -30,7 +30,7 @@ ADMIN_ACCOUNTS = {
     "audskal": {"pw": "1847", "name": "김명남(관리자)"}
 }
 
-# 📌 수행평가 중심 활동지 3종 구성 (수행평가 3 이름 업데이트)
+# 📌 수행평가 중심 활동지 3종 구성
 ACTIVITIES = [
     "[활동지1] - 수행평가 1 (영상으로 떠나는 여행)",
     "[활동지2] - 수행평가 2 (나를 성장시킨 장소 지도 만들기)",
@@ -203,7 +203,7 @@ def generate_html_content(act_name, ans):
         html += f"<tr><th>영화/드라마에서 자주 접하는 국가들</th><td>{ans.get('media2_1','')}</td><th>그 나라에 대한 이미지</th><td>{ans.get('media2_2','')}</td></tr>"
         html += f"<tr><th>학교에서 많이 배운 국가들</th><td>{ans.get('media3_1','')}</td><th>그 나라에 대한 지식</th><td>{ans.get('media3_2','')}</td></tr></table>"
 
-        html += "<h4>4) 부정확한 정보나 과장된 인식 발견</h4><table><tr><th>국가명</th><th>잘못 알고 있었던 내용</th><th>실제 사실</th></tr>"
+        html += "<h4>4) 부정확한 정보나 과장된 인식 발견 (사실과 다른 내용들)</h4><table><tr><th>국가명</th><th>잘못 알고 있었던 내용</th><th>실제 사실</th></tr>"
         for row in ans.get("fake_df", []): html += f"<tr><td>{row.get('국가명','')}</td><td>{row.get('잘못 알고 있었던 내용','')}</td><td>{row.get('실제 사실','')}</td></tr>"
         html += "</table>"
 
@@ -486,7 +486,7 @@ def render_activity3(user_key, u_name):
     edited_western_df = st.data_editor(western_df, num_rows="dynamic", use_container_width=True, hide_index=True)
 
     st.markdown("---")
-    # 4. 목표로 하는 세계관 (사용자 요청 반영: 5번에서 4번으로 변경)
+    # 4. 목표로 하는 세계관 (사용자 요청 반영: 번호 변경)
     st.markdown("#### 4. 목표로 하는 세계관")
     goal_1 = st.text_area("▶ 어떤 사람이 되고 싶은가?", value=ans.get("goal_1", ""), height=100)
     goal_2 = st.text_area("▶ 어떤 세계관을 갖고 싶은가?", value=ans.get("goal_2", ""), height=100)
@@ -635,17 +635,12 @@ st.sidebar.title("🔒 인증 센터")
 if st.session_state.logged_in:
     u_info = st.session_state.user_info
     
+    # 📌 (해결 1) 마크다운 엔진 오류 방지를 위해 HTML 코드를 한 줄로 붙여서 강제 출력
     if u_info['role'] == "관리자":
-        class_text_html = ""
+        sidebar_html = f"<div style='background-color:#e8f4f8; padding:10px; border-radius:5px; margin-bottom:15px; line-height:1.4;'><div style='font-size:15px; font-weight:bold; color:#0056b3; margin-bottom:3px;'>🟢 {u_info['name']} 님 로그인 중</div><div style='font-size:14px; color:#333; margin-bottom:2px;'>📘 과목: {u_info.get('subject', '전체')}</div><div style='font-size:14px; color:#333;'>🛡️ 권한: {u_info['role']}</div></div>"
     else:
-        class_text_html = f"<div style='font-size: 14px; color: #333; margin-bottom: 2px;'>🏫 소속: {u_info.get('class_group', '')}</div>"
-
-    sidebar_html = "<div style='background-color: #e8f4f8; padding: 10px; border-radius: 5px; margin-bottom: 15px; line-height: 1.4;'>"
-    sidebar_html += f"<div style='font-size: 15px; font-weight: bold; color: #0056b3; margin-bottom: 3px;'>🟢 {u_info['name']} 님 로그인 중</div>"
-    sidebar_html += f"<div style='font-size: 14px; color: #333; margin-bottom: 2px;'>📘 과목: {u_info.get('subject', '전체')}</div>"
-    sidebar_html += class_text_html
-    sidebar_html += f"<div style='font-size: 14px; color: #333;'>🛡️ 권한: {u_info['role']}</div></div>"
-    
+        sidebar_html = f"<div style='background-color:#e8f4f8; padding:10px; border-radius:5px; margin-bottom:15px; line-height:1.4;'><div style='font-size:15px; font-weight:bold; color:#0056b3; margin-bottom:3px;'>🟢 {u_info['name']} 님 로그인 중</div><div style='font-size:14px; color:#333; margin-bottom:2px;'>📘 과목: {u_info.get('subject', '전체')}</div><div style='font-size:14px; color:#333; margin-bottom:2px;'>🏫 소속: {u_info.get('class_group', '')}</div><div style='font-size:14px; color:#333;'>🛡️ 권한: {u_info['role']}</div></div>"
+        
     st.sidebar.markdown(sidebar_html, unsafe_allow_html=True)
     
     if st.sidebar.button("로그아웃", type="primary", use_container_width=True):
@@ -747,7 +742,10 @@ else:
         if st.button("⬅️ 메인 화면으로 돌아가기", use_container_width=True):
             change_page("main")
 
-    elif st.session_state.current_page == "main":
+    # 📌 (해결 2) 현재 페이지가 활동지가 아닐 경우, 무조건 강제로 메인 화면을 출력하도록 통일 (빈 화면 방지)
+    else:
+        st.session_state.current_page = "main"
+        
         if current_role == "학생":
             st.title("🏫 수업 및 활동 어시스트 프로그램")
             render_class_overview(current_role, u_info)
