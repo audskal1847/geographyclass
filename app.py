@@ -32,14 +32,13 @@ ADMIN_ACCOUNTS = {
 
 # 📌 수행평가 중심 활동지 3종 구성
 ACTIVITIES = [
-    "[활동지1] - 수행평가 1",
-    "[활동지2] - 수행평가 2",
+    "[활동지1] - 수행평가 1 (영상으로 떠나는 여행)",
+    "[활동지2] - 수행평가 2 (나를 성장시킨 장소 지도 만들기)",
     "[활동지3] - 수행평가 3"
 ]
 
 INFO_BOX = "<div style='background-color: #f0f4f8; padding: 15px; border-radius: 8px; font-size: 17px; font-weight: 600; color: #222; margin-bottom: 15px; border-left: 5px solid #0056b3; line-height: 1.5;'>{}</div>"
 
-# 데이터 동시 접근 오류 방지를 위한 강력한 락(RLock) 적용
 db_lock = threading.RLock()
 
 # --- [토큰 및 페이지 제어 함수] ---
@@ -91,7 +90,6 @@ def init_system():
                 }
                 users_changed = True
         
-        # 잉여 관리자 계정 정리
         keys_to_delete = [k for k in users.keys() if users[k].get("role") == "관리자" and k not in ADMIN_ACCOUNTS]
         for k in keys_to_delete:
             del users[k]
@@ -99,31 +97,83 @@ def init_system():
 
         if users_changed: save_json(USERS_FILE, users)
         
-        # 차시 관련 설정 제거된 깔끔한 Config 구조 반영
         current_config = load_json(CONFIG_FILE, {})
         needs_update = False
         if "materials" not in current_config:
             current_config["materials"] = []
             needs_update = True
-        
-        # 이전 차시 데이터 설정 찌꺼기 삭제
         for k in ["tabs", "pdfs", "questions"]:
             if k in current_config:
                 del current_config[k]
                 needs_update = True
-                
         if needs_update: save_json(CONFIG_FILE, current_config)
 
 # --- [공통 HTML 포트폴리오 생성기] ---
+def generate_html_content(act_name, ans):
+    html = ""
+    if act_name == ACTIVITIES[0]:
+        html += "<h3>1. 자신이 선택한 영상에 대한 첫번째 질문</h3><table>"
+        html += f"<tr><th>영상의 제목</th><td>{ans.get('a1_1','')}</td></tr>"
+        html += f"<tr><th>등장하는 국가/지역</th><td>{ans.get('a1_2','')}</td></tr>"
+        html += f"<tr><th>선택 이유</th><td>{ans.get('a1_3','')}</td></tr></table>"
+        
+        html += "<h3>2. 자신이 선택한 영상에 대한 두 번째 질문</h3><table>"
+        html += f"<tr><th>첫 느낌</th><td>{ans.get('a2_1','')}</td></tr>"
+        html += f"<tr><th>인상적이었던 장소/공간</th><td>{ans.get('a2_2_1','')}</td></tr>"
+        html += f"<tr><th>그 이유</th><td>{ans.get('a2_2_2','')}</td></tr>"
+        html += f"<tr><th>누구에게 추천?</th><td>{ans.get('a2_3_1','')}</td></tr>"
+        html += f"<tr><th>추천 이유</th><td>{ans.get('a2_3_2','')}</td></tr>"
+        html += f"<tr><th>나만의 감상평</th><td>{ans.get('a2_4','')}</td></tr></table>"
+        
+        html += "<h3>3. 만일 내가 영상 속 지역을 배경으로 영상을 찍는다면?</h3><table>"
+        html += f"<tr><th>1) 영상의 제목</th><td>{ans.get('a3_1','')}</td></tr>"
+        html += f"<tr><th>2) 주요 컨셉/느낌</th><td>{ans.get('a3_2','')}</td></tr>"
+        html += f"<tr><th>3) 누구와 함께?</th><td>{ans.get('a3_3','')}</td></tr>"
+        html += f"<tr><th>4) 그 이유는?</th><td>{ans.get('a3_4','')}</td></tr>"
+        html += f"<tr><th>5) 가장 해보고 싶은 것?</th><td>{ans.get('a3_5','')}</td></tr>"
+        html += f"<tr><th>6) 그 이유는?</th><td>{ans.get('a3_6','')}</td></tr>"
+        html += f"<tr><th>7) 꼭 넣고 싶은 장소/공간</th><td>{ans.get('a3_7','')}</td></tr>"
+        html += f"<tr><th>8) 그 이유는?</th><td>{ans.get('a3_8','')}</td></tr>"
+        html += f"<tr><th>9) 썸네일 영상 기획</th><td>{ans.get('a3_9','')}</td></tr>"
+        html += f"<tr><th>10) 어울리는 BGM</th><td>{ans.get('a3_10','')}</td></tr>"
+        html += f"<tr><th>11) BGM 선택 이유</th><td>{ans.get('a3_11','')}</td></tr></table>"
+
+    elif act_name == ACTIVITIES[1]:
+        html += "<table>"
+        html += f"<tr><th>1-1) 편안함을 주는 장소</th><td>{ans.get('q1_1','')}</td></tr>"
+        html += f"<tr><th>1-2) 편안함을 주는 이유</th><td>{ans.get('q1_2','')}</td></tr>"
+        html += f"<tr><th>2-1) 자신의 성격</th><td>{ans.get('q2_1','')}</td></tr>"
+        html += f"<tr><th>2-2) 성격 형성에 영향을 준 장소</th><td>{ans.get('q2_2','')}</td></tr>"
+        html += f"<tr><th>2-3) 그 이유</th><td>{ans.get('q2_3','')}</td></tr>"
+        html += f"<tr><th>3-1) 자신의 장점</th><td>{ans.get('q3_1','')}</td></tr>"
+        html += f"<tr><th>3-2) 장점 형성에 영향을 준 장소</th><td>{ans.get('q3_2','')}</td></tr>"
+        html += f"<tr><th>3-3) 그 이유</th><td>{ans.get('q3_3','')}</td></tr>"
+        html += f"<tr><th>4-1) 성장함에 영향을 준 장소</th><td>{ans.get('q4_1','')}</td></tr>"
+        html += f"<tr><th>4-2) 어떤 면에서 영향을 주었는가</th><td>{ans.get('q4_2','')}</td></tr>"
+        html += f"<tr><th>5-1) 지금 나의 목표</th><td>{ans.get('q5_1','')}</td></tr>"
+        html += f"<tr><th>5-2) 목표 설정에 영향을 준 장소</th><td>{ans.get('q5_2','')}</td></tr>"
+        html += f"<tr><th>6-1) 소중한 사람에게 소개하고 싶은 장소</th><td>{ans.get('q6_1','')}</td></tr>"
+        html += f"<tr><th>6-2) 그 이유</th><td>{ans.get('q6_2','')}</td></tr>"
+        html += f"<tr><th>7-1) 나만의 비밀 장소</th><td>{ans.get('q7_1','')}</td></tr>"
+        html += f"<tr><th>7-2) 그 이유</th><td>{ans.get('q7_2','')}</td></tr>"
+        html += f"<tr><th>8-1) 과거로 돌아간다면 가보고 싶은 장소</th><td>{ans.get('q8_1','')}</td></tr>"
+        html += f"<tr><th>8-2) 그 이유</th><td>{ans.get('q8_2','')}</td></tr></table>"
+        
+    elif act_name == ACTIVITIES[2]:
+        html += "<div class='content-box'>추후 입력 양식이 적용될 예정입니다.</div>"
+        
+    return html
+
 def generate_portfolio_html(student_answers, u_name, u_class, view_subj):
     html = f"""<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>{u_name} 수행평가 포트폴리오</title>
     <style>
         body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; }}
         h1 {{ text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; }}
         h2 {{ color: #2c3e50; border-left: 5px solid #3498db; padding-left: 10px; margin-top: 40px; }}
-        table {{ width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; }}
-        th, td {{ border: 1px solid #bdc3c7; padding: 10px; text-align: left; }}
-        th {{ background-color: #ecf0f1; text-align: center; }}
+        h3 {{ color: #2980b9; }}
+        table {{ width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; table-layout: fixed; }}
+        th {{ background-color: #ecf0f1; width: 30%; border: 1px solid #bdc3c7; padding: 10px; text-align: left; }}
+        td {{ border: 1px solid #bdc3c7; padding: 10px; text-align: left; white-space: pre-wrap; }}
         .content-box {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #e9ecef; white-space: pre-wrap; }}
     </style></head><body>
     <h1>📚 {view_subj} 수행평가 포트폴리오</h1>
@@ -133,22 +183,7 @@ def generate_portfolio_html(student_answers, u_name, u_class, view_subj):
         ans = student_answers.get(act, {})
         if not ans: continue
         html += f"<h2>▶ {act}</h2>"
-        if act == ACTIVITIES[0]:
-            html += f"<p><b>일자:</b> {ans.get('date','')} | <b>주제:</b> {ans.get('topic','')}</p>"
-            html += "<table><tr><th>핵심 키워드</th><th>내용 요약</th></tr>"
-            for row in ans.get("df1", []): html += f"<tr><td>{row.get('핵심 키워드','')}</td><td>{row.get('내용 요약','')}</td></tr>"
-            html += f"</table><p><b>세부 내용 및 서술:</b></p><div class='content-box'>{ans.get('reflection','')}</div>"
-        elif act == ACTIVITIES[1]:
-            html += f"<p><b>주제:</b> {ans.get('title','')}</p><p><b>활동 동기:</b> {ans.get('motive','')}</p>"
-            html += "<table><tr><th>단계</th><th>세부 계획</th><th>예상시간</th></tr>"
-            for row in ans.get("df", []): html += f"<tr><td>{row.get('단계','')}</td><td>{row.get('세부 계획 및 역할','')}</td><td>{row.get('예상 소요시간','')}</td></tr>"
-            html += f"</table><p><b>예상 결과물:</b></p><div class='content-box'>{ans.get('outcome','')}</div>"
-        elif act == ACTIVITIES[2]:
-            html += "<table><tr><th>평가 항목</th><th>자기 평가</th><th>구체적 근거</th></tr>"
-            for row in ans.get("df", []): html += f"<tr><td>{row.get('평가 항목','')}</td><td>{row.get('자기 평가 (상/중/하)','')}</td><td>{row.get('구체적 근거','')}</td></tr>"
-            html += f"</table><p><b>배운 점 및 느낀 점:</b></p><div class='content-box'>{ans.get('learned','')}</div>"
-            html += f"<p><b>향후 계획:</b></p><div class='content-box'>{ans.get('next_step','')}</div>"
-
+        html += generate_html_content(act, ans)
     html += "</body></html>"
     return html
 
@@ -157,29 +192,16 @@ def generate_activity_html(act_name, ans, u_name):
     <style>
         body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; }}
         h2 {{ color: #2c3e50; border-left: 5px solid #3498db; padding-left: 10px; }}
-        table {{ width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; }}
-        th, td {{ border: 1px solid #bdc3c7; padding: 10px; text-align: left; }}
-        th {{ background-color: #ecf0f1; text-align: center; }}
+        h3 {{ color: #2980b9; }}
+        table {{ width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; table-layout: fixed; }}
+        th {{ background-color: #ecf0f1; width: 30%; border: 1px solid #bdc3c7; padding: 10px; text-align: left; }}
+        td {{ border: 1px solid #bdc3c7; padding: 10px; text-align: left; white-space: pre-wrap; }}
         .content-box {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #e9ecef; white-space: pre-wrap; }}
     </style></head><body>
     <div style="text-align: right; margin-bottom: 20px;"><b>이름:</b> {u_name}</div>
     <h2>▶ {act_name}</h2>
     """
-    if act_name == ACTIVITIES[0]:
-        html += f"<p><b>일자:</b> {ans.get('date','')} | <b>주제:</b> {ans.get('topic','')}</p>"
-        html += "<table><tr><th>핵심 키워드</th><th>내용 요약</th></tr>"
-        for row in ans.get("df1", []): html += f"<tr><td>{row.get('핵심 키워드','')}</td><td>{row.get('내용 요약','')}</td></tr>"
-        html += f"</table><p><b>세부 내용 및 서술:</b></p><div class='content-box'>{ans.get('reflection','')}</div>"
-    elif act_name == ACTIVITIES[1]:
-        html += f"<p><b>주제:</b> {ans.get('title','')}</p><p><b>활동 동기:</b> {ans.get('motive','')}</p>"
-        html += "<table><tr><th>단계</th><th>세부 계획</th><th>예상시간</th></tr>"
-        for row in ans.get("df", []): html += f"<tr><td>{row.get('단계','')}</td><td>{row.get('세부 계획 및 역할','')}</td><td>{row.get('예상 소요시간','')}</td></tr>"
-        html += f"</table><p><b>예상 결과물:</b></p><div class='content-box'>{ans.get('outcome','')}</div>"
-    elif act_name == ACTIVITIES[2]:
-        html += "<table><tr><th>평가 항목</th><th>자기 평가</th><th>구체적 근거</th></tr>"
-        for row in ans.get("df", []): html += f"<tr><td>{row.get('평가 항목','')}</td><td>{row.get('자기 평가 (상/중/하)','')}</td><td>{row.get('구체적 근거','')}</td></tr>"
-        html += f"</table><p><b>배운 점 및 느낀 점:</b></p><div class='content-box'>{ans.get('learned','')}</div>"
-        html += f"<p><b>향후 계획:</b></p><div class='content-box'>{ans.get('next_step','')}</div>"
+    html += generate_html_content(act_name, ans)
     html += "</body></html>"
     return html
 
@@ -187,26 +209,51 @@ def generate_activity_html(act_name, ans, u_name):
 def render_activity1(user_key, u_name):
     category = ACTIVITIES[0]
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
-    st.markdown(INFO_BOX.format("수행평가 1 내용을 작성하고 제출하는 공간입니다."), unsafe_allow_html=True)
     
-    st.markdown("#### 1. 개요")
-    c1, c2 = st.columns(2)
-    date = c1.date_input("작성 일자", value=pd.to_datetime(ans.get("date", datetime.date.today())))
-    topic = c2.text_input("주제", value=ans.get("topic", ""))
+    st.markdown("### ♣ 영상을 통한 여행 (Feat. 브이로그..)")
+    st.markdown("---")
     
-    st.markdown("#### 2. 핵심 요약 및 기재 사항")
-    default_df1 = pd.DataFrame([{"핵심 키워드": "", "내용 요약": ""} for _ in range(3)])
-    df1 = pd.DataFrame(ans.get("df1", default_df1.to_dict('records')))
-    edited_df1 = st.data_editor(df1, num_rows="dynamic", use_container_width=True, key="act1_df1")
+    st.markdown("#### 1. 자신이 선택한 영상에 대한 첫번째 질문")
+    a1_1 = st.text_input("1. 영상의 제목", value=ans.get("a1_1", ""))
+    a1_2 = st.text_input("2. 영상에 등장하는 국가 혹은 지역", value=ans.get("a1_2", ""))
+    a1_3 = st.text_area("3. 해당 영상을 선택하게 된 이유 (자세히 작성해 봅시다.)", value=ans.get("a1_3", ""))
     
-    st.markdown("#### 3. 세부 내용 및 서술")
-    reflection = st.text_area("구체적인 활동 내용 및 의견을 입력하세요.", value=ans.get("reflection", ""), height=150)
+    st.markdown("---")
+    st.markdown("#### 2. 자신이 선택한 영상에 대한 두 번째 질문")
+    a2_1 = st.text_area("1. 첫 느낌 (영상의 제목 혹은 첫 장면을 접했을 때 느낌)", value=ans.get("a2_1", ""))
     
-    if st.button("활동지 저장하기", type="primary"):
+    st.markdown("**2. 영상의 내용 중 가장 인상적이었던 장소 혹은 공간을 한 곳 선택해 본다면?**")
+    a2_2_1 = st.text_input("▶ 인상적이었던 장소 혹은 공간:", value=ans.get("a2_2_1", ""))
+    a2_2_2 = st.text_area("▶ 이유:", value=ans.get("a2_2_2", ""))
+    
+    st.markdown("**3. 만일 이 영상을 누군가에게 추천해 준다면 누구에게 추천해 주고 싶은지, 그 이유는 무엇인지?**")
+    a2_3_1 = st.text_input("▶ 누구에게 추천:", value=ans.get("a2_3_1", ""))
+    a2_3_2 = st.text_area("▶ 추천하는 이유:", value=ans.get("a2_3_2", ""))
+    
+    a2_4 = st.text_area("4. 영상에 대한 나만의 감상평 (인상적이었던 부분, 좋았던 부분, 아쉬웠던 부분)", value=ans.get("a2_4", ""))
+    
+    st.markdown("---")
+    st.markdown("#### 5. 만일 내가 영상 속 지역을 배경으로 영상을 찍는다면?")
+    a3_1 = st.text_input("1) 영상의 제목:", value=ans.get("a3_1", ""))
+    a3_2 = st.text_input("2) 영상의 주요 컨셉 혹은 느낌:", value=ans.get("a3_2", ""))
+    a3_3 = st.text_input("3) 누구와 함께 가고 싶은가? (혼자 혹은 누군가와 함께?):", value=ans.get("a3_3", ""))
+    a3_4 = st.text_area("4) 그 이유는?:", value=ans.get("a3_4", ""))
+    a3_5 = st.text_input("5) 그곳에서 가장 해 보고 싶은 것이 있다면?:", value=ans.get("a3_5", ""))
+    a3_6 = st.text_area("6) 그 이유는?:", value=ans.get("a3_6", ""), key="a3_6")
+    a3_7 = st.text_input("7) 영상에 꼭 넣고 싶은 장소 혹은 공간:", value=ans.get("a3_7", ""))
+    a3_8 = st.text_area("8) 그 이유는?:", value=ans.get("a3_8", ""), key="a3_8")
+    a3_9 = st.text_area("9) 만일 내가 썸네일 영상을 만든다면?:", value=ans.get("a3_9", ""))
+    a3_10 = st.text_input("10) 영상에 어울리는 BGM을 하나 선택한다면 어떤 곡으로?:", value=ans.get("a3_10", ""))
+    a3_11 = st.text_area("11) 그 이유는?:", value=ans.get("a3_11", ""), key="a3_11")
+    
+    if st.button("수행평가 1 저장하기", type="primary"):
         current_data = load_json(DATA_FILE, {}) 
         if user_key not in current_data: current_data[user_key] = {}
         current_data[user_key][category] = {
-            "date": str(date), "topic": topic, "df1": edited_df1.to_dict('records'), "reflection": reflection
+            "a1_1": a1_1, "a1_2": a1_2, "a1_3": a1_3, "a2_1": a2_1, "a2_2_1": a2_2_1, "a2_2_2": a2_2_2,
+            "a2_3_1": a2_3_1, "a2_3_2": a2_3_2, "a2_4": a2_4, "a3_1": a3_1, "a3_2": a3_2, "a3_3": a3_3,
+            "a3_4": a3_4, "a3_5": a3_5, "a3_6": a3_6, "a3_7": a3_7, "a3_8": a3_8, "a3_9": a3_9,
+            "a3_10": a3_10, "a3_11": a3_11
         }
         save_json(DATA_FILE, current_data)
         st.toast("🎉 수행평가 1이 저장되었습니다!")
@@ -215,28 +262,58 @@ def render_activity1(user_key, u_name):
     if ans:
         st.markdown("---")
         html_data = generate_activity_html(category, ans, u_name)
-        st.download_button(f"📥 {category} 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
+        st.download_button(f"📥 수행평가 1 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가1.html", mime="text/html")
 
 def render_activity2(user_key, u_name):
     category = ACTIVITIES[1]
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
-    st.markdown(INFO_BOX.format("수행평가 2 내용을 작성하고 제출하는 공간입니다."), unsafe_allow_html=True)
     
-    title = st.text_input("수행평가 2 주제", value=ans.get("title", ""))
-    motive = st.text_area("활동 동기 및 관련 개념", value=ans.get("motive", ""))
+    st.markdown("## 2026. 신선여고 3학년 여행지리")
+    st.markdown("### '나를 성장시킨, 나에게 특별한 의미가 있는 장소 지도 만들기'")
+    st.info("한 사람의 살아온 과정은 '장소'의 영향을 받기 마련입니다. 우리의 삶이 이어지는 '장소'는 개인의 느낌과 의미 부여에 따라 저마다 다른 감정을 느낍니다. 이를 지리에서는 '장소감(Sense of place)' 이라고 합니다.\n\n19년 동안의 인생을 살아오면서 지금의 내가 있기까지 성장의 경험을 했던 혹은 나에게 특별한 의미가 있는 장소들을 떠올려 봅시다. 그리고 지금의 내가 있기까지의 기억이 남는 장소를 선정해서 '과거로 떠나는 나를 성장시킨 장소 지도'를 만들어 봅시다. 소중했던 사람들과의 좋은 기억과 추억이 남아 있는 장소로 한 번 떠나봅시다.")
     
-    st.markdown("#### 세부 수행 계획")
-    default_df = pd.DataFrame([{"단계": f"{i}단계", "세부 계획 및 역할": "", "예상 소요시간": ""} for i in range(1, 4)])
-    df = pd.DataFrame(ans.get("df", default_df.to_dict('records')))
-    edited_df = st.data_editor(df, num_rows="dynamic", use_container_width=True, hide_index=True)
+    st.markdown("---")
+    q1_1 = st.text_input("1-1) 나에게 편안함을 주는 장소(공간)이/가 있는가?", value=ans.get("q1_1", ""))
+    q1_2 = st.text_area("1-2) 그 장소(공간)이/가 어떤 면에서 나에게 편안함을 주는 것 같은가?", value=ans.get("q1_2", ""))
     
-    outcome = st.text_area("예상 결과물 및 성과", value=ans.get("outcome", ""))
+    st.markdown("---")
+    q2_1 = st.text_input("2-1) 자신이 생각하기에 자신의 성격은?", value=ans.get("q2_1", ""))
+    q2_2 = st.text_input("2-2) 자신의 성격 형성에 있어 영향을 준 장소(공간)이/가 있는가?", value=ans.get("q2_2", ""))
+    q2_3 = st.text_area("2-3) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", value=ans.get("q2_3", ""))
     
-    if st.button("설계도 저장하기", type="primary"):
+    st.markdown("---")
+    q3_1 = st.text_input("3-1) 자신이 생각하기에 자신의 장점은?", value=ans.get("q3_1", ""))
+    q3_2 = st.text_input("3-2) 자신의 장점 형성에 있어 영향을 준 장소(공간)이/가 있는가?", value=ans.get("q3_2", ""))
+    q3_3 = st.text_area("3-3) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", value=ans.get("q3_3", ""))
+    
+    st.markdown("---")
+    q4_1 = st.text_input("4-1) 내가 성장함에 있어 영향을 준 장소(공간)이/가 있는가?", value=ans.get("q4_1", ""))
+    q4_2 = st.text_area("4-2) 그런 장소(공간)이/가 있다면 어떤 면에서 영향을 준 것 같은가?", value=ans.get("q4_2", ""))
+    
+    st.markdown("---")
+    q5_1 = st.text_input("5-1) 지금 나의 목표는 무엇인가?", value=ans.get("q5_1", ""))
+    q5_2 = st.text_area("5-2) 그런 목표를 설정함에 있어 영향을 준 장소(공간)이/가 있는가?", value=ans.get("q5_2", ""))
+    
+    st.markdown("---")
+    q6_1 = st.text_input("6-1) 훗날 소중한 사람에게 소개해 주고 싶은 장소(공간)이/가 있는가?", value=ans.get("q6_1", ""))
+    q6_2 = st.text_area("6-2) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", value=ans.get("q6_2", ""))
+    
+    st.markdown("---")
+    q7_1 = st.text_input("7-1) 나만의 비밀 장소(공간)이/가 있는가?", value=ans.get("q7_1", ""))
+    q7_2 = st.text_area("7-2) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", value=ans.get("q7_2", ""))
+    
+    st.markdown("---")
+    q8_1 = st.text_input("8-1) 시간을 돌려 과거로 돌아갈 수 있다면 다시 가 보고 싶은 장소(공간)이/가 있는가?", value=ans.get("q8_1", ""))
+    q8_2 = st.text_area("8-2) 장소(공간)로/으로 다시 가 보고 싶은 이유는 무엇 때문인가?", value=ans.get("q8_2", ""))
+    
+    if st.button("수행평가 2 저장하기", type="primary"):
         current_data = load_json(DATA_FILE, {}) 
         if user_key not in current_data: current_data[user_key] = {}
         current_data[user_key][category] = {
-            "title": title, "motive": motive, "df": edited_df.to_dict('records'), "outcome": outcome
+            "q1_1": q1_1, "q1_2": q1_2, "q2_1": q2_1, "q2_2": q2_2, "q2_3": q2_3,
+            "q3_1": q3_1, "q3_2": q3_2, "q3_3": q3_3, "q4_1": q4_1, "q4_2": q4_2,
+            "q5_1": q5_1, "q5_2": q5_2, "q6_1": q6_1, "q6_2": q6_2, "q7_1": q7_1,
+            "q7_2": q7_2, "q8_1": q8_1, "q8_2": q8_2
         }
         save_json(DATA_FILE, current_data)
         st.toast("🎉 수행평가 2가 저장되었습니다!")
@@ -245,40 +322,22 @@ def render_activity2(user_key, u_name):
     if ans:
         st.markdown("---")
         html_data = generate_activity_html(category, ans, u_name)
-        st.download_button(f"📥 {category} 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
+        st.download_button(f"📥 수행평가 2 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가2.html", mime="text/html")
 
 def render_activity3(user_key, u_name):
     category = ACTIVITIES[2]
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
-    st.markdown(INFO_BOX.format("수행평가 3 내용을 작성하고 제출하는 공간입니다."), unsafe_allow_html=True)
+    st.markdown(INFO_BOX.format("수행평가 3 내용을 작성하고 제출하는 공간입니다. (추후 양식이 업데이트될 예정입니다)"), unsafe_allow_html=True)
     
-    st.markdown("#### 1. 역량별 자기 평가")
-    default_df = pd.DataFrame([
-        {"평가 항목": "수업 및 활동 참여도", "자기 평가 (상/중/하)": "", "구체적 근거": ""},
-        {"평가 항목": "개념 이해 및 과제 수행력", "자기 평가 (상/중/하)": "", "구체적 근거": ""},
-        {"평가 항목": "문제해결 및 사고력", "자기 평가 (상/중/하)": "", "구체적 근거": ""}
-    ])
-    df = pd.DataFrame(ans.get("df", default_df.to_dict('records')))
-    edited_df = st.data_editor(df, use_container_width=True, hide_index=True)
+    temp_text = st.text_area("내용을 입력하세요", value=ans.get("temp_text", ""), height=200)
     
-    st.markdown("#### 2. 성찰 및 향후 계획")
-    learned = st.text_area("배운 점 및 느낀 점", value=ans.get("learned", ""))
-    next_step = st.text_area("후속 탐구 및 진로 연계 계획", value=ans.get("next_step", ""))
-    
-    if st.button("자기평가 저장하기", type="primary"):
+    if st.button("수행평가 3 임시 저장하기", type="primary"):
         current_data = load_json(DATA_FILE, {}) 
         if user_key not in current_data: current_data[user_key] = {}
-        current_data[user_key][category] = {
-            "df": edited_df.to_dict('records'), "learned": learned, "next_step": next_step
-        }
+        current_data[user_key][category] = {"temp_text": temp_text}
         save_json(DATA_FILE, current_data)
-        st.toast("🎉 수행평가 3이 저장되었습니다!")
+        st.toast("🎉 수행평가 3이 임시 저장되었습니다!")
         st.rerun()
-        
-    if ans:
-        st.markdown("---")
-        html_data = generate_activity_html(category, ans, u_name)
-        st.download_button(f"📥 {category} 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
 
 # --- 메인 공지사항 렌더링 ---
 def render_class_overview(current_role, u_info):
@@ -394,18 +453,19 @@ st.sidebar.title("🔒 인증 센터")
 if st.session_state.logged_in:
     u_info = st.session_state.user_info
     
-    # 마크다운 띄어쓰기 인덴트 오류(HTML 태그 노출) 해결 적용
-    sidebar_html = "<div style='background-color: #e8f4f8; padding: 10px; border-radius: 5px; margin-bottom: 15px; line-height: 1.4;'>"
-    sidebar_html += f"<div style='font-size: 15px; font-weight: bold; color: #0056b3; margin-bottom: 3px;'>🟢 {u_info['name']} 님 로그인 중</div>"
-    sidebar_html += f"<div style='font-size: 14px; color: #333; margin-bottom: 2px;'>📘 과목: {u_info.get('subject', '전체')}</div>"
-    
-    # 관리자는 소속 출력 생략
-    if u_info['role'] != "관리자":
-        sidebar_html += f"<div style='font-size: 14px; color: #333; margin-bottom: 2px;'>🏫 소속: {u_info.get('class_group', '')}</div>"
-        
-    sidebar_html += f"<div style='font-size: 14px; color: #333;'>🛡️ 권한: {u_info['role']}</div></div>"
-    
-    st.sidebar.markdown(sidebar_html, unsafe_allow_html=True)
+    if u_info['role'] == "관리자":
+        class_text_html = ""
+    else:
+        class_text_html = f"<div style='font-size: 14px; color: #333; margin-bottom: 2px;'>🏫 소속: {u_info.get('class_group', '')}</div>"
+
+    st.sidebar.markdown(f"""
+    <div style='background-color: #e8f4f8; padding: 10px; border-radius: 5px; margin-bottom: 15px; line-height: 1.4;'>
+        <div style='font-size: 15px; font-weight: bold; color: #0056b3; margin-bottom: 3px;'>🟢 {u_info['name']} 님 로그인 중</div>
+        <div style='font-size: 14px; color: #333; margin-bottom: 2px;'>📘 과목: {u_info.get('subject', '전체')}</div>
+        {class_text_html}
+        <div style='font-size: 14px; color: #333;'>🛡️ 권한: {u_info['role']}</div>
+    </div>
+    """, unsafe_allow_html=True)
     
     if st.sidebar.button("로그아웃", type="primary", use_container_width=True):
         st.session_state.logged_in = False
@@ -491,7 +551,6 @@ else:
     app_config = load_json(CONFIG_FILE, {})
     learning_data = load_json(DATA_FILE, {})
 
-    # 📄 수행평가 활동지 작성 화면
     if st.session_state.current_page in ACTIVITIES:
         act_name = st.session_state.current_page
         st.title(f"📄 {act_name}")
@@ -507,13 +566,11 @@ else:
         if st.button("⬅️ 메인 화면으로 돌아가기", use_container_width=True):
             change_page("main")
 
-    # 🏠 메인 대시보드 화면
     elif st.session_state.current_page == "main":
         if current_role == "학생":
             st.title("🏫 수업 및 활동 어시스트 프로그램")
             render_class_overview(current_role, u_info)
 
-            # 포트폴리오 다운로드
             student_answers = learning_data.get(current_user_key, {})
             if student_answers:
                 st.markdown("---")
@@ -524,7 +581,6 @@ else:
 
         elif current_role == "관리자":
             st.title("🛠️ 관리자(교사) 대시보드")
-            # 1~3차시 관련 설정 탭 완전 삭제 반영
             menu_tabs = st.tabs(["📌 수업 공지", "👥 회원 관리", "📥 학생 자료 조회", "💾 데이터 백업 및 복구(중요)"])
             
             with menu_tabs[0]:
@@ -544,7 +600,6 @@ else:
                             save_json(CONFIG_FILE, fresh_config)
                             st.success("등록 완료!"); st.rerun()
 
-            # --- 👥 회원 관리 ---
             with menu_tabs[1]:
                 all_users = load_json(USERS_FILE, {})
                 pending_users = {k: v for k, v in all_users.items() if not v.get("approved", True) and v.get("role")=="학생"}
@@ -555,7 +610,6 @@ else:
                     df_pending = pd.DataFrame([{"과목": v.get("subject", "-"), "반": v.get("class_group", "-"), "학번": v.get("id", "-"), "이름": v.get("name", "-")} for k, v in pending_users.items()])
                     st.dataframe(df_pending, use_container_width=True)
                     
-                    # 개별 선택 승인 및 일괄 승인 기능 함께 배치
                     col_app1, col_app2 = st.columns(2)
                     with col_app1:
                         approve_target = st.selectbox("승인할 학생 선택", ["선택"] + list(pending_users.keys()), format_func=lambda x: x if x=="선택" else f"[{pending_users[x].get('subject')}/{pending_users[x].get('class_group')}] {pending_users[x].get('name')} ({pending_users[x].get('id')})")
@@ -598,12 +652,10 @@ else:
                         save_json(USERS_FILE, fresh_users)
                         st.success("삭제 완료"); st.rerun()
 
-            # --- 📥 학생 제출 자료 조회 ---
             with menu_tabs[2]:
                 col_t, col_b = st.columns([8, 2])
                 with col_t: st.subheader("📥 학생 학습 활동 및 제출 자료 조회")
                 with col_b: 
-                    # 안전하게 최신 JSON 파일 데이터를 강제로 로드하도록 갱신 역할 수행
                     if st.button("🔄 최신 데이터 새로고침", type="primary"): 
                         st.rerun()
                 
@@ -612,11 +664,9 @@ else:
                 
                 c1, c2 = st.columns(2)
                 view_subj = c1.selectbox("조회할 과목", SUBJECTS, key="view_subj_select")
-                
                 available_classes = CLASSES_MAP.get(view_subj, [])
                 view_class = c2.selectbox("조회할 반", ["전체 보기"] + available_classes, key="view_class_select")
                 
-                # 승인된(approved) 학생만 노출되도록 필터 강화
                 student_list = [uid for uid, info in all_users.items() if info.get("role") == "학생" and info.get("approved", True) and info.get("subject") == view_subj and (view_class == "전체 보기" or view_class == info.get("class_group"))]
                 
                 if not student_list: st.info("해당 조건에 가입이 승인된 학생이 없습니다. 가입 승인을 확인하거나 과목/반을 변경해 보세요.")
@@ -638,16 +688,19 @@ else:
                                 if ans:
                                     st.markdown(f"#### ▶ {act}")
                                     if act == ACTIVITIES[0]:
-                                        st.write(f"- **일자:** {ans.get('date','')} | **주제:** {ans.get('topic','')}")
-                                        st.dataframe(pd.DataFrame(ans.get("df1", [])), use_container_width=True)
-                                        st.info(f"**세부 내용 및 서술:**\n{ans.get('reflection','')}")
+                                        st.write(f"- **영상의 제목:** {ans.get('a1_1','')} | **국가 혹은 지역:** {ans.get('a1_2','')}")
+                                        st.info(f"**선택 이유:**\n{ans.get('a1_3','')}")
+                                        st.info(f"**첫 느낌:**\n{ans.get('a2_1','')}")
+                                        st.write(f"- **인상적이었던 장소:** {ans.get('a2_2_1','')}")
+                                        st.write(f"- **그 이유:** {ans.get('a2_2_2','')}")
+                                        st.write(f"- **누구에게 추천:** {ans.get('a2_3_1','')}")
+                                        st.write(f"- **추천 이유:** {ans.get('a2_3_2','')}")
+                                        st.info(f"**나만의 감상평:**\n{ans.get('a2_4','')}")
+                                        st.write(f"- **영상제목(기획):** {ans.get('a3_1','')} | **컨셉:** {ans.get('a3_2','')}")
                                     elif act == ACTIVITIES[1]:
-                                        st.write(f"- **주제:** {ans.get('title','')} | **동기:** {ans.get('motive','')}")
-                                        st.dataframe(pd.DataFrame(ans.get("df", [])), use_container_width=True)
-                                        st.info(f"**예상 결과물:**\n{ans.get('outcome','')}")
-                                    elif act == ACTIVITIES[2]:
-                                        st.dataframe(pd.DataFrame(ans.get("df", [])), use_container_width=True)
-                                        st.info(f"**배운 점 및 느낀 점:**\n{ans.get('learned','')}\n\n**향후 계획:**\n{ans.get('next_step','')}")
+                                        st.write(f"- **편안한 장소:** {ans.get('q1_1','')} | **이유:** {ans.get('q1_2','')}")
+                                        st.write(f"- **성격:** {ans.get('q2_1','')} | **영향 장소:** {ans.get('q2_2','')}")
+                                        st.write(f"- **목표:** {ans.get('q5_1','')} | **영향 장소:** {ans.get('q5_2','')}")
                             
                             st.markdown("---")
                             html_content = generate_portfolio_html(student_answers, u_name, u_class_selected, view_subj)
@@ -665,11 +718,11 @@ else:
                             u_class = u_info.get('class_group', '')
                             
                             if selected_view == ACTIVITIES[0]: 
-                                csv_data.append({"반": u_class, "학번": u_id, "이름": u_name, "일자": ans.get('date', ''), "주제": ans.get('topic', ''), "세부 서술": ans.get('reflection', '')})
+                                csv_data.append({"반": u_class, "학번": u_id, "이름": u_name, "1.영상제목": ans.get("a1_1", ""), "2.국가/지역": ans.get("a1_2", ""), "3.선택이유": ans.get("a1_3", ""), "4.첫느낌": ans.get("a2_1", ""), "5.인상적인장소": ans.get("a2_2_1", ""), "6.장소이유": ans.get("a2_2_2", ""), "7.추천대상": ans.get("a2_3_1", ""), "8.추천이유": ans.get("a2_3_2", ""), "9.감상평": ans.get("a2_4", ""), "10.기획제목": ans.get("a3_1", ""), "11.컨셉": ans.get("a3_2", ""), "12.동행": ans.get("a3_3", ""), "13.동행이유": ans.get("a3_4", ""), "14.해볼것": ans.get("a3_5", ""), "15.해볼이유": ans.get("a3_6", ""), "16.넣을장소": ans.get("a3_7", ""), "17.넣을이유": ans.get("a3_8", ""), "18.썸네일": ans.get("a3_9", ""), "19.BGM": ans.get("a3_10", ""), "20.BGM이유": ans.get("a3_11", "")})
                             elif selected_view == ACTIVITIES[1]:
-                                csv_data.append({"반": u_class, "학번": u_id, "이름": u_name, "주제": ans.get('title', ''), "동기": ans.get('motive', ''), "예상결과물": ans.get('outcome', '')})
+                                csv_data.append({"반": u_class, "학번": u_id, "이름": u_name, "1-1.편안한장소": ans.get("q1_1", ""), "1-2.이유": ans.get("q1_2", ""), "2-1.나의성격": ans.get("q2_1", ""), "2-2.성격영향장소": ans.get("q2_2", ""), "2-3.이유": ans.get("q2_3", ""), "3-1.나의장점": ans.get("q3_1", ""), "3-2.장점영향장소": ans.get("q3_2", ""), "3-3.이유": ans.get("q3_3", ""), "4-1.성장영향장소": ans.get("q4_1", ""), "4-2.이유": ans.get("q4_2", ""), "5-1.나의목표": ans.get("q5_1", ""), "5-2.목표영향장소": ans.get("q5_2", ""), "6-1.소개할장소": ans.get("q6_1", ""), "6-2.이유": ans.get("q6_2", ""), "7-1.비밀장소": ans.get("q7_1", ""), "7-2.이유": ans.get("q7_2", ""), "8-1.과거로간다면": ans.get("q8_1", ""), "8-2.이유": ans.get("q8_2", "")})
                             elif selected_view == ACTIVITIES[2]:
-                                csv_data.append({"반": u_class, "학번": u_id, "이름": u_name, "배운점/느낀점": ans.get('learned', ''), "향후계획": ans.get('next_step', '')})
+                                csv_data.append({"반": u_class, "학번": u_id, "이름": u_name, "데이터": "추후 업데이트 예정"})
                         
                         if csv_data:
                             df_csv = pd.DataFrame(csv_data)
@@ -678,7 +731,6 @@ else:
                         else:
                             st.info("해당 수행평가에 제출된 데이터가 없습니다.")
 
-            # --- 💾 데이터 백업 및 복구 ---
             with menu_tabs[3]:
                 st.subheader("💾 데이터베이스 백업 및 복구 (매우 중요)")
                 st.error("⚠️ 클라우드 서버 특성상 재부팅 시 저장 데이터가 초기화될 수 있습니다. 퇴근 전이나 수업 후 꼭 백업 파일(.json)을 내려받아 두세요!")
