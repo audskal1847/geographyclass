@@ -313,7 +313,7 @@ def render_activity1(user_key, u_name, current_role):
     a3_11 = st.text_area("11) 그 이유는?:", value=ans.get("a3_11", ""), key="a3_11")
     
     if current_role == "학생":
-        if st.button("수행평가 1 저장하기", type="primary"):
+        if st.button("저장하기", type="primary", key="save_act1"):
             current_data = load_json(DATA_FILE, {}) 
             if user_key not in current_data: current_data[user_key] = {}
             current_data[user_key][category] = {
@@ -323,7 +323,7 @@ def render_activity1(user_key, u_name, current_role):
                 "a3_10": a3_10, "a3_11": a3_11
             }
             save_json(DATA_FILE, current_data)
-            st.toast("🎉 수행평가 1이 저장되었습니다!")
+            st.session_state.show_success_msg = True
             st.rerun()
 
         if ans:
@@ -376,7 +376,7 @@ def render_activity2(user_key, u_name, current_role):
     q8_2 = st.text_area("8-2) 장소(공간)로/으로 다시 가 보고 싶은 이유는 무엇 때문인가?", value=ans.get("q8_2", ""))
     
     if current_role == "학생":
-        if st.button("수행평가 2 저장하기", type="primary"):
+        if st.button("저장하기", type="primary", key="save_act2"):
             current_data = load_json(DATA_FILE, {}) 
             if user_key not in current_data: current_data[user_key] = {}
             current_data[user_key][category] = {
@@ -386,7 +386,7 @@ def render_activity2(user_key, u_name, current_role):
                 "q7_2": q7_2, "q8_1": q8_1, "q8_2": q8_2
             }
             save_json(DATA_FILE, current_data)
-            st.toast("🎉 수행평가 2가 저장되었습니다!")
+            st.session_state.show_success_msg = True
             st.rerun()
 
         if ans:
@@ -494,7 +494,7 @@ def render_activity3(user_key, u_name, current_role):
     goal_2 = st.text_area("▶ 어떤 세계관을 갖고 싶은가?", value=ans.get("goal_2", ""), height=100)
     
     if current_role == "학생":
-        if st.button("수행평가 3 저장하기", type="primary"):
+        if st.button("저장하기", type="primary", key="save_act3"):
             current_data = load_json(DATA_FILE, {}) 
             if user_key not in current_data: current_data[user_key] = {}
             current_data[user_key][category] = {
@@ -516,7 +516,7 @@ def render_activity3(user_key, u_name, current_role):
                 "goal_1": goal_1, "goal_2": goal_2
             }
             save_json(DATA_FILE, current_data)
-            st.toast("🎉 수행평가 3이 저장되었습니다!")
+            st.session_state.show_success_msg = True
             st.rerun()
             
         if ans:
@@ -731,9 +731,20 @@ else:
     app_config = load_json(CONFIG_FILE, {})
     learning_data = load_json(DATA_FILE, {})
 
-    # 📌 (해결 1) 메인 분기 로직: 활동지 진입 허용을 교사에게도 확실히 개방
     if st.session_state.current_page in ACTIVITIES:
         act_name = st.session_state.current_page
+        
+        # 📌 저장 완료 시 대형 알림창 렌더링
+        if st.session_state.get("show_success_msg", False):
+            success_html = """
+            <div style='text-align: center; padding: 25px; background-color: #e8f5e9; color: #2e7d32; border-radius: 15px; border: 3px solid #c8e6c9; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
+                <h2 style='margin:0 0 10px 0; color: #2e7d32;'>🎉 화면 저장이 완료되었습니다!</h2>
+                <p style='margin:0; font-size: 18px; font-weight: bold;'>입력하신 내용이 안전하게 저장되었습니다.</p>
+            </div>
+            """
+            st.markdown(success_html, unsafe_allow_html=True)
+            st.session_state.show_success_msg = False
+            
         st.title(f"📄 {act_name}")
         st.markdown("---")
         
@@ -873,7 +884,6 @@ else:
                             st.markdown(f"### 📋 {u_name} 학생 제출 내용 바로 확인하기")
                             
                             has_answer = False
-                            # 📌 (해결 2) 관리자 조회 화면 누락 항목 완벽 복구
                             for act in ACTIVITIES:
                                 ans = student_answers.get(act, {})
                                 if ans:
