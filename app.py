@@ -133,7 +133,7 @@ def generate_html_content(act_name, ans):
         html += f"<tr><th>추천 이유</th><td>{ans.get('a2_3_2','')}</td></tr>"
         html += f"<tr><th>나만의 감상평</th><td>{ans.get('a2_4','')}</td></tr></table>"
         
-        html += "<h3>3. 만일 내가 영상 속 지역을 배경으로 영상을 찍는다면?</h3><table>"
+        html += "<h3>5. 만일 내가 영상 속 지역을 배경으로 영상을 찍는다면?</h3><table>"
         html += f"<tr><th>1) 영상의 제목</th><td>{ans.get('a3_1','')}</td></tr>"
         html += f"<tr><th>2) 주요 컨셉/느낌</th><td>{ans.get('a3_2','')}</td></tr>"
         html += f"<tr><th>3) 누구와 함께?</th><td>{ans.get('a3_3','')}</td></tr>"
@@ -271,7 +271,7 @@ def generate_activity_html(act_name, ans, u_name):
     html += "</body></html>"
     return html
 
-# --- [3] 수행평가 활동지 렌더링 함수들 (교사 화면 권한 제약 해제 적용) ---
+# --- [3] 수행평가 활동지 렌더링 함수들 ---
 def render_activity1(user_key, u_name, current_role):
     category = ACTIVITIES[0]
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
@@ -640,7 +640,6 @@ st.sidebar.title("🔒 인증 센터")
 if st.session_state.logged_in:
     u_info = st.session_state.user_info
     
-    # HTML 줄바꿈으로 인한 태그 출력 오류 방지 (단일 문자열 처리)
     if u_info['role'] == "관리자":
         sidebar_html = f"<div style='background-color:#e8f4f8; padding:10px; border-radius:5px; margin-bottom:15px; line-height:1.4;'><div style='font-size:15px; font-weight:bold; color:#0056b3; margin-bottom:3px;'>🟢 {u_info['name']} 님 로그인 중</div><div style='font-size:14px; color:#333; margin-bottom:2px;'>📘 과목: {u_info.get('subject', '전체')}</div><div style='font-size:14px; color:#333;'>🛡️ 권한: {u_info['role']}</div></div>"
     else:
@@ -732,7 +731,7 @@ else:
     app_config = load_json(CONFIG_FILE, {})
     learning_data = load_json(DATA_FILE, {})
 
-    # 📌 (해결 1) 교사/관리자도 활동지 페이지 클릭 시 동일하게 질문/폼이 보이도록 분기 수정
+    # 📌 (해결 1) 메인 분기 로직: 활동지 진입 허용을 교사에게도 확실히 개방
     if st.session_state.current_page in ACTIVITIES:
         act_name = st.session_state.current_page
         st.title(f"📄 {act_name}")
@@ -834,7 +833,6 @@ else:
                         save_json(USERS_FILE, fresh_users)
                         st.success("삭제 완료"); st.rerun()
 
-            # --- 📥 학생 제출 자료 조회 (📌 해결 2: 과목 및 반 문자열 매칭 정밀화) ---
             with menu_tabs[2]:
                 col_t, col_b = st.columns([8, 2])
                 with col_t: st.subheader("📥 학생 학습 활동 및 제출 자료 조회")
@@ -850,18 +848,13 @@ else:
                 available_classes = CLASSES_MAP.get(view_subj, [])
                 view_class = c2.selectbox("조회할 반", ["전체 보기"] + available_classes, key="view_class_select")
                 
-                # 공백 및 보장 조건 강화를 포함한 학생 필터링
                 student_list = []
                 for uid, info in all_users.items():
-                    if info.get("role") == "학생":
+                    if info.get("role") == "학생" and info.get("approved", True):
                         s_subj = info.get("subject", "").strip()
                         s_class = info.get("class_group", "").strip()
-                        
-                        target_subj = view_subj.strip()
-                        target_class = view_class.strip()
-                        
-                        if s_subj == target_subj:
-                            if target_class == "전체 보기" or s_class == target_class:
+                        if s_subj == view_subj.strip():
+                            if view_class == "전체 보기" or s_class == view_class.strip():
                                 student_list.append(uid)
                 
                 if not student_list:
@@ -880,29 +873,71 @@ else:
                             st.markdown(f"### 📋 {u_name} 학생 제출 내용 바로 확인하기")
                             
                             has_answer = False
+                            # 📌 (해결 2) 관리자 조회 화면 누락 항목 완벽 복구
                             for act in ACTIVITIES:
                                 ans = student_answers.get(act, {})
                                 if ans:
                                     has_answer = True
-                                    st.markdown(f"#### ▶ {act}")
+                                    st.markdown(f"#### {act}")
                                     if act == ACTIVITIES[0]:
+                                        st.markdown("##### [1. 자신이 선택한 영상에 대한 첫번째 질문]")
                                         st.write(f"- **영상의 제목:** {ans.get('a1_1','')} | **국가 혹은 지역:** {ans.get('a1_2','')}")
                                         st.info(f"**선택 이유:**\n{ans.get('a1_3','')}")
+                                        
+                                        st.markdown("##### [2. 자신이 선택한 영상에 대한 두 번째 질문]")
                                         st.info(f"**첫 느낌:**\n{ans.get('a2_1','')}")
                                         st.write(f"- **인상적이었던 장소:** {ans.get('a2_2_1','')}")
                                         st.write(f"- **그 이유:** {ans.get('a2_2_2','')}")
                                         st.write(f"- **누구에게 추천:** {ans.get('a2_3_1','')}")
                                         st.write(f"- **추천 이유:** {ans.get('a2_3_2','')}")
                                         st.info(f"**나만의 감상평:**\n{ans.get('a2_4','')}")
+                                        
+                                        st.markdown("##### [5. 만일 내가 영상 속 지역을 배경으로 영상을 찍는다면?]")
+                                        st.write(f"- **1) 영상의 제목:** {ans.get('a3_1','')}")
+                                        st.write(f"- **2) 주요 컨셉 혹은 느낌:** {ans.get('a3_2','')}")
+                                        st.write(f"- **3) 누구와 함께 가고 싶은가?:** {ans.get('a3_3','')}")
+                                        st.info(f"**4) 그 이유는?:**\n{ans.get('a3_4','')}")
+                                        st.write(f"- **5) 가장 해 보고 싶은 것:** {ans.get('a3_5','')}")
+                                        st.info(f"**6) 그 이유는?:**\n{ans.get('a3_6','')}")
+                                        st.write(f"- **7) 꼭 넣고 싶은 장소/공간:** {ans.get('a3_7','')}")
+                                        st.info(f"**8) 그 이유는?:**\n{ans.get('a3_8','')}")
+                                        st.info(f"**9) 썸네일 영상 기획:**\n{ans.get('a3_9','')}")
+                                        st.write(f"- **10) 어울리는 BGM:** {ans.get('a3_10','')}")
+                                        st.info(f"**11) 그 이유는?:**\n{ans.get('a3_11','')}")
+
                                     elif act == ACTIVITIES[1]:
                                         st.write(f"- **편안한 장소:** {ans.get('q1_1','')} | **이유:** {ans.get('q1_2','')}")
                                         st.write(f"- **성격:** {ans.get('q2_1','')} | **영향 장소:** {ans.get('q2_2','')}")
+                                        st.write(f"- **장점:** {ans.get('q3_1','')} | **영향 장소:** {ans.get('q3_2','')}")
+                                        st.write(f"- **성장 장소:** {ans.get('q4_1','')} | **이유:** {ans.get('q4_2','')}")
                                         st.write(f"- **목표:** {ans.get('q5_1','')} | **영향 장소:** {ans.get('q5_2','')}")
+                                        st.write(f"- **소개할 장소:** {ans.get('q6_1','')} | **이유:** {ans.get('q6_2','')}")
+                                        st.write(f"- **비밀 장소:** {ans.get('q7_1','')} | **이유:** {ans.get('q7_2','')}")
+                                        st.write(f"- **과거로 간다면:** {ans.get('q8_1','')} | **이유:** {ans.get('q8_2','')}")
+
                                     elif act == ACTIVITIES[2]:
+                                        st.write("**[세계 인식 수준 확인]**")
                                         st.dataframe(pd.DataFrame(ans.get("s1_df", [])), use_container_width=True)
+                                        st.dataframe(pd.DataFrame(ans.get("direct_df", [])), use_container_width=True)
+                                        st.write(f"영화: {ans.get('ind1','')} / 음악: {ans.get('ind2','')} / 음식: {ans.get('ind3','')}")
+                                        st.write("**[가고 싶은 곳 / 가기 싫은 곳]**")
+                                        st.dataframe(pd.DataFrame(ans.get("top5_want", [])), use_container_width=True)
+                                        st.dataframe(pd.DataFrame(ans.get("top5_notwant", [])), use_container_width=True)
+                                        st.write("**[편견과 고정관념]**")
                                         st.dataframe(pd.DataFrame(ans.get("label_df", [])), use_container_width=True)
-                                        st.write(f"- **목표하는 사람:** {ans.get('goal_1','')}")
-                                        st.write(f"- **목표하는 세계관:** {ans.get('goal_2','')}")
+                                        st.dataframe(pd.DataFrame(ans.get("prej_df", [])), use_container_width=True)
+                                        st.write(f"뉴스: {ans.get('media1_1','')} ({ans.get('media1_2','')})")
+                                        st.write(f"영화: {ans.get('media2_1','')} ({ans.get('media2_2','')})")
+                                        st.write(f"학교: {ans.get('media3_1','')} ({ans.get('media3_2','')})")
+                                        st.dataframe(pd.DataFrame(ans.get("fake_df", [])), use_container_width=True)
+                                        st.dataframe(pd.DataFrame(ans.get("discrim_df", [])), use_container_width=True)
+                                        st.write("**[포용적 세계관 노력]**")
+                                        st.dataframe(pd.DataFrame(ans.get("change_df", [])), use_container_width=True)
+                                        st.dataframe(pd.DataFrame(ans.get("ignore_df", [])), use_container_width=True)
+                                        st.dataframe(pd.DataFrame(ans.get("western_df", [])), use_container_width=True)
+                                        st.write("**[목표로 하는 세계관]**")
+                                        st.info(f"**어떤 사람이 되고 싶은가?**\n{ans.get('goal_1','')}")
+                                        st.info(f"**어떤 세계관을 갖고 싶은가?**\n{ans.get('goal_2','')}")
                             
                             if not has_answer:
                                 st.warning("아직 제출한 활동지 내역이 없는 학생입니다.")
