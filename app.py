@@ -25,7 +25,7 @@ CLASSES_MAP = {
     "2학년 도시의 미래 탐구": ["2G(2-1반)", "2H(2-2반)", "2I(2-8반)"]
 }
 
-# 📌 단일 관리자 계정 세팅 (요청사항 6 반영)
+# 📌 단일 관리자 계정 (요청사항 반영)
 ADMIN_ACCOUNTS = {
     "audskal": {"pw": "1847", "name": "김명남(관리자)"}
 }
@@ -41,7 +41,7 @@ INFO_BOX = "<div style='background-color: #f0f4f8; padding: 15px; border-radius:
 
 db_lock = threading.Lock()
 
-# --- [토큰 관리: 새로고침 방지 (요청사항 2, 3 반영)] ---
+# --- [토큰 관리 및 페이지 이동 제어 (튕김 방지 로직)] ---
 def encode_token(user_key):
     return base64.b64encode(user_key.encode('utf-8')).decode('utf-8')
 
@@ -50,6 +50,11 @@ def decode_token(token):
         return base64.b64decode(token.encode('utf-8')).decode('utf-8')
     except:
         return None
+
+def change_page(page_name):
+    st.session_state.current_page = page_name
+    st.query_params["current_page"] = page_name
+    st.rerun()
 
 # --- [2] 데이터 입출력 및 초기화 함수 ---
 def load_json(file_path, default_value):
@@ -74,7 +79,7 @@ def init_system():
     with db_lock:
         users = load_json(USERS_FILE, {})
         users_changed = False
-        # 관리자 계정 초기화/업데이트
+        
         for adm_id, adm_info in ADMIN_ACCOUNTS.items():
             if adm_id not in users or users[adm_id].get("password") != adm_info["pw"]:
                 users[adm_id] = {
@@ -83,7 +88,7 @@ def init_system():
                 }
                 users_changed = True
         
-        # 기존 임시 관리자 계정 삭제 (요청사항 6 반영)
+        # 기존 관리자(임시) 계정 일괄 삭제 로직
         keys_to_delete = [k for k in users.keys() if users[k].get("role") == "관리자" and k not in ADMIN_ACCOUNTS]
         for k in keys_to_delete:
             del users[k]
@@ -118,7 +123,7 @@ def display_pdf(file_path):
         st.markdown(f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="450" type="application/pdf"></iframe>', unsafe_allow_html=True)
     else: st.info(f"💡 수업 자료 파일('{file_path}')이 폴더에 없습니다. 파일을 업로드하면 이곳에 표시됩니다.")
 
-# --- [공통 HTML 생성기 (다운로드용)] ---
+# --- [공통 HTML 포트폴리오 생성기] ---
 def generate_portfolio_html(student_answers, u_name, u_class, view_subj, app_config):
     html = f"""<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>{u_name} 포트폴리오</title>
     <style>
@@ -159,12 +164,10 @@ def generate_portfolio_html(student_answers, u_name, u_class, view_subj, app_con
             ans_text = student_answers.get(t_name, {}).get(q["id"], {}).get("text", "")
             if ans_text:
                 html += f"<h3>[{t_name}] {q.get('label', '')}</h3><div class='content-box'>{ans_text}</div>"
-    
     html += "</body></html>"
     return html
 
 def generate_activity_html(act_name, ans, u_name):
-    # 단일 활동지만 출력하는 HTML
     html = f"""<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>{u_name} - {act_name}</title>
     <style>
         body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; }}
@@ -225,7 +228,6 @@ def render_activity1(user_key, u_name):
         st.toast("🎉 배움 노트가 저장되었습니다!")
         st.rerun()
 
-    # 저장된 내역이 있으면 다운로드 버튼 제공 (요청사항 4)
     if ans:
         st.markdown("---")
         html_data = generate_activity_html(category, ans, u_name)
@@ -322,20 +324,68 @@ def render_class_overview(current_role, u_info):
             st.caption("수업 중 또는 수행평가 진행 시 선생님의 안내에 따라 작성하세요.")
             for act in ACTIVITIES:
                 if st.button(f"📄 {act}", use_container_width=True):
-                    st.session_state.current_page = act; st.rerun()
+                    change_page(act)
     with col2:
         with st.expander("📚 유용한 링크모음", expanded=True):
             st.markdown(f"🔗 [학교 홈페이지 바로가기](#)", unsafe_allow_html=True)
 
 # --- [4] 메인 화면 설정 및 사이드바 로직 ---
-st.set_page_config(page_title="수업 학습 시스템", layout="wide")
+st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", layout="wide")
 
+# CSS: 텍스트 및 버튼 시인성 대폭 강화 (UI 요청사항 반영)
 st.markdown("""
 <style>
-[data-testid="stFormSubmitButton"] button, button[kind="primary"] {
-    background-color: #FF4B4B !important; color: white !important; font-size: 20px !important; font-weight: 900 !important;
-    padding: 10px !important; border-radius: 8px !important; border: none !important; min-height: 50px !important; width: 100% !important;
+/* 사이드바 글씨 크기 및 굵기 대폭 상향 */
+[data-testid="stSidebar"] .stMarkdown p,
+[data-testid="stSidebar"] .stSelectbox label p,
+[data-testid="stSidebar"] .stTextInput label p,
+[data-testid="stSidebar"] .stRadio label p,
+[data-testid="stSidebar"] div[data-baseweb="radio"] div {
+    font-size: 20px !important;
+    font-weight: 900 !important;
+    color: #111111 !important;
 }
+[data-testid="stSidebar"] input, [data-testid="stSidebar"] div[data-baseweb="select"] {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+}
+
+/* 기본(Primary) 버튼 - 활동지 저장, 로그인, 가입 등 */
+[data-testid="stFormSubmitButton"] button, button[kind="primary"] {
+    background-color: #FF4B4B !important; 
+    color: white !important; 
+    font-size: 22px !important; 
+    font-weight: 900 !important;
+    padding: 15px !important; 
+    border-radius: 8px !important; 
+    border: none !important; 
+    min-height: 50px !important; 
+    width: 100% !important;
+}
+button[kind="primary"] p {
+    font-size: 22px !important; 
+    font-weight: 900 !important;
+}
+
+/* 보조(Secondary) 버튼 - 메인으로 돌아가기 버튼을 파란색으로 크고 진하게 */
+button[kind="secondary"] {
+    background-color: #0056b3 !important; 
+    color: white !important; 
+    font-size: 22px !important; 
+    font-weight: 900 !important;
+    padding: 15px !important; 
+    border-radius: 8px !important; 
+    border: none !important; 
+    min-height: 50px !important;
+    width: 100% !important;
+}
+button[kind="secondary"] p {
+    color: white !important;
+    font-size: 22px !important; 
+    font-weight: 900 !important;
+}
+
+/* 본문 영역 */
 .stMarkdown p { font-size: 16px !important; color: #222222 !important; font-weight: 600 !important; line-height: 1.6 !important; }
 [data-testid="stDataFrame"] { border: 2px solid #333 !important; border-radius: 5px; }
 table th { background-color: #f0f2f6 !important; font-size: 16px !important; font-weight: 900 !important; text-align:center !important;}
@@ -349,7 +399,7 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_info = None
 
-# 세션 토큰 복구 로직 (새로고침 방지)
+# 세션 토큰 및 페이지 유지 복구 로직 (튕김 방지)
 if "session_token" in st.query_params and not st.session_state.logged_in:
     token = st.query_params["session_token"]
     user_key = decode_token(token)
@@ -366,7 +416,11 @@ if "session_token" in st.query_params and not st.session_state.logged_in:
             st.session_state.user_info = users[user_key]
             st.session_state.user_info["user_key"] = user_key
 
-if "current_page" not in st.session_state: st.session_state.current_page = "main"
+# URL에 페이지 정보가 있으면 복구, 없으면 메인으로
+if "current_page" in st.query_params:
+    st.session_state.current_page = st.query_params["current_page"]
+elif "current_page" not in st.session_state: 
+    st.session_state.current_page = "main"
 
 st.sidebar.title("🔒 인증 센터")
 
@@ -381,12 +435,12 @@ if st.session_state.logged_in:
     </div>
     """, unsafe_allow_html=True)
     
-    if st.sidebar.button("로그아웃", use_container_width=True):
+    # 여기서만 로그아웃을 Primary로 둬서 빨간색 유지
+    if st.sidebar.button("로그아웃", type="primary", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.user_info = None
         st.session_state.current_page = "main"
-        if "session_token" in st.query_params:
-            del st.query_params["session_token"]
+        st.query_params.clear()
         st.rerun()
 
 else:
@@ -452,12 +506,14 @@ else:
                 else: st.sidebar.error("❌ 관리자 정보가 틀렸습니다.")
 
 st.sidebar.markdown("---")
-# 푸터 수정 (요청사항 5)
-st.sidebar.markdown("<div style='text-align: center; color: #222; font-size: 15px; font-weight: 900;'>🧑‍💻 만든 이:<br><span style='font-size: 20px; color: #000;'>신선여자고등학교 김명남</span></div>", unsafe_allow_html=True)
+# 푸터 수정: 텍스트 크기 및 굵기 적용 (요청사항 반영)
+st.sidebar.markdown("<div style='text-align: center; color: #222; font-size: 18px; font-weight: 900;'>Made by<br><span style='font-size: 24px; color: #000; font-weight: 900;'>신선여자고등학교 김명남</span></div>", unsafe_allow_html=True)
+
 
 # --- [5] 화면 분기 로직 ---
 if not st.session_state.logged_in:
-    st.title("🏫 수업 통합 학습 시스템")
+    # 제목 변경 반영
+    st.title("🏫 수업 및 활동 어시스트 프로그램")
     st.info("왼쪽 사이드바를 이용해 로그인해주세요.")
 
 else:
@@ -481,12 +537,14 @@ else:
         else: st.warning("교사/관리자는 메인 화면의 '제출 자료 조회' 탭을 이용해주세요.")
         
         st.markdown("<br><br>", unsafe_allow_html=True)
+        # 메인 화면으로 돌아가기 (CSS로 인해 파란색으로 렌더링됨)
         if st.button("⬅️ 메인 화면으로 돌아가기", use_container_width=True):
-            st.session_state.current_page = "main"; st.rerun()
+            change_page("main")
 
     # 메인 화면
     elif st.session_state.current_page == "main":
         if current_role == "학생":
+            st.title("🏫 수업 및 활동 어시스트 프로그램")
             tabs_list = ["📌 수업 공지 및 메인"] + app_config.get("tabs", [])
             tabs_objects = st.tabs(tabs_list)
             
@@ -497,10 +555,10 @@ else:
                 student_answers = learning_data.get(current_user_key, {})
                 if student_answers:
                     st.markdown("---")
-                    st.subheader("📚 내 포트폴리오 전체 다운로드")
+                    st.subheader("📚 내 포트폴리오 전체 일괄 다운로드")
                     html_content = generate_portfolio_html(student_answers, u_info['name'], u_info['class_group'], u_info['subject'], app_config)
-                    st.download_button(label=f"📥 {u_info['name']} 학생 포트폴리오 일괄 다운로드 (웹문서)", data=html_content.encode('utf-8-sig'), file_name=f"{u_info['name']}_전체_포트폴리오.html", mime="text/html", type="primary")
-                    st.caption("다운로드한 파일을 인터넷 창으로 열고 우클릭 ➔ 인쇄 ➔ PDF로 저장하세요.")
+                    st.download_button(label=f"📥 {u_info['name']} 학생 전체 포트폴리오 다운로드 (웹문서)", data=html_content.encode('utf-8-sig'), file_name=f"{u_info['name']}_전체_포트폴리오.html", mime="text/html", type="primary")
+                    st.caption("💡 다운로드한 파일을 인터넷 창으로 연 뒤 **[우클릭 ➔ 인쇄 ➔ PDF로 저장]** 하시면 제출용 파일이 완성됩니다.")
 
             for index, tab_name in enumerate(app_config.get("tabs", [])):
                 with tabs_objects[index + 1]:
@@ -531,7 +589,8 @@ else:
 
         elif current_role == "관리자":
             st.title("🛠️ 관리자(교사) 대시보드")
-            menu_tabs = st.tabs(["📌 수업 공지", "👥 회원 관리", "🗂️ 차시(Tab) 및 자료 편집", "📥 학생 제출 자료 조회"])
+            # 백업/복원 탭 신설
+            menu_tabs = st.tabs(["📌 수업 공지", "👥 회원 관리", "🗂️ 차시(Tab) 및 편집", "📥 학생 자료 조회", "💾 데이터 백업 및 복구(중요)"])
             
             with menu_tabs[0]:
                 render_class_overview(current_role, u_info)
@@ -596,7 +655,7 @@ else:
                 col_t, col_b = st.columns([8, 2])
                 with col_t: st.subheader("📥 학생 학습 활동 및 제출 자료 조회")
                 with col_b: 
-                    if st.button("🔄 새로고침", type="primary"): st.rerun()
+                    if st.button("🔄 화면 새로고침", type="primary"): st.rerun()
                 
                 all_users = load_json(USERS_FILE, {})
                 learning_data = load_json(DATA_FILE, {})
@@ -607,20 +666,20 @@ else:
                 
                 student_list = [uid for uid, info in all_users.items() if info.get("role") == "학생" and info.get("subject") == view_subj and (view_class == "전체 보기" or view_class == info.get("class_group"))]
                 
-                if not student_list: st.info("해당 조건에 가입된 학생이 없습니다.")
+                if not student_list: st.info("해당 조건에 가입된 학생이 없습니다. 가입 승인을 확인하거나 과목/반을 변경해 보세요.")
                 else:
-                    view_mode = st.radio("조회 모드", ["👤 특정 학생 집중 분석 (HTML/PDF)", "📅 항목별 전체 현황 (엑셀 CSV)"], horizontal=True)
+                    view_mode = st.radio("조회 모드", ["👤 특정 학생 집중 분석 (다운로드 및 화면 직접 렌더링)", "📅 항목별 전체 현황 (엑셀 CSV)"], horizontal=True)
                     st.markdown("---")
                     
-                    if view_mode == "👤 특정 학생 집중 분석 (HTML/PDF)":
+                    if view_mode == "👤 특정 학생 집중 분석 (다운로드 및 화면 직접 렌더링)":
                         selected_student = st.selectbox("학생 선택", student_list, format_func=lambda x: f"[{all_users[x].get('class_group')}] {all_users[x].get('name')} ({all_users[x].get('id')})")
                         if selected_student:
                             student_answers = learning_data.get(selected_student, {})
                             u_name = all_users[selected_student].get('name', '학생')
                             u_class_selected = all_users[selected_student].get('class_group', '')
                             
-                            # (요청사항 1 반영) 관리자 화면에 제출 내역 직접 렌더링
-                            st.markdown(f"### 📋 {u_name} 학생 제출 내용 확인")
+                            # (요청사항 1 반영) 관리자 화면에 제출 내역을 다운받지 않아도 직접 읽을 수 있게 렌더링
+                            st.markdown(f"### 📋 {u_name} 학생 제출 내용 바로 확인하기")
                             
                             for act in ACTIVITIES:
                                 ans = student_answers.get(act, {})
@@ -679,3 +738,29 @@ else:
                             st.download_button(f"📊 {selected_view[:8]}.. 엑셀 다운로드", data=df_csv.to_csv(index=False).encode('utf-8-sig'), file_name=f"{view_subj}_{view_class}_{selected_view[:6]}.csv", mime='text/csv', type="primary")
                         else:
                             st.info("해당 활동지에 제출된 데이터가 없습니다.")
+
+            # 서버 초기화(데이터 증발) 대비 백업 및 복구 탭 (매우 중요)
+            with menu_tabs[4]:
+                st.subheader("💾 데이터베이스 백업 및 복구 (매우 중요)")
+                st.error("⚠️ 클라우드 서버 특성상 오류나 재부팅 시 가입된 학생과 제출된 자료가 초기화될 수 있습니다. 퇴근 전 등 주기적으로 꼭 백업 파일을 다운로드해 두세요!")
+                
+                # 현재 상태 파일 다운로드
+                all_users_str = load_json(USERS_FILE, {})
+                all_data_str = load_json(DATA_FILE, {})
+                backup_dict = {"users": all_users_str, "data": all_data_str}
+                backup_json = json.dumps(backup_dict, ensure_ascii=False, indent=2)
+                
+                st.download_button("⬇️ 현재까지의 전체 데이터 백업 파일 다운로드 (.json)", data=backup_json.encode('utf-8-sig'), file_name=f"backup_DB_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.json", type="primary", use_container_width=True)
+                
+                st.markdown("---")
+                st.subheader("♻️ 데이터 복구하기 (초기화되었을 때만 사용)")
+                uploaded_file = st.file_uploader("다운로드 해둔 백업 파일(.json)을 업로드하세요", type="json")
+                if st.button("위 파일로 100% 데이터 복구 실행", type="primary"):
+                    if uploaded_file:
+                        try:
+                            restored = json.load(uploaded_file)
+                            save_json(USERS_FILE, restored.get("users", {}))
+                            save_json(DATA_FILE, restored.get("data", {}))
+                            st.success("🎉 데이터 복구가 완벽히 끝났습니다! 학생 데이터 조회가 가능합니다.")
+                        except:
+                            st.error("❌ 올바른 백업 파일이 아닙니다.")
