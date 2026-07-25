@@ -5,6 +5,8 @@ import base64
 import pandas as pd
 import datetime
 import threading
+import io
+import zipfile
 
 # --- [1] 파일 경로 설정 및 상수 정의 ---
 USERS_FILE = "users.json"
@@ -56,6 +58,20 @@ def change_page(page_name):
     st.query_params["current_page"] = page_name
     st.rerun()
 
+# --- [기간 설정(활성화) 확인 함수] ---
+def check_active(act_name):
+    config = load_json(CONFIG_FILE, {})
+    deadlines = config.get("deadlines", {}).get(act_name, {})
+    start_str = deadlines.get("start", "2020-01-01 00:00")
+    end_str = deadlines.get("end", "2030-12-31 23:59")
+    try:
+        start_dt = datetime.datetime.strptime(start_str, "%Y-%m-%d %H:%M")
+        end_dt = datetime.datetime.strptime(end_str, "%Y-%m-%d %H:%M")
+        now = datetime.datetime.now()
+        return start_dt <= now <= end_dt, start_str, end_str
+    except:
+        return True, start_str, end_str
+
 # --- [2] 데이터 입출력 및 초기화 함수 ---
 def load_json(file_path, default_value):
     with db_lock:
@@ -102,6 +118,10 @@ def init_system():
         if "materials" not in current_config:
             current_config["materials"] = []
             needs_update = True
+        if "deadlines" not in current_config:
+            current_config["deadlines"] = {act: {"start": "2024-01-01 00:00", "end": "2030-12-31 23:59"} for act in ACTIVITIES}
+            needs_update = True
+            
         for k in ["tabs", "pdfs", "questions"]:
             if k in current_config:
                 del current_config[k]
@@ -276,43 +296,50 @@ def render_activity1(user_key, u_name, current_role):
     category = ACTIVITIES[0]
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
     
+    # 📌 입력 기간 확인 로직
+    is_active, s_str, e_str = check_active(category)
+    disabled_flag = (current_role == "학생" and not is_active)
+    
     st.markdown("### ♣ 영상을 통한 여행 (Feat. 브이로그..)")
     st.markdown("---")
     
+    if disabled_flag:
+        st.error(f"⏳ 현재는 입력 및 제출 기간이 아닙니다. (설정된 제출 기간: {s_str} ~ {e_str})")
+    
     st.markdown("#### 1. 자신이 선택한 영상에 대한 첫번째 질문")
-    a1_1 = st.text_input("1. 영상의 제목", value=ans.get("a1_1", ""))
-    a1_2 = st.text_input("2. 영상에 등장하는 국가 혹은 지역", value=ans.get("a1_2", ""))
-    a1_3 = st.text_area("3. 해당 영상을 선택하게 된 이유 (자세히 작성해 봅시다.)", value=ans.get("a1_3", ""))
+    a1_1 = st.text_input("1. 영상의 제목", value=ans.get("a1_1", ""), disabled=disabled_flag)
+    a1_2 = st.text_input("2. 영상에 등장하는 국가 혹은 지역", value=ans.get("a1_2", ""), disabled=disabled_flag)
+    a1_3 = st.text_area("3. 해당 영상을 선택하게 된 이유 (자세히 작성해 봅시다.)", value=ans.get("a1_3", ""), disabled=disabled_flag)
     
     st.markdown("---")
     st.markdown("#### 2. 자신이 선택한 영상에 대한 두 번째 질문")
-    a2_1 = st.text_area("1. 첫 느낌 (영상의 제목 혹은 첫 장면을 접했을 때 느낌)", value=ans.get("a2_1", ""))
+    a2_1 = st.text_area("1. 첫 느낌 (영상의 제목 혹은 첫 장면을 접했을 때 느낌)", value=ans.get("a2_1", ""), disabled=disabled_flag)
     
     st.markdown("**2. 영상의 내용 중 가장 인상적이었던 장소 혹은 공간을 한 곳 선택해 본다면?**")
-    a2_2_1 = st.text_input("▶ 인상적이었던 장소 혹은 공간:", value=ans.get("a2_2_1", ""))
-    a2_2_2 = st.text_area("▶ 이유:", value=ans.get("a2_2_2", ""))
+    a2_2_1 = st.text_input("▶ 인상적이었던 장소 혹은 공간:", value=ans.get("a2_2_1", ""), disabled=disabled_flag)
+    a2_2_2 = st.text_area("▶ 이유:", value=ans.get("a2_2_2", ""), disabled=disabled_flag)
     
     st.markdown("**3. 만일 이 영상을 누군가에게 추천해 준다면 누구에게 추천해 주고 싶은지, 그 이유는 무엇인지?**")
-    a2_3_1 = st.text_input("▶ 누구에게 추천:", value=ans.get("a2_3_1", ""))
-    a2_3_2 = st.text_area("▶ 추천하는 이유:", value=ans.get("a2_3_2", ""))
+    a2_3_1 = st.text_input("▶ 누구에게 추천:", value=ans.get("a2_3_1", ""), disabled=disabled_flag)
+    a2_3_2 = st.text_area("▶ 추천하는 이유:", value=ans.get("a2_3_2", ""), disabled=disabled_flag)
     
-    a2_4 = st.text_area("4. 영상에 대한 나만의 감상평 (인상적이었던 부분, 좋았던 부분, 아쉬웠던 부분)", value=ans.get("a2_4", ""))
+    a2_4 = st.text_area("4. 영상에 대한 나만의 감상평 (인상적이었던 부분, 좋았던 부분, 아쉬웠던 부분)", value=ans.get("a2_4", ""), disabled=disabled_flag)
     
     st.markdown("---")
     st.markdown("#### 5. 만일 내가 영상 속 지역을 배경으로 영상을 찍는다면?")
-    a3_1 = st.text_input("1) 영상의 제목:", value=ans.get("a3_1", ""))
-    a3_2 = st.text_input("2) 영상의 주요 컨셉 혹은 느낌:", value=ans.get("a3_2", ""))
-    a3_3 = st.text_input("3) 누구와 함께 가고 싶은가? (혼자 혹은 누군가와 함께?):", value=ans.get("a3_3", ""))
-    a3_4 = st.text_area("4) 그 이유는?:", value=ans.get("a3_4", ""))
-    a3_5 = st.text_input("5) 그곳에서 가장 해 보고 싶은 것이 있다면?:", value=ans.get("a3_5", ""))
-    a3_6 = st.text_area("6) 그 이유는?:", value=ans.get("a3_6", ""), key="a3_6")
-    a3_7 = st.text_input("7) 영상에 꼭 넣고 싶은 장소 혹은 공간:", value=ans.get("a3_7", ""))
-    a3_8 = st.text_area("8) 그 이유는?:", value=ans.get("a3_8", ""), key="a3_8")
-    a3_9 = st.text_area("9) 만일 내가 썸네일 영상을 만든다면?:", value=ans.get("a3_9", ""))
-    a3_10 = st.text_input("10) 영상에 어울리는 BGM을 하나 선택한다면 어떤 곡으로?:", value=ans.get("a3_10", ""))
-    a3_11 = st.text_area("11) 그 이유는?:", value=ans.get("a3_11", ""), key="a3_11")
+    a3_1 = st.text_input("1) 영상의 제목:", value=ans.get("a3_1", ""), disabled=disabled_flag)
+    a3_2 = st.text_input("2) 영상의 주요 컨셉 혹은 느낌:", value=ans.get("a3_2", ""), disabled=disabled_flag)
+    a3_3 = st.text_input("3) 누구와 함께 가고 싶은가? (혼자 혹은 누군가와 함께?):", value=ans.get("a3_3", ""), disabled=disabled_flag)
+    a3_4 = st.text_area("4) 그 이유는?:", value=ans.get("a3_4", ""), disabled=disabled_flag)
+    a3_5 = st.text_input("5) 그곳에서 가장 해 보고 싶은 것이 있다면?:", value=ans.get("a3_5", ""), disabled=disabled_flag)
+    a3_6 = st.text_area("6) 그 이유는?:", value=ans.get("a3_6", ""), key="a3_6", disabled=disabled_flag)
+    a3_7 = st.text_input("7) 영상에 꼭 넣고 싶은 장소 혹은 공간:", value=ans.get("a3_7", ""), disabled=disabled_flag)
+    a3_8 = st.text_area("8) 그 이유는?:", value=ans.get("a3_8", ""), key="a3_8", disabled=disabled_flag)
+    a3_9 = st.text_area("9) 만일 내가 썸네일 영상을 만든다면?:", value=ans.get("a3_9", ""), disabled=disabled_flag)
+    a3_10 = st.text_input("10) 영상에 어울리는 BGM을 하나 선택한다면 어떤 곡으로?:", value=ans.get("a3_10", ""), disabled=disabled_flag)
+    a3_11 = st.text_area("11) 그 이유는?:", value=ans.get("a3_11", ""), key="a3_11", disabled=disabled_flag)
     
-    if current_role == "학생":
+    if current_role == "학생" and not disabled_flag:
         if st.button("저장하기", type="primary", key="save_act1"):
             current_data = load_json(DATA_FILE, {}) 
             if user_key not in current_data: current_data[user_key] = {}
@@ -324,9 +351,8 @@ def render_activity1(user_key, u_name, current_role):
             }
             current_data[user_key][category] = new_ans
             save_json(DATA_FILE, current_data)
-            ans = new_ans # 즉시 다운로드 버튼에 반영
+            ans = new_ans
             
-            # 📌 해결 1: 리런(새로고침)하지 않고, 화면 중앙에 강력한 성공 메시지 출력
             st.balloons()
             st.markdown("""
             <div style='text-align: center; padding: 25px; background-color: #e8f5e9; color: #2e7d32; border-radius: 15px; border: 3px solid #4CAF50; margin: 20px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
@@ -335,56 +361,64 @@ def render_activity1(user_key, u_name, current_role):
             </div>
             """, unsafe_allow_html=True)
 
-        if ans:
-            st.markdown("---")
-            html_data = generate_activity_html(category, ans, u_name)
-            st.download_button(f"📥 수행평가 1 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가1.html", mime="text/html")
-    else:
+    if current_role == "관리자":
         st.info("💡 교사/관리자 모드: 학생들에게 활동지 내용을 설명하기 위한 미리보기 화면입니다.")
+        
+    if ans:
+        st.markdown("---")
+        html_data = generate_activity_html(category, ans, u_name)
+        st.download_button(f"📥 수행평가 1 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가1.html", mime="text/html")
+
 
 def render_activity2(user_key, u_name, current_role):
     category = ACTIVITIES[1]
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
     
+    is_active, s_str, e_str = check_active(category)
+    disabled_flag = (current_role == "학생" and not is_active)
+    
     st.markdown("## 2026. 신선여고 3학년 여행지리")
     st.markdown("### '나를 성장시킨, 나에게 특별한 의미가 있는 장소 지도 만들기'")
     st.info("한 사람의 살아온 과정은 '장소'의 영향을 받기 마련입니다. 우리의 삶이 이어지는 '장소'는 개인의 느낌과 의미 부여에 따라 저마다 다른 감정을 느낍니다. 이를 지리에서는 '장소감(Sense of place)' 이라고 합니다.\n\n19년 동안의 인생을 살아오면서 지금의 내가 있기까지 성장의 경험을 했던 혹은 나에게 특별한 의미가 있는 장소들을 떠올려 봅시다. 그리고 지금의 내가 있기까지의 기억이 남는 장소를 선정해서 '과거로 떠나는 나를 성장시킨 장소 지도'를 만들어 봅시다. 소중했던 사람들과의 좋은 기억과 추억이 남아 있는 장소로 한 번 떠나봅시다.")
     
+    if disabled_flag:
+        st.error(f"⏳ 현재는 입력 및 제출 기간이 아닙니다. (설정된 제출 기간: {s_str} ~ {e_str})")
+        
     st.markdown("---")
-    q1_1 = st.text_input("1-1) 나에게 편안함을 주는 장소(공간)이/가 있는가?", value=ans.get("q1_1", ""))
-    q1_2 = st.text_area("1-2) 그 장소(공간)이/가 어떤 면에서 나에게 편안함을 주는 것 같은가?", value=ans.get("q1_2", ""))
+    q1_1 = st.text_input("1-1) 나에게 편안함을 주는 장소(공간)이/가 있는가?", value=ans.get("q1_1", ""), disabled=disabled_flag)
+    q1_2 = st.text_area("1-2) 그 장소(공간)이/가 어떤 면에서 나에게 편안함을 주는 것 같은가?", value=ans.get("q1_2", ""), disabled=disabled_flag)
     
     st.markdown("---")
-    q2_1 = st.text_input("2-1) 자신이 생각하기에 자신의 성격은?", value=ans.get("q2_1", ""))
-    q2_2 = st.text_input("2-2) 자신의 성격 형성에 있어 영향을 준 장소(공간)이/가 있는가?", value=ans.get("q2_2", ""))
-    q2_3 = st.text_area("2-3) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", value=ans.get("q2_3", ""))
+    q2_1 = st.text_input("2-1) 자신이 생각하기에 자신의 성격은?", value=ans.get("q2_1", ""), disabled=disabled_flag)
+    q2_2 = st.text_input("2-2) 자신의 성격 형성에 있어 영향을 준 장소(공간)이/가 있는가?", value=ans.get("q2_2", ""), disabled=disabled_flag)
+    q2_3 = st.text_area("2-3) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", value=ans.get("q2_3", ""), disabled=disabled_flag)
     
     st.markdown("---")
-    q3_1 = st.text_input("3-1) 자신이 생각하기에 자신의 장점은?", value=ans.get("q3_1", ""))
-    q3_2 = st.text_input("3-2) 자신의 장점 형성에 있어 영향을 준 장소(공간)이/가 있는가?", value=ans.get("q3_2", ""))
-    q3_3 = st.text_area("3-3) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", value=ans.get("q3_3", ""))
+    q3_1 = st.text_input("3-1) 자신이 생각하기에 자신의 장점은?", value=ans.get("q3_1", ""), disabled=disabled_flag)
+    q3_2 = st.text_input("3-2) 자신의 장점 형성에 있어 영향을 준 장소(공간)이/가 있는가?", value=ans.get("q3_2", ""), disabled=disabled_flag)
+    q3_3 = st.text_area("3-3) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", value=ans.get("q3_3", ""), disabled=disabled_flag)
     
     st.markdown("---")
-    q4_1 = st.text_input("4-1) 내가 성장함에 있어 영향을 준 장소(공간)이/가 있는가?", value=ans.get("q4_1", ""))
-    q4_2 = st.text_area("4-2) 그런 장소(공간)이/가 있다면 어떤 면에서 영향을 준 것 같은가?", value=ans.get("q4_2", ""))
+    q4_1 = st.text_input("4-1) 내가 성장함에 있어 영향을 준 장소(공간)이/가 있는가?", value=ans.get("q4_1", ""), disabled=disabled_flag)
+    q4_2 = st.text_area("4-2) 그런 장소(공간)이/가 있다면 어떤 면에서 영향을 준 것 같은가?", value=ans.get("q4_2", ""), disabled=disabled_flag)
     
     st.markdown("---")
-    q5_1 = st.text_input("5-1) 지금 나의 목표는 무엇인가?", value=ans.get("q5_1", ""))
-    q5_2 = st.text_area("5-2) 그런 목표를 설정함에 있어 영향을 준 장소(공간)이/가 있는가?", value=ans.get("q5_2", ""))
+    q5_1 = st.text_input("5-1) 지금 나의 목표는 무엇인가?", value=ans.get("q5_1", ""), disabled=disabled_flag)
+    q5_2 = st.text_area("5-2) 그런 목표를 설정함에 있어 영향을 준 장소(공간)이/가 있는가?", value=ans.get("q5_2", ""), disabled=disabled_flag)
     
     st.markdown("---")
-    q6_1 = st.text_input("6-1) 훗날 소중한 사람에게 소개해 주고 싶은 장소(공간)이/가 있는가?", value=ans.get("q6_1", ""))
-    q6_2 = st.text_area("6-2) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", value=ans.get("q6_2", ""))
+    q6_1 = st.text_input("6-1) 훗날 소중한 사람에게 소개해 주고 싶은 장소(공간)이/가 있는가?", value=ans.get("q6_1", ""), disabled=disabled_flag)
+    q6_2 = st.text_area("6-2) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", value=ans.get("q6_2", ""), disabled=disabled_flag)
     
     st.markdown("---")
-    q7_1 = st.text_input("7-1) 나만의 비밀 장소(공간)이/가 있는가?", value=ans.get("q7_1", ""))
-    q7_2 = st.text_area("7-2) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", value=ans.get("q7_2", ""))
+    q7_1 = st.text_input("7-1) 나만의 비밀 장소(공간)이/가 있는가?", value=ans.get("q7_1", ""), disabled=disabled_flag)
+    q7_2 = st.text_area("7-2) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", value=ans.get("q7_2", ""), disabled=disabled_flag)
     
     st.markdown("---")
-    q8_1 = st.text_input("8-1) 시간을 돌려 과거로 돌아갈 수 있다면 다시 가 보고 싶은 장소(공간)이/가 있는가?", value=ans.get("q8_1", ""))
-    q8_2 = st.text_area("8-2) 장소(공간)로/으로 다시 가 보고 싶은 이유는 무엇 때문인가?", value=ans.get("q8_2", ""))
+    q8_1 = st.text_input("8-1) 시간을 돌려 과거로 돌아갈 수 있다면 다시 가 보고 싶은 장소(공간)이/가 있는가?", value=ans.get("q8_1", ""), disabled=disabled_flag)
+    q8_2 = st.text_area("8-2) 장소(공간)로/으로 다시 가 보고 싶은 이유는 무엇 때문인가?", value=ans.get("q8_2", ""), disabled=disabled_flag)
     
-    if current_role == "학생":
+    if current_role == "학생" and not disabled_flag:
         if st.button("저장하기", type="primary", key="save_act2"):
             current_data = load_json(DATA_FILE, {}) 
             if user_key not in current_data: current_data[user_key] = {}
@@ -405,26 +439,35 @@ def render_activity2(user_key, u_name, current_role):
                 <p style='margin:0; font-size: 18px; font-weight: bold;'>입력하신 내용이 데이터베이스에 안전하게 저장되었습니다.</p>
             </div>
             """, unsafe_allow_html=True)
-
-        if ans:
-            st.markdown("---")
-            html_data = generate_activity_html(category, ans, u_name)
-            st.download_button(f"📥 수행평가 2 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가2.html", mime="text/html")
-    else:
+            
+    if current_role == "관리자":
         st.info("💡 교사/관리자 모드: 학생들에게 활동지 내용을 설명하기 위한 미리보기 화면입니다.")
+
+    if ans:
+        st.markdown("---")
+        html_data = generate_activity_html(category, ans, u_name)
+        st.download_button(f"📥 수행평가 2 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가2.html", mime="text/html")
+
 
 def render_activity3(user_key, u_name, current_role):
     category = ACTIVITIES[2]
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
     
+    is_active, s_str, e_str = check_active(category)
+    disabled_flag = (current_role == "학생" and not is_active)
+    
     st.markdown("### ♣ 나의 세계관에 대해 알아가는 '여행'")
     st.markdown("---")
+
+    if disabled_flag:
+        st.error(f"⏳ 현재는 입력 및 제출 기간이 아닙니다. (설정된 제출 기간: {s_str} ~ {e_str})")
 
     st.markdown("#### 1. 세계 인식 수준에 대한 확인")
     st.markdown("**1) 대륙별 관심도 및 지식 수준 체크**")
     continents = ["아시아", "유럽", "북아메리카", "남아메리카", "아프리카", "오세아니아"]
     levels = ["선택", "매우높음", "높음", "보통", "낮음", "매우낮음"]
     
+    s1_dis = True if disabled_flag else ["대륙"]
     default_s1_df = pd.DataFrame([{"대륙": c, "관심도": "선택", "지식수준": "선택"} for c in continents])
     s1_df = pd.DataFrame(ans.get("s1_df", default_s1_df.to_dict('records')))
     edited_s1_df = st.data_editor(
@@ -433,84 +476,84 @@ def render_activity3(user_key, u_name, current_role):
             "관심도": st.column_config.SelectboxColumn("관심도", options=levels, required=True),
             "지식수준": st.column_config.SelectboxColumn("지식수준", options=levels, required=True)
         },
-        disabled=["대륙"], hide_index=True, use_container_width=True
+        disabled=s1_dis, hide_index=True, use_container_width=True
     )
 
     st.markdown("**2) 특정 국가에 대한 기억과 인상에 대한 분석**")
     st.caption("[직접 경험]")
     default_direct_df = pd.DataFrame([{"여행해 본 국가": "", "해당 국가에 대한 구체적인 기억 혹은 인상": ""} for _ in range(3)])
     direct_df = pd.DataFrame(ans.get("direct_df", default_direct_df.to_dict('records')))
-    edited_direct_df = st.data_editor(direct_df, num_rows="dynamic", use_container_width=True, hide_index=True)
+    edited_direct_df = st.data_editor(direct_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag)
 
     st.caption("[간접 경험]")
-    ind1 = st.text_input("즐겨 보는 외국 영화/드라마는 어느 나라 작품?", value=ans.get("ind1", ""))
-    ind2 = st.text_input("좋아하는 음악가나 연예인이 있다면 어느 나라?", value=ans.get("ind2", ""))
-    ind3 = st.text_input("자주 먹는 외국 음식이 있다면 어느 나라?", value=ans.get("ind3", ""))
+    ind1 = st.text_input("즐겨 보는 외국 영화/드라마는 어느 나라 작품?", value=ans.get("ind1", ""), disabled=disabled_flag)
+    ind2 = st.text_input("좋아하는 음악가나 연예인이 있다면 어느 나라?", value=ans.get("ind2", ""), disabled=disabled_flag)
+    ind3 = st.text_input("자주 먹는 외국 음식이 있다면 어느 나라?", value=ans.get("ind3", ""), disabled=disabled_flag)
 
     st.markdown("**3) 꼭 가 보고 싶은 Top 5 국가와 그 이유**")
     default_top5_want = pd.DataFrame([{"국가 혹은 지역": "", "이유": ""} for _ in range(5)])
     top5_want = pd.DataFrame(ans.get("top5_want", default_top5_want.to_dict('records')))
-    edited_top5_want = st.data_editor(top5_want, num_rows="fixed", use_container_width=True, hide_index=True)
+    edited_top5_want = st.data_editor(top5_want, num_rows="fixed", use_container_width=True, hide_index=True, disabled=disabled_flag)
 
     st.markdown("**4) 절대 가고 싫은 Top 5 국가와 그 이유**")
     default_top5_notwant = pd.DataFrame([{"국가 혹은 지역": "", "이유": ""} for _ in range(5)])
     top5_notwant = pd.DataFrame(ans.get("top5_notwant", default_top5_notwant.to_dict('records')))
-    edited_top5_notwant = st.data_editor(top5_notwant, num_rows="fixed", use_container_width=True, hide_index=True)
+    edited_top5_notwant = st.data_editor(top5_notwant, num_rows="fixed", use_container_width=True, hide_index=True, disabled=disabled_flag)
 
     st.markdown("---")
     st.markdown("#### 2. 특정 대륙/국가에 대한 자신의 편견과 고정관념")
     st.markdown("**1) 국가별 한 단어 라벨링**")
     default_label = pd.DataFrame([{"가 보고 싶은 국가": "", "한 단어 라벨": "", "가고 싶지 않은 국가": "", "한 단어 라벨(부정)": ""} for _ in range(3)])
     label_df = pd.DataFrame(ans.get("label_df", default_label.to_dict('records')))
-    edited_label_df = st.data_editor(label_df, num_rows="dynamic", use_container_width=True, hide_index=True)
+    edited_label_df = st.data_editor(label_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag)
 
     st.markdown("**2) 개인적으로 가장 강한 편견을 가진 국가**")
     default_prej = pd.DataFrame([{"국가명": "", "편견 내용": "", "편견 형성 과정 혹은 이유": ""} for _ in range(2)])
     prej_df = pd.DataFrame(ans.get("prej_df", default_prej.to_dict('records')))
-    edited_prej_df = st.data_editor(prej_df, num_rows="dynamic", use_container_width=True, hide_index=True)
+    edited_prej_df = st.data_editor(prej_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag)
 
     st.markdown("**3) 미디어와 교육의 영향으로 인한 인식 발견**")
     col1, col2 = st.columns(2)
-    media1_1 = col1.text_area("뉴스에서 자주 접하는 국가들", value=ans.get("media1_1", ""), height=80)
-    media1_2 = col2.text_area("그 나라들에 대한 이미지 (뉴스)", value=ans.get("media1_2", ""), height=80)
-    media2_1 = col1.text_area("영화/드라마에서 자주 접하는 국가들", value=ans.get("media2_1", ""), height=80)
-    media2_2 = col2.text_area("그 나라들에 대한 이미지 (영화/드라마)", value=ans.get("media2_2", ""), height=80)
-    media3_1 = col1.text_area("학교에서 많이 배운 국가들", value=ans.get("media3_1", ""), height=80)
-    media3_2 = col2.text_area("그 나라들에 대한 지식", value=ans.get("media3_2", ""), height=80)
+    media1_1 = col1.text_area("뉴스에서 자주 접하는 국가들", value=ans.get("media1_1", ""), height=80, disabled=disabled_flag)
+    media1_2 = col2.text_area("그 나라들에 대한 이미지 (뉴스)", value=ans.get("media1_2", ""), height=80, disabled=disabled_flag)
+    media2_1 = col1.text_area("영화/드라마에서 자주 접하는 국가들", value=ans.get("media2_1", ""), height=80, disabled=disabled_flag)
+    media2_2 = col2.text_area("그 나라들에 대한 이미지 (영화/드라마)", value=ans.get("media2_2", ""), height=80, disabled=disabled_flag)
+    media3_1 = col1.text_area("학교에서 많이 배운 국가들", value=ans.get("media3_1", ""), height=80, disabled=disabled_flag)
+    media3_2 = col2.text_area("그 나라들에 대한 지식", value=ans.get("media3_2", ""), height=80, disabled=disabled_flag)
 
     st.markdown("**4) 부정확한 정보나 과장된 인식 발견 (사실과 다른 내용들)**")
     default_fake = pd.DataFrame([{"국가명": "", "잘못 알고 있었던 내용": "", "실제 사실": ""} for _ in range(3)])
     fake_df = pd.DataFrame(ans.get("fake_df", default_fake.to_dict('records')))
-    edited_fake_df = st.data_editor(fake_df, num_rows="dynamic", use_container_width=True, hide_index=True)
+    edited_fake_df = st.data_editor(fake_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag)
 
     st.markdown("**5) 우월감이나 차별 의식 점검**")
     default_discrim = pd.DataFrame([{"어떤 국가에 대해?": "", "어떤 측면에서": "", "그 이유": ""} for _ in range(2)])
     discrim_df = pd.DataFrame(ans.get("discrim_df", default_discrim.to_dict('records')))
-    edited_discrim_df = st.data_editor(discrim_df, num_rows="dynamic", use_container_width=True, hide_index=True)
+    edited_discrim_df = st.data_editor(discrim_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag)
 
     st.markdown("---")
     st.markdown("#### 3. 포용적이고 균형잡힌 세계관을 위한 노력")
     st.markdown("**1) 편견을 바꾸고 싶은 국가**")
     default_change = pd.DataFrame([{"어떤 국가에 대해?": "", "현재의 편견": "", "올바른 정보를 찾기 위한 계획": ""} for _ in range(2)])
     change_df = pd.DataFrame(ans.get("change_df", default_change.to_dict('records')))
-    edited_change_df = st.data_editor(change_df, num_rows="dynamic", use_container_width=True, hide_index=True)
+    edited_change_df = st.data_editor(change_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag)
 
     st.markdown("**2) 가장 무관심했던 대륙 혹은 국가**")
     default_ignore = pd.DataFrame([{"선택 대륙/국가": "", "무관심 이유": "", "관심 확장을 위한 정보 수집 방법": ""} for _ in range(2)])
     ignore_df = pd.DataFrame(ans.get("ignore_df", default_ignore.to_dict('records')))
-    edited_ignore_df = st.data_editor(ignore_df, num_rows="dynamic", use_container_width=True, hide_index=True)
+    edited_ignore_df = st.data_editor(ignore_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag)
 
     st.markdown("**3) 서구 중심적 시각에서 벗어나기**")
     default_western = pd.DataFrame([{"현재 가지고 있는 서구 중심적 시각": "", "개선 방법": ""} for _ in range(2)])
     western_df = pd.DataFrame(ans.get("western_df", default_western.to_dict('records')))
-    edited_western_df = st.data_editor(western_df, num_rows="dynamic", use_container_width=True, hide_index=True)
+    edited_western_df = st.data_editor(western_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag)
 
     st.markdown("---")
     st.markdown("#### 4. 목표로 하는 세계관")
-    goal_1 = st.text_area("▶ 어떤 사람이 되고 싶은가?", value=ans.get("goal_1", ""), height=100)
-    goal_2 = st.text_area("▶ 어떤 세계관을 갖고 싶은가?", value=ans.get("goal_2", ""), height=100)
+    goal_1 = st.text_area("▶ 어떤 사람이 되고 싶은가?", value=ans.get("goal_1", ""), height=100, disabled=disabled_flag)
+    goal_2 = st.text_area("▶ 어떤 세계관을 갖고 싶은가?", value=ans.get("goal_2", ""), height=100, disabled=disabled_flag)
     
-    if current_role == "학생":
+    if current_role == "학생" and not disabled_flag:
         if st.button("저장하기", type="primary", key="save_act3"):
             current_data = load_json(DATA_FILE, {}) 
             if user_key not in current_data: current_data[user_key] = {}
@@ -544,12 +587,13 @@ def render_activity3(user_key, u_name, current_role):
             </div>
             """, unsafe_allow_html=True)
             
-        if ans:
-            st.markdown("---")
-            html_data = generate_activity_html(category, ans, u_name)
-            st.download_button(f"📥 수행평가 3 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가3.html", mime="text/html")
-    else:
+    if current_role == "관리자":
         st.info("💡 교사/관리자 모드: 학생들에게 활동지 내용을 설명하기 위한 미리보기 화면입니다.")
+
+    if ans:
+        st.markdown("---")
+        html_data = generate_activity_html(category, ans, u_name)
+        st.download_button(f"📥 수행평가 3 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가3.html", mime="text/html")
 
 # --- 메인 공지사항 렌더링 ---
 def render_class_overview(current_role, u_info):
@@ -786,10 +830,45 @@ else:
 
         elif current_role == "관리자":
             st.title("🛠️ 관리자(교사) 대시보드")
-            menu_tabs = st.tabs(["📌 수업 공지", "👥 회원 관리", "📥 학생 자료 조회", "💾 데이터 백업 및 복구(중요)"])
+            menu_tabs = st.tabs(["📌 수업 공지 및 기한 설정", "👥 회원 관리", "📥 학생 자료 조회", "💾 데이터 백업 및 복구(중요)"])
             
             with menu_tabs[0]:
                 render_class_overview(current_role, u_info)
+                
+                st.markdown("---")
+                st.subheader("⏰ 수행평가 제출 기간(타이머) 설정")
+                st.info("💡 설정한 기간 외에는 학생들이 활동지에 내용을 입력하거나 저장(제출)할 수 없도록 완벽하게 차단됩니다.")
+                fresh_config = load_json(CONFIG_FILE, {})
+                deadlines = fresh_config.get("deadlines", {})
+                
+                with st.form("deadline_form"):
+                    new_deadlines = {}
+                    for act in ACTIVITIES:
+                        st.markdown(f"**{act}**")
+                        cols = st.columns(4)
+                        c_start = deadlines.get(act, {}).get("start", "2026-01-01 00:00")
+                        c_end = deadlines.get(act, {}).get("end", "2030-12-31 23:59")
+                        try:
+                            s_dt = datetime.datetime.strptime(c_start, "%Y-%m-%d %H:%M")
+                            e_dt = datetime.datetime.strptime(c_end, "%Y-%m-%d %H:%M")
+                        except:
+                            s_dt = datetime.datetime.now()
+                            e_dt = datetime.datetime.now() + datetime.timedelta(days=7)
+                        
+                        s_date = cols[0].date_input("시작일", value=s_dt.date(), key=f"sd_{act}")
+                        s_time = cols[1].time_input("시작시간", value=s_dt.time(), key=f"st_{act}")
+                        e_date = cols[2].date_input("종료일", value=e_dt.date(), key=f"ed_{act}")
+                        e_time = cols[3].time_input("종료시간", value=e_dt.time(), key=f"et_{act}")
+                        
+                        new_deadlines[act] = {"start": f"{s_date} {s_time.strftime('%H:%M')}", "end": f"{e_date} {e_time.strftime('%H:%M')}"}
+                        st.markdown("<br>", unsafe_allow_html=True)
+                    
+                    if st.form_submit_button("제출 기간 저장 및 적용", type="primary"):
+                        fresh_config["deadlines"] = new_deadlines
+                        save_json(CONFIG_FILE, fresh_config)
+                        st.success("기간 설정이 안전하게 저장되었습니다! 학생들의 화면에 즉시 적용됩니다.")
+                        st.rerun()
+
                 st.markdown("---")
                 st.subheader("👨‍🏫 교사용 수업 자료 업로드 (공지사항용)")
                 with st.form("upload_mat"):
@@ -857,7 +936,6 @@ else:
                         save_json(USERS_FILE, fresh_users)
                         st.success("삭제 완료"); st.rerun()
 
-            # 📌 해결 2: 학생 필터링 로직 수정하여 조회 기능 정상화
             with menu_tabs[2]:
                 col_t, col_b = st.columns([8, 2])
                 with col_t: st.subheader("📥 학생 학습 활동 및 제출 자료 조회")
@@ -873,7 +951,6 @@ else:
                 available_classes = CLASSES_MAP.get(view_subj, [])
                 view_class = c2.selectbox("조회할 반", ["전체 보기"] + available_classes, key="view_class_select")
                 
-                # 학생 필터링 로직 강화: role, approved 체크 및 과목/반 매칭 보장
                 student_list = []
                 for uid, info in all_users.items():
                     if info.get("role") == "학생":
@@ -886,11 +963,39 @@ else:
                 if not student_list:
                     st.info("해당 조건에 등록된 학생이 없습니다. 가입 승인 대기 목록을 확인하거나, 상단 [🔄 최신 데이터 새로고침] 버튼을 눌러보세요.")
                 else:
+                    st.markdown("### 🗂️ 필터링된 학생 전체 포트폴리오 일괄 다운로드")
+                    st.info("현재 선택된 과목 및 반의 모든 학생 포트폴리오를 하나의 ZIP 파일로 묶어서 다운로드합니다.")
+                    
+                    zip_buffer = io.BytesIO()
+                    has_data = False
+                    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                        for s_uid in student_list:
+                            s_ans = learning_data.get(s_uid, {})
+                            if s_ans:
+                                u_n = all_users[s_uid].get('name', '학생')
+                                u_c = all_users[s_uid].get('class_group', '')
+                                h_content = generate_portfolio_html(s_ans, u_n, u_c, view_subj)
+                                file_n = f"{u_c}_{u_n}_포트폴리오.html"
+                                zip_file.writestr(file_n, h_content.encode('utf-8-sig'))
+                                has_data = True
+                    
+                    if has_data:
+                        st.download_button(
+                            label=f"📦 전체 학생({len(student_list)}명) 포트폴리오 ZIP 일괄 다운로드",
+                            data=zip_buffer.getvalue(),
+                            file_name=f"{view_subj}_{view_class}_전체포트폴리오.zip",
+                            mime="application/zip",
+                            type="primary"
+                        )
+                    else:
+                        st.warning("제출된 데이터가 없어 일괄 다운로드를 생성할 수 없습니다.")
+                        
+                    st.markdown("---")
+
                     view_mode = st.radio("조회 모드", ["👤 특정 학생 집중 분석 (화면 확인 및 포트폴리오 다운로드)", "📅 항목별 전체 현황 (엑셀 CSV)"], horizontal=True)
                     st.markdown("---")
                     
                     if view_mode == "👤 특정 학생 집중 분석 (화면 확인 및 포트폴리오 다운로드)":
-                        # 미승인 학생도 확인 가능하도록 포맷 설정
                         def format_student_dropdown(x):
                             appr_str = "" if all_users[x].get("approved", True) else " (미승인)"
                             return f"[{all_users[x].get('class_group')}] {all_users[x].get('name')} ({all_users[x].get('id')}){appr_str}"
@@ -974,7 +1079,7 @@ else:
                             
                             st.markdown("---")
                             html_content = generate_portfolio_html(student_answers, u_name, u_class_selected, view_subj)
-                            st.download_button(label=f"📄 {u_name} 학생 포트폴리오 일괄 다운로드 (웹문서)", data=html_content.encode('utf-8-sig'), file_name=f"{u_name}_{view_subj}_포트폴리오.html", mime="text/html", type="primary")
+                            st.download_button(label=f"📄 {u_name} 학생 개별 포트폴리오 다운로드 (웹문서)", data=html_content.encode('utf-8-sig'), file_name=f"{u_name}_{view_subj}_포트폴리오.html", mime="text/html", type="primary")
 
                     elif view_mode == "📅 항목별 전체 현황 (엑셀 CSV)":
                         selected_view = st.selectbox("다운로드할 수행평가 선택", ACTIVITIES)
