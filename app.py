@@ -199,9 +199,9 @@ def generate_html_content(act_name, ans):
         html += "</table>"
 
         html += "<h4>3) 미디어와 교육의 영향으로 인한 인식 발견</h4><table>"
-        html += f"<tr><th>뉴스에서 자주 접하는 국가들</th><td>{ans.get('media1_1','')}</td><th>그 나라에 대한 이미지</th><td>{ans.get('media1_2','')}</td></tr>"
-        html += f"<tr><th>영화/드라마에서 자주 접하는 국가들</th><td>{ans.get('media2_1','')}</td><th>그 나라에 대한 이미지</th><td>{ans.get('media2_2','')}</td></tr>"
-        html += f"<tr><th>학교에서 많이 배운 국가들</th><td>{ans.get('media3_1','')}</td><th>그 나라에 대한 지식</th><td>{ans.get('media3_2','')}</td></tr></table>"
+        html += f"<tr><th>뉴스에서 자주 접하는 국가들</th><td>{ans.get('media1_1','')}</td><th>그 나라들에 대한 이미지</th><td>{ans.get('media1_2','')}</td></tr>"
+        html += f"<tr><th>영화/드라마에서 자주 접하는 국가들</th><td>{ans.get('media2_1','')}</td><th>그 나라들에 대한 이미지</th><td>{ans.get('media2_2','')}</td></tr>"
+        html += f"<tr><th>학교에서 많이 배운 국가들</th><td>{ans.get('media3_1','')}</td><th>그 나라들에 대한 지식</th><td>{ans.get('media3_2','')}</td></tr></table>"
 
         html += "<h4>4) 부정확한 정보나 과장된 인식 발견 (사실과 다른 내용들)</h4><table><tr><th>국가명</th><th>잘못 알고 있었던 내용</th><th>실제 사실</th></tr>"
         for row in ans.get("fake_df", []): html += f"<tr><td>{row.get('국가명','')}</td><td>{row.get('잘못 알고 있었던 내용','')}</td><td>{row.get('실제 사실','')}</td></tr>"
@@ -271,8 +271,8 @@ def generate_activity_html(act_name, ans, u_name):
     html += "</body></html>"
     return html
 
-# --- [3] 수행평가 활동지 렌더링 함수들 ---
-def render_activity1(user_key, u_name):
+# --- [3] 수행평가 활동지 렌더링 함수들 (교사 화면 권한 제약 해제 적용) ---
+def render_activity1(user_key, u_name, current_role):
     category = ACTIVITIES[0]
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
     
@@ -312,25 +312,28 @@ def render_activity1(user_key, u_name):
     a3_10 = st.text_input("10) 영상에 어울리는 BGM을 하나 선택한다면 어떤 곡으로?:", value=ans.get("a3_10", ""))
     a3_11 = st.text_area("11) 그 이유는?:", value=ans.get("a3_11", ""), key="a3_11")
     
-    if st.button("수행평가 1 저장하기", type="primary"):
-        current_data = load_json(DATA_FILE, {}) 
-        if user_key not in current_data: current_data[user_key] = {}
-        current_data[user_key][category] = {
-            "a1_1": a1_1, "a1_2": a1_2, "a1_3": a1_3, "a2_1": a2_1, "a2_2_1": a2_2_1, "a2_2_2": a2_2_2,
-            "a2_3_1": a2_3_1, "a2_3_2": a2_3_2, "a2_4": a2_4, "a3_1": a3_1, "a3_2": a3_2, "a3_3": a3_3,
-            "a3_4": a3_4, "a3_5": a3_5, "a3_6": a3_6, "a3_7": a3_7, "a3_8": a3_8, "a3_9": a3_9,
-            "a3_10": a3_10, "a3_11": a3_11
-        }
-        save_json(DATA_FILE, current_data)
-        st.toast("🎉 수행평가 1이 저장되었습니다!")
-        st.rerun()
+    if current_role == "학생":
+        if st.button("수행평가 1 저장하기", type="primary"):
+            current_data = load_json(DATA_FILE, {}) 
+            if user_key not in current_data: current_data[user_key] = {}
+            current_data[user_key][category] = {
+                "a1_1": a1_1, "a1_2": a1_2, "a1_3": a1_3, "a2_1": a2_1, "a2_2_1": a2_2_1, "a2_2_2": a2_2_2,
+                "a2_3_1": a2_3_1, "a2_3_2": a2_3_2, "a2_4": a2_4, "a3_1": a3_1, "a3_2": a3_2, "a3_3": a3_3,
+                "a3_4": a3_4, "a3_5": a3_5, "a3_6": a3_6, "a3_7": a3_7, "a3_8": a3_8, "a3_9": a3_9,
+                "a3_10": a3_10, "a3_11": a3_11
+            }
+            save_json(DATA_FILE, current_data)
+            st.toast("🎉 수행평가 1이 저장되었습니다!")
+            st.rerun()
 
-    if ans:
-        st.markdown("---")
-        html_data = generate_activity_html(category, ans, u_name)
-        st.download_button(f"📥 수행평가 1 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가1.html", mime="text/html")
+        if ans:
+            st.markdown("---")
+            html_data = generate_activity_html(category, ans, u_name)
+            st.download_button(f"📥 수행평가 1 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가1.html", mime="text/html")
+    else:
+        st.info("💡 교사/관리자 모드: 학생들에게 활동지 내용을 설명하기 위한 미리보기 화면입니다.")
 
-def render_activity2(user_key, u_name):
+def render_activity2(user_key, u_name, current_role):
     category = ACTIVITIES[1]
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
     
@@ -372,32 +375,34 @@ def render_activity2(user_key, u_name):
     q8_1 = st.text_input("8-1) 시간을 돌려 과거로 돌아갈 수 있다면 다시 가 보고 싶은 장소(공간)이/가 있는가?", value=ans.get("q8_1", ""))
     q8_2 = st.text_area("8-2) 장소(공간)로/으로 다시 가 보고 싶은 이유는 무엇 때문인가?", value=ans.get("q8_2", ""))
     
-    if st.button("수행평가 2 저장하기", type="primary"):
-        current_data = load_json(DATA_FILE, {}) 
-        if user_key not in current_data: current_data[user_key] = {}
-        current_data[user_key][category] = {
-            "q1_1": q1_1, "q1_2": q1_2, "q2_1": q2_1, "q2_2": q2_2, "q2_3": q2_3,
-            "q3_1": q3_1, "q3_2": q3_2, "q3_3": q3_3, "q4_1": q4_1, "q4_2": q4_2,
-            "q5_1": q5_1, "q5_2": q5_2, "q6_1": q6_1, "q6_2": q6_2, "q7_1": q7_1,
-            "q7_2": q7_2, "q8_1": q8_1, "q8_2": q8_2
-        }
-        save_json(DATA_FILE, current_data)
-        st.toast("🎉 수행평가 2가 저장되었습니다!")
-        st.rerun()
+    if current_role == "학생":
+        if st.button("수행평가 2 저장하기", type="primary"):
+            current_data = load_json(DATA_FILE, {}) 
+            if user_key not in current_data: current_data[user_key] = {}
+            current_data[user_key][category] = {
+                "q1_1": q1_1, "q1_2": q1_2, "q2_1": q2_1, "q2_2": q2_2, "q2_3": q2_3,
+                "q3_1": q3_1, "q3_2": q3_2, "q3_3": q3_3, "q4_1": q4_1, "q4_2": q4_2,
+                "q5_1": q5_1, "q5_2": q5_2, "q6_1": q6_1, "q6_2": q6_2, "q7_1": q7_1,
+                "q7_2": q7_2, "q8_1": q8_1, "q8_2": q8_2
+            }
+            save_json(DATA_FILE, current_data)
+            st.toast("🎉 수행평가 2가 저장되었습니다!")
+            st.rerun()
 
-    if ans:
-        st.markdown("---")
-        html_data = generate_activity_html(category, ans, u_name)
-        st.download_button(f"📥 수행평가 2 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가2.html", mime="text/html")
+        if ans:
+            st.markdown("---")
+            html_data = generate_activity_html(category, ans, u_name)
+            st.download_button(f"📥 수행평가 2 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가2.html", mime="text/html")
+    else:
+        st.info("💡 교사/관리자 모드: 학생들에게 활동지 내용을 설명하기 위한 미리보기 화면입니다.")
 
-def render_activity3(user_key, u_name):
+def render_activity3(user_key, u_name, current_role):
     category = ACTIVITIES[2]
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
     
     st.markdown("### ♣ 나의 세계관에 대해 알아가는 '여행'")
     st.markdown("---")
 
-    # 1. 세계 인식 수준에 대한 확인
     st.markdown("#### 1. 세계 인식 수준에 대한 확인")
     st.markdown("**1) 대륙별 관심도 및 지식 수준 체크**")
     continents = ["아시아", "유럽", "북아메리카", "남아메리카", "아프리카", "오세아니아"]
@@ -436,7 +441,6 @@ def render_activity3(user_key, u_name):
     edited_top5_notwant = st.data_editor(top5_notwant, num_rows="fixed", use_container_width=True, hide_index=True)
 
     st.markdown("---")
-    # 2. 특정 대륙/국가에 대한 자신의 편견과 고정관념
     st.markdown("#### 2. 특정 대륙/국가에 대한 자신의 편견과 고정관념")
     st.markdown("**1) 국가별 한 단어 라벨링**")
     default_label = pd.DataFrame([{"가 보고 싶은 국가": "", "한 단어 라벨": "", "가고 싶지 않은 국가": "", "한 단어 라벨(부정)": ""} for _ in range(3)])
@@ -468,7 +472,6 @@ def render_activity3(user_key, u_name):
     edited_discrim_df = st.data_editor(discrim_df, num_rows="dynamic", use_container_width=True, hide_index=True)
 
     st.markdown("---")
-    # 3. 포용적이고 균형잡힌 세계관을 위한 노력
     st.markdown("#### 3. 포용적이고 균형잡힌 세계관을 위한 노력")
     st.markdown("**1) 편견을 바꾸고 싶은 국가**")
     default_change = pd.DataFrame([{"어떤 국가에 대해?": "", "현재의 편견": "", "올바른 정보를 찾기 위한 계획": ""} for _ in range(2)])
@@ -486,40 +489,42 @@ def render_activity3(user_key, u_name):
     edited_western_df = st.data_editor(western_df, num_rows="dynamic", use_container_width=True, hide_index=True)
 
     st.markdown("---")
-    # 4. 목표로 하는 세계관 (사용자 요청 반영: 번호 변경)
     st.markdown("#### 4. 목표로 하는 세계관")
     goal_1 = st.text_area("▶ 어떤 사람이 되고 싶은가?", value=ans.get("goal_1", ""), height=100)
     goal_2 = st.text_area("▶ 어떤 세계관을 갖고 싶은가?", value=ans.get("goal_2", ""), height=100)
     
-    if st.button("수행평가 3 저장하기", type="primary"):
-        current_data = load_json(DATA_FILE, {}) 
-        if user_key not in current_data: current_data[user_key] = {}
-        current_data[user_key][category] = {
-            "s1_df": edited_s1_df.to_dict('records'),
-            "direct_df": edited_direct_df.to_dict('records'),
-            "ind1": ind1, "ind2": ind2, "ind3": ind3,
-            "top5_want": edited_top5_want.to_dict('records'),
-            "top5_notwant": edited_top5_notwant.to_dict('records'),
-            "label_df": edited_label_df.to_dict('records'),
-            "prej_df": edited_prej_df.to_dict('records'),
-            "media1_1": media1_1, "media1_2": media1_2,
-            "media2_1": media2_1, "media2_2": media2_2,
-            "media3_1": media3_1, "media3_2": media3_2,
-            "fake_df": edited_fake_df.to_dict('records'),
-            "discrim_df": edited_discrim_df.to_dict('records'),
-            "change_df": edited_change_df.to_dict('records'),
-            "ignore_df": edited_ignore_df.to_dict('records'),
-            "western_df": edited_western_df.to_dict('records'),
-            "goal_1": goal_1, "goal_2": goal_2
-        }
-        save_json(DATA_FILE, current_data)
-        st.toast("🎉 수행평가 3이 저장되었습니다!")
-        st.rerun()
-        
-    if ans:
-        st.markdown("---")
-        html_data = generate_activity_html(category, ans, u_name)
-        st.download_button(f"📥 수행평가 3 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가3.html", mime="text/html")
+    if current_role == "학생":
+        if st.button("수행평가 3 저장하기", type="primary"):
+            current_data = load_json(DATA_FILE, {}) 
+            if user_key not in current_data: current_data[user_key] = {}
+            current_data[user_key][category] = {
+                "s1_df": edited_s1_df.to_dict('records'),
+                "direct_df": edited_direct_df.to_dict('records'),
+                "ind1": ind1, "ind2": ind2, "ind3": ind3,
+                "top5_want": edited_top5_want.to_dict('records'),
+                "top5_notwant": edited_top5_notwant.to_dict('records'),
+                "label_df": edited_label_df.to_dict('records'),
+                "prej_df": edited_prej_df.to_dict('records'),
+                "media1_1": media1_1, "media1_2": media1_2,
+                "media2_1": media2_1, "media2_2": media2_2,
+                "media3_1": media3_1, "media3_2": media3_2,
+                "fake_df": edited_fake_df.to_dict('records'),
+                "discrim_df": edited_discrim_df.to_dict('records'),
+                "change_df": edited_change_df.to_dict('records'),
+                "ignore_df": edited_ignore_df.to_dict('records'),
+                "western_df": edited_western_df.to_dict('records'),
+                "goal_1": goal_1, "goal_2": goal_2
+            }
+            save_json(DATA_FILE, current_data)
+            st.toast("🎉 수행평가 3이 저장되었습니다!")
+            st.rerun()
+            
+        if ans:
+            st.markdown("---")
+            html_data = generate_activity_html(category, ans, u_name)
+            st.download_button(f"📥 수행평가 3 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가3.html", mime="text/html")
+    else:
+        st.info("💡 교사/관리자 모드: 학생들에게 활동지 내용을 설명하기 위한 미리보기 화면입니다.")
 
 # --- 메인 공지사항 렌더링 ---
 def render_class_overview(current_role, u_info):
@@ -635,7 +640,7 @@ st.sidebar.title("🔒 인증 센터")
 if st.session_state.logged_in:
     u_info = st.session_state.user_info
     
-    # 📌 (해결 1) 마크다운 엔진 오류 방지를 위해 HTML 코드를 한 줄로 붙여서 강제 출력
+    # HTML 줄바꿈으로 인한 태그 출력 오류 방지 (단일 문자열 처리)
     if u_info['role'] == "관리자":
         sidebar_html = f"<div style='background-color:#e8f4f8; padding:10px; border-radius:5px; margin-bottom:15px; line-height:1.4;'><div style='font-size:15px; font-weight:bold; color:#0056b3; margin-bottom:3px;'>🟢 {u_info['name']} 님 로그인 중</div><div style='font-size:14px; color:#333; margin-bottom:2px;'>📘 과목: {u_info.get('subject', '전체')}</div><div style='font-size:14px; color:#333;'>🛡️ 권한: {u_info['role']}</div></div>"
     else:
@@ -664,14 +669,14 @@ else:
         
         if st.sidebar.button("가입 신청", type="primary", use_container_width=True):
             if reg_subject and reg_class and reg_id and reg_name and reg_pw:
-                user_key = f"{reg_subject}_{reg_class}_{reg_id}"
+                user_key = f"{reg_subject.strip()}_{reg_class.strip()}_{reg_id.strip()}"
                 fresh_users = load_json(USERS_FILE, {}) 
                 if user_key in fresh_users:
                     st.sidebar.error("❌ 해당 학번이 이미 가입되어 있습니다.")
                 else:
                     fresh_users[user_key] = {
-                        "id": reg_id, "password": reg_pw, "name": reg_name, 
-                        "role": "학생", "subject": reg_subject, "class_group": reg_class, "approved": False
+                        "id": reg_id.strip(), "password": reg_pw.strip(), "name": reg_name.strip(), 
+                        "role": "학생", "subject": reg_subject.strip(), "class_group": reg_class.strip(), "approved": False
                     }
                     save_json(USERS_FILE, fresh_users)
                     st.sidebar.success("🎉 가입 완료! 선생님의 승인을 기다려주세요.")
@@ -686,8 +691,8 @@ else:
             input_pw = st.sidebar.text_input("비밀번호", type="password")
             
             if st.sidebar.button("로그인", type="primary", use_container_width=True):
-                user_key = f"{login_subject}_{login_class}_{input_id}"
-                if user_key in users and users[user_key].get("password") == input_pw:
+                user_key = f"{login_subject.strip()}_{login_class.strip()}_{input_id.strip()}"
+                if user_key in users and users[user_key].get("password") == input_pw.strip():
                     if users[user_key].get("approved", True):
                         st.session_state.logged_in = True
                         st.session_state.user_info = users[user_key]
@@ -727,22 +732,20 @@ else:
     app_config = load_json(CONFIG_FILE, {})
     learning_data = load_json(DATA_FILE, {})
 
+    # 📌 (해결 1) 교사/관리자도 활동지 페이지 클릭 시 동일하게 질문/폼이 보이도록 분기 수정
     if st.session_state.current_page in ACTIVITIES:
         act_name = st.session_state.current_page
         st.title(f"📄 {act_name}")
         st.markdown("---")
         
-        if current_role == "학생":
-            if act_name == ACTIVITIES[0]: render_activity1(current_user_key, u_info['name'])
-            elif act_name == ACTIVITIES[1]: render_activity2(current_user_key, u_info['name'])
-            elif act_name == ACTIVITIES[2]: render_activity3(current_user_key, u_info['name'])
-        else: st.warning("교사/관리자는 메인 화면의 '학생 제출 자료 조회' 탭을 이용해주세요.")
+        if act_name == ACTIVITIES[0]: render_activity1(current_user_key, u_info['name'], current_role)
+        elif act_name == ACTIVITIES[1]: render_activity2(current_user_key, u_info['name'], current_role)
+        elif act_name == ACTIVITIES[2]: render_activity3(current_user_key, u_info['name'], current_role)
         
         st.markdown("<br><br>", unsafe_allow_html=True)
         if st.button("⬅️ 메인 화면으로 돌아가기", use_container_width=True):
             change_page("main")
 
-    # 📌 (해결 2) 현재 페이지가 활동지가 아닐 경우, 무조건 강제로 메인 화면을 출력하도록 통일 (빈 화면 방지)
     else:
         st.session_state.current_page = "main"
         
@@ -819,7 +822,7 @@ else:
                     target_classes = ["전체"] + CLASSES_MAP.get(filter_subj, []) if filter_subj != "전체" else ["전체"] + [c for cl in CLASSES_MAP.values() for c in cl]
                     filter_class = st.selectbox("조회할 반 선택", target_classes, key="manage_class")
                 
-                filtered_approved = {k: v for k, v in approved_users.items() if (filter_subj == "전체" or v.get("subject") == filter_subj) and (filter_class == "전체" or v.get("class_group") == filter_class)}
+                filtered_approved = {k: v for k, v in approved_users.items() if (filter_subj == "전체" or v.get("subject", "").strip() == filter_subj.strip()) and (filter_class == "전체" or v.get("class_group", "").strip() == filter_class.strip())}
                 df_users = pd.DataFrame([{"과목": v.get("subject", "-"), "반": v.get("class_group", "-"), "학번": v.get("id", "-"), "이름": v.get("name", "-"), "비밀번호": v.get("password", "-")} for k, v in filtered_approved.items()])
                 st.dataframe(df_users, use_container_width=True)
                 
@@ -831,6 +834,7 @@ else:
                         save_json(USERS_FILE, fresh_users)
                         st.success("삭제 완료"); st.rerun()
 
+            # --- 📥 학생 제출 자료 조회 (📌 해결 2: 과목 및 반 문자열 매칭 정밀화) ---
             with menu_tabs[2]:
                 col_t, col_b = st.columns([8, 2])
                 with col_t: st.subheader("📥 학생 학습 활동 및 제출 자료 조회")
@@ -846,9 +850,22 @@ else:
                 available_classes = CLASSES_MAP.get(view_subj, [])
                 view_class = c2.selectbox("조회할 반", ["전체 보기"] + available_classes, key="view_class_select")
                 
-                student_list = [uid for uid, info in all_users.items() if info.get("role") == "학생" and info.get("approved", True) and info.get("subject") == view_subj and (view_class == "전체 보기" or view_class == info.get("class_group"))]
+                # 공백 및 보장 조건 강화를 포함한 학생 필터링
+                student_list = []
+                for uid, info in all_users.items():
+                    if info.get("role") == "학생":
+                        s_subj = info.get("subject", "").strip()
+                        s_class = info.get("class_group", "").strip()
+                        
+                        target_subj = view_subj.strip()
+                        target_class = view_class.strip()
+                        
+                        if s_subj == target_subj:
+                            if target_class == "전체 보기" or s_class == target_class:
+                                student_list.append(uid)
                 
-                if not student_list: st.info("해당 조건에 가입이 승인된 학생이 없습니다. 가입 승인을 확인하거나 과목/반을 변경해 보세요.")
+                if not student_list:
+                    st.info("해당 조건에 등록된 학생이 없습니다. 가입 승인 대기 목록을 확인하거나, 상단 [🔄 최신 데이터 새로고침] 버튼을 눌러보세요.")
                 else:
                     view_mode = st.radio("조회 모드", ["👤 특정 학생 집중 분석 (화면 확인 및 포트폴리오 다운로드)", "📅 항목별 전체 현황 (엑셀 CSV)"], horizontal=True)
                     st.markdown("---")
@@ -862,9 +879,11 @@ else:
                             
                             st.markdown(f"### 📋 {u_name} 학생 제출 내용 바로 확인하기")
                             
+                            has_answer = False
                             for act in ACTIVITIES:
                                 ans = student_answers.get(act, {})
                                 if ans:
+                                    has_answer = True
                                     st.markdown(f"#### ▶ {act}")
                                     if act == ACTIVITIES[0]:
                                         st.write(f"- **영상의 제목:** {ans.get('a1_1','')} | **국가 혹은 지역:** {ans.get('a1_2','')}")
@@ -884,6 +903,9 @@ else:
                                         st.dataframe(pd.DataFrame(ans.get("label_df", [])), use_container_width=True)
                                         st.write(f"- **목표하는 사람:** {ans.get('goal_1','')}")
                                         st.write(f"- **목표하는 세계관:** {ans.get('goal_2','')}")
+                            
+                            if not has_answer:
+                                st.warning("아직 제출한 활동지 내역이 없는 학생입니다.")
                             
                             st.markdown("---")
                             html_content = generate_portfolio_html(student_answers, u_name, u_class_selected, view_subj)
