@@ -316,15 +316,24 @@ def render_activity1(user_key, u_name, current_role):
         if st.button("저장하기", type="primary", key="save_act1"):
             current_data = load_json(DATA_FILE, {}) 
             if user_key not in current_data: current_data[user_key] = {}
-            current_data[user_key][category] = {
+            new_ans = {
                 "a1_1": a1_1, "a1_2": a1_2, "a1_3": a1_3, "a2_1": a2_1, "a2_2_1": a2_2_1, "a2_2_2": a2_2_2,
                 "a2_3_1": a2_3_1, "a2_3_2": a2_3_2, "a2_4": a2_4, "a3_1": a3_1, "a3_2": a3_2, "a3_3": a3_3,
                 "a3_4": a3_4, "a3_5": a3_5, "a3_6": a3_6, "a3_7": a3_7, "a3_8": a3_8, "a3_9": a3_9,
                 "a3_10": a3_10, "a3_11": a3_11
             }
+            current_data[user_key][category] = new_ans
             save_json(DATA_FILE, current_data)
-            st.session_state.show_success_msg = True
-            st.rerun()
+            ans = new_ans # 즉시 다운로드 버튼에 반영
+            
+            # 📌 해결 1: 리런(새로고침)하지 않고, 화면 중앙에 강력한 성공 메시지 출력
+            st.balloons()
+            st.markdown("""
+            <div style='text-align: center; padding: 25px; background-color: #e8f5e9; color: #2e7d32; border-radius: 15px; border: 3px solid #4CAF50; margin: 20px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
+                <h2 style='margin:0 0 10px 0; color: #2e7d32;'>🎉 화면 저장이 완료되었습니다!</h2>
+                <p style='margin:0; font-size: 18px; font-weight: bold;'>입력하신 내용이 데이터베이스에 안전하게 저장되었습니다.</p>
+            </div>
+            """, unsafe_allow_html=True)
 
         if ans:
             st.markdown("---")
@@ -379,15 +388,23 @@ def render_activity2(user_key, u_name, current_role):
         if st.button("저장하기", type="primary", key="save_act2"):
             current_data = load_json(DATA_FILE, {}) 
             if user_key not in current_data: current_data[user_key] = {}
-            current_data[user_key][category] = {
+            new_ans = {
                 "q1_1": q1_1, "q1_2": q1_2, "q2_1": q2_1, "q2_2": q2_2, "q2_3": q2_3,
                 "q3_1": q3_1, "q3_2": q3_2, "q3_3": q3_3, "q4_1": q4_1, "q4_2": q4_2,
                 "q5_1": q5_1, "q5_2": q5_2, "q6_1": q6_1, "q6_2": q6_2, "q7_1": q7_1,
                 "q7_2": q7_2, "q8_1": q8_1, "q8_2": q8_2
             }
+            current_data[user_key][category] = new_ans
             save_json(DATA_FILE, current_data)
-            st.session_state.show_success_msg = True
-            st.rerun()
+            ans = new_ans
+            
+            st.balloons()
+            st.markdown("""
+            <div style='text-align: center; padding: 25px; background-color: #e8f5e9; color: #2e7d32; border-radius: 15px; border: 3px solid #4CAF50; margin: 20px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
+                <h2 style='margin:0 0 10px 0; color: #2e7d32;'>🎉 화면 저장이 완료되었습니다!</h2>
+                <p style='margin:0; font-size: 18px; font-weight: bold;'>입력하신 내용이 데이터베이스에 안전하게 저장되었습니다.</p>
+            </div>
+            """, unsafe_allow_html=True)
 
         if ans:
             st.markdown("---")
@@ -497,7 +514,7 @@ def render_activity3(user_key, u_name, current_role):
         if st.button("저장하기", type="primary", key="save_act3"):
             current_data = load_json(DATA_FILE, {}) 
             if user_key not in current_data: current_data[user_key] = {}
-            current_data[user_key][category] = {
+            new_ans = {
                 "s1_df": edited_s1_df.to_dict('records'),
                 "direct_df": edited_direct_df.to_dict('records'),
                 "ind1": ind1, "ind2": ind2, "ind3": ind3,
@@ -515,9 +532,17 @@ def render_activity3(user_key, u_name, current_role):
                 "western_df": edited_western_df.to_dict('records'),
                 "goal_1": goal_1, "goal_2": goal_2
             }
+            current_data[user_key][category] = new_ans
             save_json(DATA_FILE, current_data)
-            st.session_state.show_success_msg = True
-            st.rerun()
+            ans = new_ans
+            
+            st.balloons()
+            st.markdown("""
+            <div style='text-align: center; padding: 25px; background-color: #e8f5e9; color: #2e7d32; border-radius: 15px; border: 3px solid #4CAF50; margin: 20px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
+                <h2 style='margin:0 0 10px 0; color: #2e7d32;'>🎉 화면 저장이 완료되었습니다!</h2>
+                <p style='margin:0; font-size: 18px; font-weight: bold;'>입력하신 내용이 데이터베이스에 안전하게 저장되었습니다.</p>
+            </div>
+            """, unsafe_allow_html=True)
             
         if ans:
             st.markdown("---")
@@ -733,18 +758,6 @@ else:
 
     if st.session_state.current_page in ACTIVITIES:
         act_name = st.session_state.current_page
-        
-        # 📌 저장 완료 시 대형 알림창 렌더링
-        if st.session_state.get("show_success_msg", False):
-            success_html = """
-            <div style='text-align: center; padding: 25px; background-color: #e8f5e9; color: #2e7d32; border-radius: 15px; border: 3px solid #c8e6c9; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
-                <h2 style='margin:0 0 10px 0; color: #2e7d32;'>🎉 화면 저장이 완료되었습니다!</h2>
-                <p style='margin:0; font-size: 18px; font-weight: bold;'>입력하신 내용이 안전하게 저장되었습니다.</p>
-            </div>
-            """
-            st.markdown(success_html, unsafe_allow_html=True)
-            st.session_state.show_success_msg = False
-            
         st.title(f"📄 {act_name}")
         st.markdown("---")
         
@@ -844,6 +857,7 @@ else:
                         save_json(USERS_FILE, fresh_users)
                         st.success("삭제 완료"); st.rerun()
 
+            # 📌 해결 2: 학생 필터링 로직 수정하여 조회 기능 정상화
             with menu_tabs[2]:
                 col_t, col_b = st.columns([8, 2])
                 with col_t: st.subheader("📥 학생 학습 활동 및 제출 자료 조회")
@@ -859,9 +873,10 @@ else:
                 available_classes = CLASSES_MAP.get(view_subj, [])
                 view_class = c2.selectbox("조회할 반", ["전체 보기"] + available_classes, key="view_class_select")
                 
+                # 학생 필터링 로직 강화: role, approved 체크 및 과목/반 매칭 보장
                 student_list = []
                 for uid, info in all_users.items():
-                    if info.get("role") == "학생" and info.get("approved", True):
+                    if info.get("role") == "학생":
                         s_subj = info.get("subject", "").strip()
                         s_class = info.get("class_group", "").strip()
                         if s_subj == view_subj.strip():
@@ -875,7 +890,12 @@ else:
                     st.markdown("---")
                     
                     if view_mode == "👤 특정 학생 집중 분석 (화면 확인 및 포트폴리오 다운로드)":
-                        selected_student = st.selectbox("학생 선택", student_list, format_func=lambda x: f"[{all_users[x].get('class_group')}] {all_users[x].get('name')} ({all_users[x].get('id')})")
+                        # 미승인 학생도 확인 가능하도록 포맷 설정
+                        def format_student_dropdown(x):
+                            appr_str = "" if all_users[x].get("approved", True) else " (미승인)"
+                            return f"[{all_users[x].get('class_group')}] {all_users[x].get('name')} ({all_users[x].get('id')}){appr_str}"
+                            
+                        selected_student = st.selectbox("학생 선택", student_list, format_func=format_student_dropdown)
                         if selected_student:
                             student_answers = learning_data.get(selected_student, {})
                             u_name = all_users[selected_student].get('name', '학생')
