@@ -30,11 +30,11 @@ ADMIN_ACCOUNTS = {
     "audskal": {"pw": "1847", "name": "김명남(관리자)"}
 }
 
-# 📌 수행평가 중심 활동지 3종 구성
+# 📌 수행평가 중심 활동지 3종 구성 (수행평가 3 이름 업데이트)
 ACTIVITIES = [
     "[활동지1] - 수행평가 1 (영상으로 떠나는 여행)",
     "[활동지2] - 수행평가 2 (나를 성장시킨 장소 지도 만들기)",
-    "[활동지3] - 수행평가 3"
+    "[활동지3] - 수행평가 3 (나의 세계관에 대해 알아가는 '여행')"
 ]
 
 INFO_BOX = "<div style='background-color: #f0f4f8; padding: 15px; border-radius: 8px; font-size: 17px; font-weight: 600; color: #222; margin-bottom: 15px; border-left: 5px solid #0056b3; line-height: 1.5;'>{}</div>"
@@ -108,6 +108,14 @@ def init_system():
                 needs_update = True
         if needs_update: save_json(CONFIG_FILE, current_config)
 
+# --- [엑셀 다운로드용 텍스트 변환 유틸] ---
+def format_df_to_str(df_list, cols):
+    if not df_list: return ""
+    lines = []
+    for row in df_list:
+        lines.append(" | ".join([f"{c}: {row.get(c,'')}" for c in cols]))
+    return "\n".join(lines)
+
 # --- [공통 HTML 포트폴리오 생성기] ---
 def generate_html_content(act_name, ans):
     html = ""
@@ -160,7 +168,65 @@ def generate_html_content(act_name, ans):
         html += f"<tr><th>8-2) 그 이유</th><td>{ans.get('q8_2','')}</td></tr></table>"
         
     elif act_name == ACTIVITIES[2]:
-        html += "<div class='content-box'>추후 입력 양식이 적용될 예정입니다.</div>"
+        html += "<h3>1. 세계 인식 수준에 대한 확인</h3>"
+        html += "<h4>1) 대륙별 관심도 및 지식 수준 체크</h4><table><tr><th>대륙</th><th>관심도</th><th>지식수준</th></tr>"
+        for row in ans.get("s1_df", []): html += f"<tr><td>{row.get('대륙','')}</td><td>{row.get('관심도','')}</td><td>{row.get('지식수준','')}</td></tr>"
+        html += "</table>"
+
+        html += "<h4>2) 특정 국가에 대한 기억과 인상 분석</h4>"
+        html += "<h5>[직접 경험]</h5><table><tr><th>여행해 본 국가</th><th>구체적인 기억 혹은 인상</th></tr>"
+        for row in ans.get("direct_df", []): html += f"<tr><td>{row.get('여행해 본 국가','')}</td><td>{row.get('해당 국가에 대한 구체적인 기억 혹은 인상','')}</td></tr>"
+        html += "</table>"
+        html += f"<h5>[간접 경험]</h5><ul><li>즐겨 보는 외국 영화/드라마 나라 : {ans.get('ind1','')}</li>"
+        html += f"<li>좋아하는 음악가/연예인 나라 : {ans.get('ind2','')}</li>"
+        html += f"<li>자주 먹는 외국 음식 나라 : {ans.get('ind3','')}</li></ul>"
+
+        html += "<h4>3) 꼭 가 보고 싶은 Top 5 국가와 그 이유</h4><table><tr><th>국가 혹은 지역</th><th>이유</th></tr>"
+        for row in ans.get("top5_want", []): html += f"<tr><td>{row.get('국가 혹은 지역','')}</td><td>{row.get('이유','')}</td></tr>"
+        html += "</table>"
+
+        html += "<h4>4) 절대 가고 싫은 Top 5 국가와 그 이유</h4><table><tr><th>국가 혹은 지역</th><th>이유</th></tr>"
+        for row in ans.get("top5_notwant", []): html += f"<tr><td>{row.get('국가 혹은 지역','')}</td><td>{row.get('이유','')}</td></tr>"
+        html += "</table>"
+
+        html += "<h3>2. 특정 대륙/국가에 대한 자신의 편견과 고정관념</h3>"
+        html += "<h4>1) 국가별 한 단어 라벨링</h4><table><tr><th>가 보고 싶은 국가</th><th>한 단어 라벨</th><th>가고 싶지 않은 국가</th><th>한 단어 라벨(부정)</th></tr>"
+        for row in ans.get("label_df", []): html += f"<tr><td>{row.get('가 보고 싶은 국가','')}</td><td>{row.get('한 단어 라벨','')}</td><td>{row.get('가고 싶지 않은 국가','')}</td><td>{row.get('한 단어 라벨(부정)','')}</td></tr>"
+        html += "</table>"
+
+        html += "<h4>2) 개인적으로 가장 강한 편견을 가진 국가</h4><table><tr><th>국가명</th><th>편견 내용</th><th>편견 형성 과정 혹은 이유</th></tr>"
+        for row in ans.get("prej_df", []): html += f"<tr><td>{row.get('국가명','')}</td><td>{row.get('편견 내용','')}</td><td>{row.get('편견 형성 과정 혹은 이유','')}</td></tr>"
+        html += "</table>"
+
+        html += "<h4>3) 미디어와 교육의 영향으로 인한 인식 발견</h4><table>"
+        html += f"<tr><th>뉴스에서 자주 접하는 국가들</th><td>{ans.get('media1_1','')}</td><th>그 나라에 대한 이미지</th><td>{ans.get('media1_2','')}</td></tr>"
+        html += f"<tr><th>영화/드라마에서 자주 접하는 국가들</th><td>{ans.get('media2_1','')}</td><th>그 나라에 대한 이미지</th><td>{ans.get('media2_2','')}</td></tr>"
+        html += f"<tr><th>학교에서 많이 배운 국가들</th><td>{ans.get('media3_1','')}</td><th>그 나라에 대한 지식</th><td>{ans.get('media3_2','')}</td></tr></table>"
+
+        html += "<h4>4) 부정확한 정보나 과장된 인식 발견</h4><table><tr><th>국가명</th><th>잘못 알고 있었던 내용</th><th>실제 사실</th></tr>"
+        for row in ans.get("fake_df", []): html += f"<tr><td>{row.get('국가명','')}</td><td>{row.get('잘못 알고 있었던 내용','')}</td><td>{row.get('실제 사실','')}</td></tr>"
+        html += "</table>"
+
+        html += "<h4>5) 우월감이나 차별 의식 점검</h4><table><tr><th>어떤 국가에 대해?</th><th>어떤 측면에서</th><th>그 이유</th></tr>"
+        for row in ans.get("discrim_df", []): html += f"<tr><td>{row.get('어떤 국가에 대해?','')}</td><td>{row.get('어떤 측면에서','')}</td><td>{row.get('그 이유','')}</td></tr>"
+        html += "</table>"
+
+        html += "<h3>3. 포용적이고 균형잡힌 세계관을 위한 노력</h3>"
+        html += "<h4>1) 편견을 바꾸고 싶은 국가</h4><table><tr><th>어떤 국가에 대해?</th><th>현재의 편견</th><th>올바른 정보를 찾기 위한 계획</th></tr>"
+        for row in ans.get("change_df", []): html += f"<tr><td>{row.get('어떤 국가에 대해?','')}</td><td>{row.get('현재의 편견','')}</td><td>{row.get('올바른 정보를 찾기 위한 계획','')}</td></tr>"
+        html += "</table>"
+
+        html += "<h4>2) 가장 무관심했던 대륙 혹은 국가</h4><table><tr><th>선택 대륙/국가</th><th>무관심 이유</th><th>관심 확장을 위한 정보 수집 방법</th></tr>"
+        for row in ans.get("ignore_df", []): html += f"<tr><td>{row.get('선택 대륙/국가','')}</td><td>{row.get('무관심 이유','')}</td><td>{row.get('관심 확장을 위한 정보 수집 방법','')}</td></tr>"
+        html += "</table>"
+
+        html += "<h4>3) 서구 중심적 시각에서 벗어나기</h4><table><tr><th>현재 가지고 있는 서구 중심적 시각</th><th>개선 방법</th></tr>"
+        for row in ans.get("western_df", []): html += f"<tr><td>{row.get('현재 가지고 있는 서구 중심적 시각','')}</td><td>{row.get('개선 방법','')}</td></tr>"
+        html += "</table>"
+
+        html += "<h3>4. 목표로 하는 세계관</h3>"
+        html += f"<p><b>▶ 어떤 사람이 되고 싶은가?</b></p><div class='content-box'>{ans.get('goal_1','')}</div>"
+        html += f"<p><b>▶ 어떤 세계관을 갖고 싶은가?</b></p><div class='content-box'>{ans.get('goal_2','')}</div>"
         
     return html
 
@@ -327,17 +393,133 @@ def render_activity2(user_key, u_name):
 def render_activity3(user_key, u_name):
     category = ACTIVITIES[2]
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
-    st.markdown(INFO_BOX.format("수행평가 3 내용을 작성하고 제출하는 공간입니다. (추후 양식이 업데이트될 예정입니다)"), unsafe_allow_html=True)
     
-    temp_text = st.text_area("내용을 입력하세요", value=ans.get("temp_text", ""), height=200)
+    st.markdown("### ♣ 나의 세계관에 대해 알아가는 '여행'")
+    st.markdown("---")
+
+    # 1. 세계 인식 수준에 대한 확인
+    st.markdown("#### 1. 세계 인식 수준에 대한 확인")
+    st.markdown("**1) 대륙별 관심도 및 지식 수준 체크**")
+    continents = ["아시아", "유럽", "북아메리카", "남아메리카", "아프리카", "오세아니아"]
+    levels = ["선택", "매우높음", "높음", "보통", "낮음", "매우낮음"]
     
-    if st.button("수행평가 3 임시 저장하기", type="primary"):
+    default_s1_df = pd.DataFrame([{"대륙": c, "관심도": "선택", "지식수준": "선택"} for c in continents])
+    s1_df = pd.DataFrame(ans.get("s1_df", default_s1_df.to_dict('records')))
+    edited_s1_df = st.data_editor(
+        s1_df,
+        column_config={
+            "관심도": st.column_config.SelectboxColumn("관심도", options=levels, required=True),
+            "지식수준": st.column_config.SelectboxColumn("지식수준", options=levels, required=True)
+        },
+        disabled=["대륙"], hide_index=True, use_container_width=True
+    )
+
+    st.markdown("**2) 특정 국가에 대한 기억과 인상에 대한 분석**")
+    st.caption("[직접 경험]")
+    default_direct_df = pd.DataFrame([{"여행해 본 국가": "", "해당 국가에 대한 구체적인 기억 혹은 인상": ""} for _ in range(3)])
+    direct_df = pd.DataFrame(ans.get("direct_df", default_direct_df.to_dict('records')))
+    edited_direct_df = st.data_editor(direct_df, num_rows="dynamic", use_container_width=True, hide_index=True)
+
+    st.caption("[간접 경험]")
+    ind1 = st.text_input("즐겨 보는 외국 영화/드라마는 어느 나라 작품?", value=ans.get("ind1", ""))
+    ind2 = st.text_input("좋아하는 음악가나 연예인이 있다면 어느 나라?", value=ans.get("ind2", ""))
+    ind3 = st.text_input("자주 먹는 외국 음식이 있다면 어느 나라?", value=ans.get("ind3", ""))
+
+    st.markdown("**3) 꼭 가 보고 싶은 Top 5 국가와 그 이유**")
+    default_top5_want = pd.DataFrame([{"국가 혹은 지역": "", "이유": ""} for _ in range(5)])
+    top5_want = pd.DataFrame(ans.get("top5_want", default_top5_want.to_dict('records')))
+    edited_top5_want = st.data_editor(top5_want, num_rows="fixed", use_container_width=True, hide_index=True)
+
+    st.markdown("**4) 절대 가고 싫은 Top 5 국가와 그 이유**")
+    default_top5_notwant = pd.DataFrame([{"국가 혹은 지역": "", "이유": ""} for _ in range(5)])
+    top5_notwant = pd.DataFrame(ans.get("top5_notwant", default_top5_notwant.to_dict('records')))
+    edited_top5_notwant = st.data_editor(top5_notwant, num_rows="fixed", use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+    # 2. 특정 대륙/국가에 대한 자신의 편견과 고정관념
+    st.markdown("#### 2. 특정 대륙/국가에 대한 자신의 편견과 고정관념")
+    st.markdown("**1) 국가별 한 단어 라벨링**")
+    default_label = pd.DataFrame([{"가 보고 싶은 국가": "", "한 단어 라벨": "", "가고 싶지 않은 국가": "", "한 단어 라벨(부정)": ""} for _ in range(3)])
+    label_df = pd.DataFrame(ans.get("label_df", default_label.to_dict('records')))
+    edited_label_df = st.data_editor(label_df, num_rows="dynamic", use_container_width=True, hide_index=True)
+
+    st.markdown("**2) 개인적으로 가장 강한 편견을 가진 국가**")
+    default_prej = pd.DataFrame([{"국가명": "", "편견 내용": "", "편견 형성 과정 혹은 이유": ""} for _ in range(2)])
+    prej_df = pd.DataFrame(ans.get("prej_df", default_prej.to_dict('records')))
+    edited_prej_df = st.data_editor(prej_df, num_rows="dynamic", use_container_width=True, hide_index=True)
+
+    st.markdown("**3) 미디어와 교육의 영향으로 인한 인식 발견**")
+    col1, col2 = st.columns(2)
+    media1_1 = col1.text_area("뉴스에서 자주 접하는 국가들", value=ans.get("media1_1", ""), height=80)
+    media1_2 = col2.text_area("그 나라들에 대한 이미지 (뉴스)", value=ans.get("media1_2", ""), height=80)
+    media2_1 = col1.text_area("영화/드라마에서 자주 접하는 국가들", value=ans.get("media2_1", ""), height=80)
+    media2_2 = col2.text_area("그 나라들에 대한 이미지 (영화/드라마)", value=ans.get("media2_2", ""), height=80)
+    media3_1 = col1.text_area("학교에서 많이 배운 국가들", value=ans.get("media3_1", ""), height=80)
+    media3_2 = col2.text_area("그 나라들에 대한 지식", value=ans.get("media3_2", ""), height=80)
+
+    st.markdown("**4) 부정확한 정보나 과장된 인식 발견 (사실과 다른 내용들)**")
+    default_fake = pd.DataFrame([{"국가명": "", "잘못 알고 있었던 내용": "", "실제 사실": ""} for _ in range(3)])
+    fake_df = pd.DataFrame(ans.get("fake_df", default_fake.to_dict('records')))
+    edited_fake_df = st.data_editor(fake_df, num_rows="dynamic", use_container_width=True, hide_index=True)
+
+    st.markdown("**5) 우월감이나 차별 의식 점검**")
+    default_discrim = pd.DataFrame([{"어떤 국가에 대해?": "", "어떤 측면에서": "", "그 이유": ""} for _ in range(2)])
+    discrim_df = pd.DataFrame(ans.get("discrim_df", default_discrim.to_dict('records')))
+    edited_discrim_df = st.data_editor(discrim_df, num_rows="dynamic", use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+    # 3. 포용적이고 균형잡힌 세계관을 위한 노력
+    st.markdown("#### 3. 포용적이고 균형잡힌 세계관을 위한 노력")
+    st.markdown("**1) 편견을 바꾸고 싶은 국가**")
+    default_change = pd.DataFrame([{"어떤 국가에 대해?": "", "현재의 편견": "", "올바른 정보를 찾기 위한 계획": ""} for _ in range(2)])
+    change_df = pd.DataFrame(ans.get("change_df", default_change.to_dict('records')))
+    edited_change_df = st.data_editor(change_df, num_rows="dynamic", use_container_width=True, hide_index=True)
+
+    st.markdown("**2) 가장 무관심했던 대륙 혹은 국가**")
+    default_ignore = pd.DataFrame([{"선택 대륙/국가": "", "무관심 이유": "", "관심 확장을 위한 정보 수집 방법": ""} for _ in range(2)])
+    ignore_df = pd.DataFrame(ans.get("ignore_df", default_ignore.to_dict('records')))
+    edited_ignore_df = st.data_editor(ignore_df, num_rows="dynamic", use_container_width=True, hide_index=True)
+
+    st.markdown("**3) 서구 중심적 시각에서 벗어나기**")
+    default_western = pd.DataFrame([{"현재 가지고 있는 서구 중심적 시각": "", "개선 방법": ""} for _ in range(2)])
+    western_df = pd.DataFrame(ans.get("western_df", default_western.to_dict('records')))
+    edited_western_df = st.data_editor(western_df, num_rows="dynamic", use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+    # 4. 목표로 하는 세계관 (사용자 요청 반영: 5번에서 4번으로 변경)
+    st.markdown("#### 4. 목표로 하는 세계관")
+    goal_1 = st.text_area("▶ 어떤 사람이 되고 싶은가?", value=ans.get("goal_1", ""), height=100)
+    goal_2 = st.text_area("▶ 어떤 세계관을 갖고 싶은가?", value=ans.get("goal_2", ""), height=100)
+    
+    if st.button("수행평가 3 저장하기", type="primary"):
         current_data = load_json(DATA_FILE, {}) 
         if user_key not in current_data: current_data[user_key] = {}
-        current_data[user_key][category] = {"temp_text": temp_text}
+        current_data[user_key][category] = {
+            "s1_df": edited_s1_df.to_dict('records'),
+            "direct_df": edited_direct_df.to_dict('records'),
+            "ind1": ind1, "ind2": ind2, "ind3": ind3,
+            "top5_want": edited_top5_want.to_dict('records'),
+            "top5_notwant": edited_top5_notwant.to_dict('records'),
+            "label_df": edited_label_df.to_dict('records'),
+            "prej_df": edited_prej_df.to_dict('records'),
+            "media1_1": media1_1, "media1_2": media1_2,
+            "media2_1": media2_1, "media2_2": media2_2,
+            "media3_1": media3_1, "media3_2": media3_2,
+            "fake_df": edited_fake_df.to_dict('records'),
+            "discrim_df": edited_discrim_df.to_dict('records'),
+            "change_df": edited_change_df.to_dict('records'),
+            "ignore_df": edited_ignore_df.to_dict('records'),
+            "western_df": edited_western_df.to_dict('records'),
+            "goal_1": goal_1, "goal_2": goal_2
+        }
         save_json(DATA_FILE, current_data)
-        st.toast("🎉 수행평가 3이 임시 저장되었습니다!")
+        st.toast("🎉 수행평가 3이 저장되었습니다!")
         st.rerun()
+        
+    if ans:
+        st.markdown("---")
+        html_data = generate_activity_html(category, ans, u_name)
+        st.download_button(f"📥 수행평가 3 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가3.html", mime="text/html")
 
 # --- 메인 공지사항 렌더링 ---
 def render_class_overview(current_role, u_info):
@@ -458,14 +640,13 @@ if st.session_state.logged_in:
     else:
         class_text_html = f"<div style='font-size: 14px; color: #333; margin-bottom: 2px;'>🏫 소속: {u_info.get('class_group', '')}</div>"
 
-    st.sidebar.markdown(f"""
-    <div style='background-color: #e8f4f8; padding: 10px; border-radius: 5px; margin-bottom: 15px; line-height: 1.4;'>
-        <div style='font-size: 15px; font-weight: bold; color: #0056b3; margin-bottom: 3px;'>🟢 {u_info['name']} 님 로그인 중</div>
-        <div style='font-size: 14px; color: #333; margin-bottom: 2px;'>📘 과목: {u_info.get('subject', '전체')}</div>
-        {class_text_html}
-        <div style='font-size: 14px; color: #333;'>🛡️ 권한: {u_info['role']}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    sidebar_html = "<div style='background-color: #e8f4f8; padding: 10px; border-radius: 5px; margin-bottom: 15px; line-height: 1.4;'>"
+    sidebar_html += f"<div style='font-size: 15px; font-weight: bold; color: #0056b3; margin-bottom: 3px;'>🟢 {u_info['name']} 님 로그인 중</div>"
+    sidebar_html += f"<div style='font-size: 14px; color: #333; margin-bottom: 2px;'>📘 과목: {u_info.get('subject', '전체')}</div>"
+    sidebar_html += class_text_html
+    sidebar_html += f"<div style='font-size: 14px; color: #333;'>🛡️ 권한: {u_info['role']}</div></div>"
+    
+    st.sidebar.markdown(sidebar_html, unsafe_allow_html=True)
     
     if st.sidebar.button("로그아웃", type="primary", use_container_width=True):
         st.session_state.logged_in = False
@@ -696,11 +877,15 @@ else:
                                         st.write(f"- **누구에게 추천:** {ans.get('a2_3_1','')}")
                                         st.write(f"- **추천 이유:** {ans.get('a2_3_2','')}")
                                         st.info(f"**나만의 감상평:**\n{ans.get('a2_4','')}")
-                                        st.write(f"- **영상제목(기획):** {ans.get('a3_1','')} | **컨셉:** {ans.get('a3_2','')}")
                                     elif act == ACTIVITIES[1]:
                                         st.write(f"- **편안한 장소:** {ans.get('q1_1','')} | **이유:** {ans.get('q1_2','')}")
                                         st.write(f"- **성격:** {ans.get('q2_1','')} | **영향 장소:** {ans.get('q2_2','')}")
                                         st.write(f"- **목표:** {ans.get('q5_1','')} | **영향 장소:** {ans.get('q5_2','')}")
+                                    elif act == ACTIVITIES[2]:
+                                        st.dataframe(pd.DataFrame(ans.get("s1_df", [])), use_container_width=True)
+                                        st.dataframe(pd.DataFrame(ans.get("label_df", [])), use_container_width=True)
+                                        st.write(f"- **목표하는 사람:** {ans.get('goal_1','')}")
+                                        st.write(f"- **목표하는 세계관:** {ans.get('goal_2','')}")
                             
                             st.markdown("---")
                             html_content = generate_portfolio_html(student_answers, u_name, u_class_selected, view_subj)
@@ -722,7 +907,23 @@ else:
                             elif selected_view == ACTIVITIES[1]:
                                 csv_data.append({"반": u_class, "학번": u_id, "이름": u_name, "1-1.편안한장소": ans.get("q1_1", ""), "1-2.이유": ans.get("q1_2", ""), "2-1.나의성격": ans.get("q2_1", ""), "2-2.성격영향장소": ans.get("q2_2", ""), "2-3.이유": ans.get("q2_3", ""), "3-1.나의장점": ans.get("q3_1", ""), "3-2.장점영향장소": ans.get("q3_2", ""), "3-3.이유": ans.get("q3_3", ""), "4-1.성장영향장소": ans.get("q4_1", ""), "4-2.이유": ans.get("q4_2", ""), "5-1.나의목표": ans.get("q5_1", ""), "5-2.목표영향장소": ans.get("q5_2", ""), "6-1.소개할장소": ans.get("q6_1", ""), "6-2.이유": ans.get("q6_2", ""), "7-1.비밀장소": ans.get("q7_1", ""), "7-2.이유": ans.get("q7_2", ""), "8-1.과거로간다면": ans.get("q8_1", ""), "8-2.이유": ans.get("q8_2", "")})
                             elif selected_view == ACTIVITIES[2]:
-                                csv_data.append({"반": u_class, "학번": u_id, "이름": u_name, "데이터": "추후 업데이트 예정"})
+                                csv_data.append({
+                                    "반": u_class, "학번": u_id, "이름": u_name,
+                                    "1.대륙별인식": format_df_to_str(ans.get("s1_df", []), ["대륙", "관심도", "지식수준"]),
+                                    "2.직접경험": format_df_to_str(ans.get("direct_df", []), ["여행해 본 국가", "해당 국가에 대한 구체적인 기억 혹은 인상"]),
+                                    "3.간접경험(영화)": ans.get("ind1", ""), "4.간접경험(음악)": ans.get("ind2", ""), "5.간접경험(음식)": ans.get("ind3", ""),
+                                    "6.가고싶은Top5": format_df_to_str(ans.get("top5_want", []), ["국가 혹은 지역", "이유"]),
+                                    "7.가고싫은Top5": format_df_to_str(ans.get("top5_notwant", []), ["국가 혹은 지역", "이유"]),
+                                    "8.단어라벨링": format_df_to_str(ans.get("label_df", []), ["가 보고 싶은 국가", "한 단어 라벨", "가고 싶지 않은 국가", "한 단어 라벨(부정)"]),
+                                    "9.강한편견국가": format_df_to_str(ans.get("prej_df", []), ["국가명", "편견 내용", "편견 형성 과정 혹은 이유"]),
+                                    "10.미디어영향": f"뉴스: {ans.get('media1_1','')} ({ans.get('media1_2','')}) / 영화: {ans.get('media2_1','')} ({ans.get('media2_2','')}) / 학교: {ans.get('media3_1','')} ({ans.get('media3_2','')})",
+                                    "11.부정확한정보": format_df_to_str(ans.get("fake_df", []), ["국가명", "잘못 알고 있었던 내용", "실제 사실"]),
+                                    "12.차별의식": format_df_to_str(ans.get("discrim_df", []), ["어떤 국가에 대해?", "어떤 측면에서", "그 이유"]),
+                                    "13.편견바꾸기": format_df_to_str(ans.get("change_df", []), ["어떤 국가에 대해?", "현재의 편견", "올바른 정보를 찾기 위한 계획"]),
+                                    "14.무관심국가": format_df_to_str(ans.get("ignore_df", []), ["선택 대륙/국가", "무관심 이유", "관심 확장을 위한 정보 수집 방법"]),
+                                    "15.서구중심시각": format_df_to_str(ans.get("western_df", []), ["현재 가지고 있는 서구 중심적 시각", "개선 방법"]),
+                                    "16.목표(어떤사람)": ans.get("goal_1", ""), "17.목표(세계관)": ans.get("goal_2", "")
+                                })
                         
                         if csv_data:
                             df_csv = pd.DataFrame(csv_data)
