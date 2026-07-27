@@ -37,11 +37,11 @@ ADMIN_ACCOUNTS = {
     "audskal": {"pw": "1847", "name": "김명남(관리자)"}
 }
 
-# 📌 3학년 하드코딩 기본 활동지 3종
+# 📌 3학년 하드코딩 기본 활동지 3종 (요청사항 반영)
 ACTIVITIES = [
-    "[활동지1] - 수행평가 1 (영상으로 떠나는 여행)",
-    "[활동지2] - 수행평가 2 (나를 성장시킨 장소 지도 만들기)",
-    "[활동지3] - 수행평가 3 (나의 세계관에 대해 알아가는 '여행')"
+    "[수행평가 1] - 영상으로 떠나는 여행",
+    "[수행평가 2] - 나를 성장시킨 장소 지도 만들기",
+    "[수행평가 3] - 나의 세계관에 대해 알아가는 '여행'"
 ]
 
 INFO_BOX = "<div style='background-color: #f0f4f8; padding: 15px; border-radius: 8px; font-size: 17px; font-weight: 600; color: #222; margin-bottom: 15px; border-left: 5px solid #0056b3; line-height: 1.5;'>{}</div>"
@@ -422,7 +422,7 @@ def render_activity1(user_key, u_name, current_role, user_class):
     if ans:
         st.markdown("---")
         html_data = generate_activity_html(category, ans, u_name)
-        st.download_button(f"📥 수행평가 1 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가1.html", mime="text/html")
+        st.download_button(f"📥 {category} 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가1.html", mime="text/html")
 
 
 def render_activity2(user_key, u_name, current_role, user_class):
@@ -443,20 +443,34 @@ def render_activity2(user_key, u_name, current_role, user_class):
     st.markdown("---")
     q1_1 = st.text_input("1-1) 나에게 편안함을 주는 장소(공간)이/가 있는가?", value=ans.get("q1_1", ""), disabled=disabled_flag)
     q1_2 = st.text_area("1-2) 그 장소(공간)이/가 어떤 면에서 나에게 편안함을 주는 것 같은가?", value=ans.get("q1_2", ""), disabled=disabled_flag)
+    
+    st.markdown("---")
     q2_1 = st.text_input("2-1) 자신이 생각하기에 자신의 성격은?", value=ans.get("q2_1", ""), disabled=disabled_flag)
     q2_2 = st.text_input("2-2) 자신의 성격 형성에 있어 영향을 준 장소(공간)이/가 있는가?", value=ans.get("q2_2", ""), disabled=disabled_flag)
     q2_3 = st.text_area("2-3) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", value=ans.get("q2_3", ""), disabled=disabled_flag)
+    
+    st.markdown("---")
     q3_1 = st.text_input("3-1) 자신이 생각하기에 자신의 장점은?", value=ans.get("q3_1", ""), disabled=disabled_flag)
     q3_2 = st.text_input("3-2) 자신의 장점 형성에 있어 영향을 준 장소(공간)이/가 있는가?", value=ans.get("q3_2", ""), disabled=disabled_flag)
     q3_3 = st.text_area("3-3) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", value=ans.get("q3_3", ""), disabled=disabled_flag)
+    
+    st.markdown("---")
     q4_1 = st.text_input("4-1) 내가 성장함에 있어 영향을 준 장소(공간)이/가 있는가?", value=ans.get("q4_1", ""), disabled=disabled_flag)
     q4_2 = st.text_area("4-2) 그런 장소(공간)이/가 있다면 어떤 면에서 영향을 준 것 같은가?", value=ans.get("q4_2", ""), disabled=disabled_flag)
+    
+    st.markdown("---")
     q5_1 = st.text_input("5-1) 지금 나의 목표는 무엇인가?", value=ans.get("q5_1", ""), disabled=disabled_flag)
     q5_2 = st.text_area("5-2) 그런 목표를 설정함에 있어 영향을 준 장소(공간)이/가 있는가?", value=ans.get("q5_2", ""), disabled=disabled_flag)
+    
+    st.markdown("---")
     q6_1 = st.text_input("6-1) 훗날 소중한 사람에게 소개해 주고 싶은 장소(공간)이/가 있는가?", value=ans.get("q6_1", ""), disabled=disabled_flag)
     q6_2 = st.text_area("6-2) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", value=ans.get("q6_2", ""), disabled=disabled_flag)
+    
+    st.markdown("---")
     q7_1 = st.text_input("7-1) 나만의 비밀 장소(공간)이/가 있는가?", value=ans.get("q7_1", ""), disabled=disabled_flag)
     q7_2 = st.text_area("7-2) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", value=ans.get("q7_2", ""), disabled=disabled_flag)
+    
+    st.markdown("---")
     q8_1 = st.text_input("8-1) 시간을 돌려 과거로 돌아갈 수 있다면 다시 가 보고 싶은 장소(공간)이/가 있는가?", value=ans.get("q8_1", ""), disabled=disabled_flag)
     q8_2 = st.text_area("8-2) 장소(공간)로/으로 다시 가 보고 싶은 이유는 무엇 때문인가?", value=ans.get("q8_2", ""), disabled=disabled_flag)
     
@@ -480,7 +494,7 @@ def render_activity2(user_key, u_name, current_role, user_class):
     if ans:
         st.markdown("---")
         html_data = generate_activity_html(category, ans, u_name)
-        st.download_button(f"📥 수행평가 2 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가2.html", mime="text/html")
+        st.download_button(f"📥 {category} 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가2.html", mime="text/html")
 
 
 def render_activity3(user_key, u_name, current_role, user_class):
@@ -605,7 +619,7 @@ def render_activity3(user_key, u_name, current_role, user_class):
     if ans:
         st.markdown("---")
         html_data = generate_activity_html(category, ans, u_name)
-        st.download_button(f"📥 수행평가 3 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가3.html", mime="text/html")
+        st.download_button(f"📥 {category} 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가3.html", mime="text/html")
 
 # --- [📌 신규: 커스텀 동적 활동지 렌더링 함수] ---
 def render_custom_activity(user_key, u_name, current_role, user_class, act_name, config):
@@ -689,12 +703,16 @@ def render_class_overview(current_role, u_info):
     st.caption("아래 버튼을 눌러 해당 수행평가 작성 화면으로 이동하세요.")
     
     # 📌 과목에 연동된 동적/정적 활동지 버튼 렌더링
-    acts_for_subj = app_config.get("subject_activities", {}).get(u_info.get('subject'), [])
-    cols = st.columns(3)
-    for idx, act in enumerate(acts_for_subj):
-        with cols[idx % 3]:
-            if st.button(f"📄 {act}", use_container_width=True):
-                change_page(act)
+    acts_for_subj = app_config.get("subject_activities", {}).get(u_info.get('subject', '전체'), [])
+    
+    if acts_for_subj:
+        cols = st.columns(3)
+        for idx, act in enumerate(acts_for_subj):
+            with cols[idx % 3]:
+                if st.button(f"📄 {act}", use_container_width=True):
+                    change_page(act)
+    else:
+        st.info("아직 이 과목에 할당된 수행평가 목록이 없습니다.")
 
 # --- [4] 메인 화면 세팅 및 CSS ---
 st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", layout="wide")
@@ -880,7 +898,7 @@ else:
                 st.markdown("---")
 
                 st.subheader("📢 메인 화면 내용 추가/수정/삭제 (자유 양식)")
-                st.info("💡 표의 빈칸을 더블클릭하여 내용을 작성하고 행을 추가/삭제할 수 있습니다. 저장 시 학생들 화면 최상단에 노출됩니다.")
+                st.info("💡 아래 표에 텍스트를 입력하면 학생들의 메인 화면 상단에 즉시 공지사항으로 표시됩니다. 표의 빈칸을 더블클릭하여 내용을 작성하고 행을 추가/삭제할 수 있습니다.")
                 fresh_config = load_json(CONFIG_FILE, {})
 
                 current_notices = fresh_config.get("notices", [])
@@ -910,7 +928,7 @@ else:
 
                     with st.form(f"deadline_form_for_{selected_act_for_setting}"):
                         st.markdown(f"#### 📘 {subj_for_dl} - {selected_act_for_setting} 반별 시간표")
-                        for c_group in CLASSES_MAP[subj_dl]:
+                        for c_group in CLASSES_MAP[subj_for_dl]:
                             with st.expander(f"🏫 {c_group} 시간표 설정", expanded=False):
                                 c_data = new_act_deadlines.get(c_group, {})
                                 c_final = c_data.get("final_dl", "2030-12-31 23:59")
@@ -1098,11 +1116,15 @@ else:
                 
                 student_list = []
                 for uid, info in all_users.items():
-                    if info.get("role") == "학생" and info.get("approved", True):
+                    if info.get("role") == "학생":
                         s_subj = info.get("subject", "").strip()
                         s_class = info.get("class_group", "").strip()
-                        if s_subj == view_subj.strip():
-                            if view_class == "전체 보기" or s_class == view_class.strip():
+                        
+                        target_subj = view_subj.strip()
+                        target_class = view_class.strip()
+                        
+                        if s_subj == target_subj:
+                            if target_class == "전체 보기" or s_class == target_class:
                                 student_list.append(uid)
                 
                 if not student_list:
@@ -1211,7 +1233,7 @@ else:
                                         st.info(f"**어떤 사람이 되고 싶은가?**\n{ans.get('goal_1','')}")
                                         st.info(f"**어떤 세계관을 갖고 싶은가?**\n{ans.get('goal_2','')}")
                                     
-                                    else: # 커스텀 활동지 렌더링
+                                    else:
                                         c_form = load_json(CONFIG_FILE, {}).get("custom_forms", {}).get(act, [])
                                         for q in c_form:
                                             st.write(f"**{q['label']}**")
