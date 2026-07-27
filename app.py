@@ -599,7 +599,7 @@ def render_activity3(user_key, u_name, current_role):
 
 # --- 메인 공지사항 렌더링 ---
 def render_class_overview(current_role, u_info):
-    st.subheader(f"🎯 [{u_info.get('subject', '전체')}] 수행평가 및 활동 모듈")
+    st.subheader(f"🎯 [{u_info.get('subject', '전체')}] 수행평가 모듈 안내")
     st.markdown("---")
     
     app_config = load_json(CONFIG_FILE, {})
