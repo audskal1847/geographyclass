@@ -95,7 +95,8 @@ def check_active(act_name, class_group):
     for slot in slots:
         if slot['day'] != "선택안함":
             p_str = f" {slot.get('period', '')}" if slot.get('period', '') and slot.get('period') != "선택안함" else ""
-            schedule_strs.append(f"{slot['day']}요일{p_str} {slot['start']}~{slot['end']}")
+            # 취소선 방지를 위해 물결표(~) 대신 하이픈(-) 사용
+            schedule_strs.append(f"{slot['day']}요일{p_str} {slot['start']} - {slot['end']}")
             if slot['day'] == current_day:
                 try:
                     st_time = datetime.datetime.strptime(slot["start"], "%H:%M").time()
@@ -365,7 +366,7 @@ def render_activity1(user_key, u_name, current_role, user_class):
     st.markdown("---")
     
     if current_role == "학생":
-        if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
+        if disabled_flag: st.error(status_msg, icon="🚫")
         else: st.success(status_msg, icon="✅")
     
     st.markdown("#### 1. 자신이 선택한 영상에 대한 첫번째 질문")
@@ -436,7 +437,7 @@ def render_activity2(user_key, u_name, current_role, user_class):
     st.info("한 사람의 살아온 과정은 '장소'의 영향을 받기 마련입니다. 우리의 삶이 이어지는 '장소'는 개인의 느낌과 의미 부여에 따라 저마다 다른 감정을 느낍니다. 이를 지리에서는 '장소감(Sense of place)' 이라고 합니다.\n\n19년 동안의 인생을 살아오면서 지금의 내가 있기까지 성장의 경험을 했던 혹은 나에게 특별한 의미가 있는 장소들을 떠올려 봅시다. 그리고 지금의 내가 있기까지의 기억이 남는 장소를 선정해서 '과거로 떠나는 나를 성장시킨 장소 지도'를 만들어 봅시다. 소중했던 사람들과의 좋은 기억과 추억이 남아 있는 장소로 한 번 떠나봅시다.")
     
     if current_role == "학생":
-        if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
+        if disabled_flag: st.error(status_msg, icon="🚫")
         else: st.success(status_msg, icon="✅")
         
     st.markdown("---")
@@ -507,7 +508,7 @@ def render_activity3(user_key, u_name, current_role, user_class):
     st.markdown("---")
 
     if current_role == "학생":
-        if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
+        if disabled_flag: st.error(status_msg, icon="🚫")
         else: st.success(status_msg, icon="✅")
 
     st.markdown("#### 1. 세계 인식 수준에 대한 확인")
@@ -618,9 +619,9 @@ def render_activity3(user_key, u_name, current_role, user_class):
     if ans:
         st.markdown("---")
         html_data = generate_activity_html(category, ans, u_name)
-        st.download_button(f"📥 {category} 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가3.html", mime="text/html")
+        st.download_button(f"📥 수행평가 3 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가3.html", mime="text/html")
 
-# --- [📌 신규: 커스텀 동적 활동지 렌더링 함수] ---
+# --- [📌 커스텀 동적 활동지 렌더링 함수] ---
 def render_custom_activity(user_key, u_name, current_role, user_class, act_name, config):
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(act_name, {})
     is_active, status_msg = check_active(act_name, user_class)
@@ -630,7 +631,7 @@ def render_custom_activity(user_key, u_name, current_role, user_class, act_name,
     st.markdown("---")
 
     if current_role == "학생":
-        if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
+        if disabled_flag: st.error(status_msg, icon="🚫")
         else: st.success(status_msg, icon="✅")
 
     custom_form = config.get("custom_forms", {}).get(act_name, [])
@@ -701,7 +702,6 @@ def render_class_overview(current_role, u_info):
     st.markdown("### 📝 학년별 수행평가 목록")
     st.caption("아래 버튼을 눌러 해당 수행평가 작성 화면으로 이동하세요.")
     
-    # 📌 과목에 연동된 동적/정적 활동지 버튼 렌더링
     acts_for_subj = app_config.get("subject_activities", {}).get(u_info.get('subject', '전체'), [])
     
     if acts_for_subj:
@@ -886,7 +886,6 @@ else:
             st.title("🛠️ 관리자(교사) 대시보드")
             menu_tabs = st.tabs(["📌 수업 공지/기한 설정", "🗂️ 수행평가 문항 제작", "👥 회원 관리", "📥 학생 자료 조회", "💾 데이터 백업 및 복구"])
             
-            # --- 📌 탭 1: 수업 공지 및 타이머 설정 ---
             with menu_tabs[0]:
                 if st.session_state.get("admin_save_success", False):
                     st.balloons()
@@ -897,7 +896,7 @@ else:
                 st.markdown("---")
 
                 st.subheader("📢 메인 화면 내용 추가/수정/삭제 (자유 양식)")
-                st.info("💡 표의 빈칸을 더블클릭하여 내용을 작성하고 행을 추가/삭제할 수 있습니다. 저장 시 학생들 화면 최상단에 노출됩니다.")
+                st.info("💡 아래 표에 텍스트를 입력하면 학생들의 메인 화면 상단에 즉시 공지사항으로 표시됩니다. 표의 빈칸을 더블클릭하여 내용을 작성하고 행을 추가/삭제할 수 있습니다.")
                 fresh_config = load_json(CONFIG_FILE, {})
 
                 current_notices = fresh_config.get("notices", [])
@@ -963,17 +962,10 @@ else:
 
                                     slot_day = sc1.selectbox(f"수업 {i+1} 요일", day_opts, index=day_idx, key=f"day_{c_group}_{i}")
                                     slot_period = sc2.selectbox(f"수업 {i+1} 교시", period_opts, index=period_idx, key=f"period_{c_group}_{i}")
-                                    
-                                    # step=600은 10분 단위 설정 (스트림릿 지원)
                                     slot_start = sc3.time_input(f"수업 {i+1} 시작", value=st_t, key=f"st_{c_group}_{i}", step=600)
                                     slot_end = sc4.time_input(f"수업 {i+1} 종료", value=en_t, key=f"en_{c_group}_{i}", step=600)
 
-                                    updated_slots.append({
-                                        "day": slot_day,
-                                        "period": slot_period,
-                                        "start": slot_start.strftime("%H:%M"),
-                                        "end": slot_end.strftime("%H:%M")
-                                    })
+                                    updated_slots.append({"day": slot_day, "period": slot_period, "start": slot_start.strftime("%H:%M"), "end": slot_end.strftime("%H:%M")})
 
                                 new_act_deadlines[c_group] = {"final_dl": f"{f_date} {f_time.strftime('%H:%M')}", "slots": updated_slots}
                         
@@ -996,7 +988,6 @@ else:
                             save_json(CONFIG_FILE, fresh_config)
                             st.session_state.admin_save_success = True; st.rerun()
 
-            # --- 🗂️ 탭 2: 노코딩 수행평가 문항 제작 ---
             with menu_tabs[1]:
                 st.subheader("🗂️ 과목별 수행평가(활동지) 목록 관리")
                 st.info("💡 각 과목에 새로운 수행평가를 코딩 없이 추가하거나 삭제할 수 있습니다. 추가된 수행평가는 학생 화면에 즉시 버튼으로 생성됩니다.")
@@ -1057,7 +1048,6 @@ else:
                 else:
                     st.warning("현재 과목에 직접 추가한 커스텀 수행평가가 없습니다. 위에서 새 수행평가를 추가해보세요.")
 
-            # --- 👥 회원 관리 ---
             with menu_tabs[2]:
                 all_users = load_json(USERS_FILE, {})
                 pending_users = {k: v for k, v in all_users.items() if not v.get("approved", True) and v.get("role")=="학생"}
@@ -1110,7 +1100,6 @@ else:
                         save_json(USERS_FILE, fresh_users)
                         st.success("삭제 완료"); st.rerun()
 
-            # --- 📥 학생 제출 자료 조회 ---
             with menu_tabs[3]:
                 col_t, col_b = st.columns([8, 2])
                 with col_t: st.subheader("📥 학생 학습 활동 및 제출 자료 조회")
@@ -1128,7 +1117,7 @@ else:
                 
                 student_list = []
                 for uid, info in all_users.items():
-                    if info.get("role") == "학생" and info.get("approved", True):
+                    if info.get("role") == "학생":
                         s_subj = info.get("subject", "").strip()
                         s_class = info.get("class_group", "").strip()
                         
@@ -1310,25 +1299,32 @@ else:
                                 st.info("해당 수행평가에 제출된 데이터가 없습니다.")
 
             with menu_tabs[4]:
-                st.subheader("💾 데이터베이스 백업 및 복구 (매우 중요)")
-                st.error("⚠️ 클라우드 서버 특성상 재부팅 시 저장 데이터가 초기화될 수 있습니다. 퇴근 전이나 수업 후 꼭 백업 파일(.json)을 내려받아 두세요!")
+                st.subheader("💾 데이터베이스(DB) 백업 파일 저장 및 불러오기")
+                st.info("💡 동료 선생님의 훌륭한 아이디어입니다! 프로그램 코드를 업데이트하거나 서버가 재부팅되어도, 아래에서 다운로드해둔 DB 파일만 있으면 언제든 모든 데이터를 100% 복구할 수 있습니다.")
                 
-                all_users_str = load_json(USERS_FILE, {})
-                all_data_str = load_json(DATA_FILE, {})
-                backup_dict = {"users": all_users_str, "data": all_data_str}
-                backup_json = json.dumps(backup_dict, ensure_ascii=False, indent=2)
+                col_bk1, col_bk2 = st.columns(2)
+                with col_bk1:
+                    st.markdown("#### 1️⃣ [수동 백업] DB 파일 저장")
+                    st.write("현재까지 가입한 학생 목록과 제출된 모든 수행평가 데이터를 내 컴퓨터에 안전하게 파일로 저장합니다.")
+                    all_users_str = load_json(USERS_FILE, {})
+                    all_data_str = load_json(DATA_FILE, {})
+                    backup_dict = {"users": all_users_str, "data": all_data_str}
+                    backup_json = json.dumps(backup_dict, ensure_ascii=False, indent=2)
+                    
+                    st.download_button("⬇️ 현재 DB 파일 다운로드 (.json)", data=backup_json.encode('utf-8-sig'), file_name=f"backup_DB_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.json", type="primary", use_container_width=True)
                 
-                st.download_button("⬇️ 현재까지의 전체 데이터 백업 파일 다운로드 (.json)", data=backup_json.encode('utf-8-sig'), file_name=f"backup_DB_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.json", type="primary", use_container_width=True)
-                
-                st.markdown("---")
-                st.subheader("♻️ 데이터 복구하기")
-                uploaded_file = st.file_uploader("다운로드 해둔 백업 파일(.json)을 업로드하세요", type="json")
-                if st.button("위 파일로 데이터 복구 실행", type="primary"):
-                    if uploaded_file:
-                        try:
-                            restored = json.load(uploaded_file)
-                            save_json(USERS_FILE, restored.get("users", {}))
-                            save_json(DATA_FILE, restored.get("data", {}))
-                            st.success("🎉 데이터 복구가 완벽히 완료되었습니다!"); st.rerun()
-                        except:
-                            st.error("❌ 올바른 백업 파일이 아닙니다.")
+                with col_bk2:
+                    st.markdown("#### 2️⃣ [데이터 복원] DB 파일 불러오기")
+                    st.write("서버 초기화 시, 다운로드 해두었던 백업 파일을 아래에 업로드하여 과거 데이터를 완벽하게 되살립니다.")
+                    uploaded_file = st.file_uploader("백업 파일(.json) 업로드", type="json", label_visibility="collapsed")
+                    if st.button("위 파일로 전체 데이터 복구 실행", type="primary", use_container_width=True):
+                        if uploaded_file:
+                            try:
+                                restored = json.load(uploaded_file)
+                                save_json(USERS_FILE, restored.get("users", {}))
+                                save_json(DATA_FILE, restored.get("data", {}))
+                                st.success("🎉 데이터 복구가 완벽히 완료되었습니다! 새로고침 시 적용됩니다."); st.rerun()
+                            except:
+                                st.error("❌ 올바른 백업 파일이 아닙니다.")
+                        else:
+                            st.warning("파일을 먼저 업로드해주세요.")
