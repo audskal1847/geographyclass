@@ -58,19 +58,54 @@ def change_page(page_name):
     st.query_params["current_page"] = page_name
     st.rerun()
 
-# --- [기간 설정(활성화) 확인 함수] ---
-def check_active(act_name):
+# --- [📌 신규: 반별 수행평가 타이머 및 마감 제어 로직] ---
+def check_active(act_name, class_group):
     config = load_json(CONFIG_FILE, {})
-    deadlines = config.get("deadlines", {}).get(act_name, {})
-    start_str = deadlines.get("start", "2020-01-01 00:00")
-    end_str = deadlines.get("end", "2030-12-31 23:59")
+    deadlines = config.get("deadlines", {}).get(act_name, {}).get(class_group, {})
+    
+    if not deadlines:
+        return True, "💡 아직 관리자가 시간표를 설정하지 않았습니다. (자유 입력 상태)"
+
+    final_dl_str = deadlines.get("final_dl", "2030-12-31 23:59")
     try:
-        start_dt = datetime.datetime.strptime(start_str, "%Y-%m-%d %H:%M")
-        end_dt = datetime.datetime.strptime(end_str, "%Y-%m-%d %H:%M")
-        now = datetime.datetime.now()
-        return start_dt <= now <= end_dt, start_str, end_str
+        final_dl = datetime.datetime.strptime(final_dl_str, "%Y-%m-%d %H:%M")
     except:
-        return True, start_str, end_str
+        final_dl = datetime.datetime.max
+
+    now = datetime.datetime.now()
+
+    # 1. 최종 마감일이 지났는지 검사
+    if now > final_dl:
+        return False, f"🚫 최종 제출 기한({final_dl_str})이 마감되어 더 이상 활동지를 작성하거나 수정할 수 없습니다."
+
+    slots = deadlines.get("slots", [])
+    day_map = {0: "월", 1: "화", 2: "수", 3: "목", 4: "금", 5: "토", 6: "일"}
+    current_day = day_map[now.weekday()]
+    current_time = now.time()
+
+    schedule_strs = []
+    is_time_match = False
+    
+    # 2. 이번 주 수업 시간에 해당하는지 검사
+    for slot in slots:
+        if slot['day'] != "선택안함":
+            schedule_strs.append(f"{slot['day']}요일 {slot['start']}~{slot['end']}")
+            if slot['day'] == current_day:
+                try:
+                    st_time = datetime.datetime.strptime(slot["start"], "%H:%M").time()
+                    en_time = datetime.datetime.strptime(slot["end"], "%H:%M").time()
+                    if st_time <= current_time <= en_time:
+                        is_time_match = True
+                except:
+                    continue
+
+    sched_display = ", ".join(schedule_strs) if schedule_strs else "설정된 수업 시간 없음"
+    
+    if is_time_match:
+        return True, "✅ 현재 수업 시간입니다. 정상적으로 활동지를 작성하고 저장할 수 있습니다."
+    else:
+        return False, f"⏳ 현재는 정해진 수업 시간이 아닙니다. 설정된 수업 시간 중에만 입력할 수 있습니다.\n\n(나의 주간 수업 시간: {sched_display} / 최종 기한: {final_dl_str})"
+
 
 # --- [2] 데이터 입출력 및 초기화 함수 ---
 def load_json(file_path, default_value):
@@ -118,11 +153,13 @@ def init_system():
         if "materials" not in current_config:
             current_config["materials"] = []
             needs_update = True
-        if "deadlines" not in current_config:
-            current_config["deadlines"] = {act: {"start": "2024-01-01 00:00", "end": "2030-12-31 23:59"} for act in ACTIVITIES}
-            needs_update = True
         if "notices" not in current_config:
             current_config["notices"] = []
+            needs_update = True
+            
+        # 기존 단일 시간 포맷을 새 다중 구조로 강제 마이그레이션 방지(초기화)
+        if "deadlines" not in current_config or (current_config["deadlines"] and "start" in current_config["deadlines"].get(ACTIVITIES[0], {})):
+            current_config["deadlines"] = {}
             needs_update = True
             
         for k in ["tabs", "pdfs", "questions"]:
@@ -295,18 +332,21 @@ def generate_activity_html(act_name, ans, u_name):
     return html
 
 # --- [3] 수행평가 활동지 렌더링 함수들 ---
-def render_activity1(user_key, u_name, current_role):
+def render_activity1(user_key, u_name, current_role, user_class):
     category = ACTIVITIES[0]
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
     
-    is_active, s_str, e_str = check_active(category)
+    is_active, status_msg = check_active(category, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
     
     st.markdown("### ♣ 영상을 통한 여행 (Feat. 브이로그..)")
     st.markdown("---")
     
-    if disabled_flag:
-        st.error(f"⏳ 현재는 입력 및 제출 기간이 아닙니다. (설정된 제출 기간: {s_str} ~ {e_str})")
+    if current_role == "학생":
+        if disabled_flag:
+            st.error(status_msg.replace('\n', '<br>'), icon="🚫")
+        else:
+            st.success(status_msg, icon="✅")
     
     st.markdown("#### 1. 자신이 선택한 영상에 대한 첫번째 질문")
     a1_1 = st.text_input("1. 영상의 제목", value=ans.get("a1_1", ""), disabled=disabled_flag)
@@ -372,19 +412,22 @@ def render_activity1(user_key, u_name, current_role):
         st.download_button(f"📥 수행평가 1 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가1.html", mime="text/html")
 
 
-def render_activity2(user_key, u_name, current_role):
+def render_activity2(user_key, u_name, current_role, user_class):
     category = ACTIVITIES[1]
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
     
-    is_active, s_str, e_str = check_active(category)
+    is_active, status_msg = check_active(category, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
     
     st.markdown("## 2026. 신선여고 3학년 여행지리")
     st.markdown("### '나를 성장시킨, 나에게 특별한 의미가 있는 장소 지도 만들기'")
     st.info("한 사람의 살아온 과정은 '장소'의 영향을 받기 마련입니다. 우리의 삶이 이어지는 '장소'는 개인의 느낌과 의미 부여에 따라 저마다 다른 감정을 느낍니다. 이를 지리에서는 '장소감(Sense of place)' 이라고 합니다.\n\n19년 동안의 인생을 살아오면서 지금의 내가 있기까지 성장의 경험을 했던 혹은 나에게 특별한 의미가 있는 장소들을 떠올려 봅시다. 그리고 지금의 내가 있기까지의 기억이 남는 장소를 선정해서 '과거로 떠나는 나를 성장시킨 장소 지도'를 만들어 봅시다. 소중했던 사람들과의 좋은 기억과 추억이 남아 있는 장소로 한 번 떠나봅시다.")
     
-    if disabled_flag:
-        st.error(f"⏳ 현재는 입력 및 제출 기간이 아닙니다. (설정된 제출 기간: {s_str} ~ {e_str})")
+    if current_role == "학생":
+        if disabled_flag:
+            st.error(status_msg.replace('\n', '<br>'), icon="🚫")
+        else:
+            st.success(status_msg, icon="✅")
         
     st.markdown("---")
     q1_1 = st.text_input("1-1) 나에게 편안함을 주는 장소(공간)이/가 있는가?", value=ans.get("q1_1", ""), disabled=disabled_flag)
@@ -451,18 +494,21 @@ def render_activity2(user_key, u_name, current_role):
         st.download_button(f"📥 수행평가 2 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가2.html", mime="text/html")
 
 
-def render_activity3(user_key, u_name, current_role):
+def render_activity3(user_key, u_name, current_role, user_class):
     category = ACTIVITIES[2]
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
     
-    is_active, s_str, e_str = check_active(category)
+    is_active, status_msg = check_active(category, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
     
     st.markdown("### ♣ 나의 세계관에 대해 알아가는 '여행'")
     st.markdown("---")
 
-    if disabled_flag:
-        st.error(f"⏳ 현재는 입력 및 제출 기간이 아닙니다. (설정된 제출 기간: {s_str} ~ {e_str})")
+    if current_role == "학생":
+        if disabled_flag:
+            st.error(status_msg.replace('\n', '<br>'), icon="🚫")
+        else:
+            st.success(status_msg, icon="✅")
 
     st.markdown("#### 1. 세계 인식 수준에 대한 확인")
     st.markdown("**1) 대륙별 관심도 및 지식 수준 체크**")
@@ -604,7 +650,6 @@ def render_class_overview(current_role, u_info):
     
     app_config = load_json(CONFIG_FILE, {})
     
-    # 📌 (해결 1) 공지사항 즉각 렌더링 로직 위치 복원
     notices = app_config.get("notices", [])
     if notices:
         st.markdown("### 📢 알림 및 공지사항")
@@ -810,6 +855,7 @@ else:
     current_role = st.session_state.user_info["role"]
     current_user_key = st.session_state.user_info["user_key"]
     u_info = st.session_state.user_info
+    user_class_group = u_info.get('class_group', '')
     
     app_config = load_json(CONFIG_FILE, {})
     learning_data = load_json(DATA_FILE, {})
@@ -819,9 +865,9 @@ else:
         st.title(f"📄 {act_name}")
         st.markdown("---")
         
-        if act_name == ACTIVITIES[0]: render_activity1(current_user_key, u_info['name'], current_role)
-        elif act_name == ACTIVITIES[1]: render_activity2(current_user_key, u_info['name'], current_role)
-        elif act_name == ACTIVITIES[2]: render_activity3(current_user_key, u_info['name'], current_role)
+        if act_name == ACTIVITIES[0]: render_activity1(current_user_key, u_info['name'], current_role, user_class_group)
+        elif act_name == ACTIVITIES[1]: render_activity2(current_user_key, u_info['name'], current_role, user_class_group)
+        elif act_name == ACTIVITIES[2]: render_activity3(current_user_key, u_info['name'], current_role, user_class_group)
         
         st.markdown("<br><br>", unsafe_allow_html=True)
         if st.button("⬅️ 메인 화면으로 돌아가기", use_container_width=True):
@@ -880,34 +926,71 @@ else:
                     st.rerun()
 
                 st.markdown("---")
-                st.subheader("⏰ 수행평가 제출 기간(타이머) 설정")
-                st.info("💡 설정한 기간 외에는 학생들이 활동지에 내용을 입력하거나 저장(제출)할 수 없도록 완벽하게 차단됩니다.")
-                deadlines = fresh_config.get("deadlines", {})
+                st.subheader("⏰ 반별 수행평가 수업 시간표 및 제출 기한 설정")
+                st.info("💡 각 반별로 일주일(3시간) 수업 요일/시간과 최종 마감일을 설정합니다. 설정된 수업 시간 외에는 학생의 입력과 제출이 완벽히 차단됩니다.")
                 
-                with st.form("deadline_form"):
-                    new_deadlines = {}
-                    for act in ACTIVITIES:
-                        st.markdown(f"**{act}**")
-                        cols = st.columns(4)
-                        c_start = deadlines.get(act, {}).get("start", "2026-01-01 00:00")
-                        c_end = deadlines.get(act, {}).get("end", "2030-12-31 23:59")
-                        try:
-                            s_dt = datetime.datetime.strptime(c_start, "%Y-%m-%d %H:%M")
-                            e_dt = datetime.datetime.strptime(c_end, "%Y-%m-%d %H:%M")
-                        except:
-                            s_dt = datetime.datetime.now()
-                            e_dt = datetime.datetime.now() + datetime.timedelta(days=7)
-                        
-                        s_date = cols[0].date_input("시작일", value=s_dt.date(), key=f"sd_{act}")
-                        s_time = cols[1].time_input("시작시간", value=s_dt.time(), key=f"st_{act}")
-                        e_date = cols[2].date_input("종료일", value=e_dt.date(), key=f"ed_{act}")
-                        e_time = cols[3].time_input("종료시간", value=e_dt.time(), key=f"et_{act}")
-                        
-                        new_deadlines[act] = {"start": f"{s_date} {s_time.strftime('%H:%M')}", "end": f"{e_date} {e_time.strftime('%H:%M')}"}
-                        st.markdown("<br>", unsafe_allow_html=True)
+                selected_act_for_setting = st.selectbox("시간표를 설정할 수행평가 선택", ACTIVITIES)
+                
+                if "deadlines" not in fresh_config: fresh_config["deadlines"] = {}
+                new_act_deadlines = fresh_config["deadlines"].get(selected_act_for_setting, {})
+
+                with st.form(f"deadline_form_for_{selected_act_for_setting}"):
+                    for subj in SUBJECTS:
+                        st.markdown(f"#### 📘 {subj}")
+                        for c_group in CLASSES_MAP[subj]:
+                            with st.expander(f"🏫 {c_group} 시간표 설정", expanded=False):
+                                c_data = new_act_deadlines.get(c_group, {})
+                                c_final = c_data.get("final_dl", "2030-12-31 23:59")
+                                try:
+                                    cf_dt = datetime.datetime.strptime(c_final, "%Y-%m-%d %H:%M")
+                                except:
+                                    cf_dt = datetime.datetime.now()
+
+                                col_f1, col_f2 = st.columns(2)
+                                f_date = col_f1.date_input(f"[{c_group}] 최종 제출 마감일", value=cf_dt.date(), key=f"f_date_{c_group}")
+                                f_time = col_f2.time_input(f"[{c_group}] 최종 마감 시간", value=cf_dt.time(), key=f"f_time_{c_group}")
+
+                                st.write("📌 주간 수업 시간표 (최대 3개)")
+                                c_slots = c_data.get("slots", [
+                                    {"day": "선택안함", "start": "00:00", "end": "00:00"},
+                                    {"day": "선택안함", "start": "00:00", "end": "00:00"},
+                                    {"day": "선택안함", "start": "00:00", "end": "00:00"}
+                                ])
+                                while len(c_slots) < 3: c_slots.append({"day": "선택안함", "start": "00:00", "end": "00:00"})
+
+                                updated_slots = []
+                                for i in range(3):
+                                    sc1, sc2, sc3 = st.columns(3)
+                                    day_opts = ["선택안함", "월", "화", "수", "목", "금"]
+                                    cur_day = c_slots[i].get("day", "선택안함")
+                                    day_idx = day_opts.index(cur_day) if cur_day in day_opts else 0
+
+                                    try:
+                                        st_t = datetime.datetime.strptime(c_slots[i].get("start", "09:00"), "%H:%M").time()
+                                        en_t = datetime.datetime.strptime(c_slots[i].get("end", "09:50"), "%H:%M").time()
+                                    except:
+                                        st_t = datetime.datetime.strptime("09:00", "%H:%M").time()
+                                        en_t = datetime.datetime.strptime("09:50", "%H:%M").time()
+
+                                    slot_day = sc1.selectbox(f"수업 {i+1} 요일", day_opts, index=day_idx, key=f"day_{c_group}_{i}")
+                                    slot_start = sc2.time_input(f"수업 {i+1} 시작", value=st_t, key=f"st_{c_group}_{i}")
+                                    slot_end = sc3.time_input(f"수업 {i+1} 종료", value=en_t, key=f"en_{c_group}_{i}")
+
+                                    updated_slots.append({
+                                        "day": slot_day,
+                                        "start": slot_start.strftime("%H:%M"),
+                                        "end": slot_end.strftime("%H:%M")
+                                    })
+
+                                new_act_deadlines[c_group] = {
+                                    "final_dl": f"{f_date} {f_time.strftime('%H:%M')}",
+                                    "slots": updated_slots
+                                }
                     
-                    if st.form_submit_button("제출 기간 저장 및 적용", type="primary"):
-                        fresh_config["deadlines"] = new_deadlines
+                    if st.form_submit_button("이 수행평가의 반별 시간표 및 마감일 일괄 적용", type="primary"):
+                        if "deadlines" not in fresh_config:
+                            fresh_config["deadlines"] = {}
+                        fresh_config["deadlines"][selected_act_for_setting] = new_act_deadlines
                         save_json(CONFIG_FILE, fresh_config)
                         st.session_state.admin_save_success = True
                         st.rerun()
@@ -996,7 +1079,7 @@ else:
                 
                 student_list = []
                 for uid, info in all_users.items():
-                    if info.get("role") == "학생":
+                    if info.get("role") == "학생" and info.get("approved", True):
                         s_subj = info.get("subject", "").strip()
                         s_class = info.get("class_group", "").strip()
                         
