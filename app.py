@@ -37,7 +37,7 @@ ADMIN_ACCOUNTS = {
     "audskal": {"pw": "1847", "name": "김명남(관리자)"}
 }
 
-# 📌 3학년 하드코딩 기본 활동지 3종 (요청사항 반영)
+# 📌 3학년 하드코딩 기본 활동지 3종
 ACTIVITIES = [
     "[수행평가 1] - 영상으로 떠나는 여행",
     "[수행평가 2] - 나를 성장시킨 장소 지도 만들기",
@@ -94,7 +94,8 @@ def check_active(act_name, class_group):
     # 2. 이번 주 수업 시간 2차 검사
     for slot in slots:
         if slot['day'] != "선택안함":
-            schedule_strs.append(f"{slot['day']}요일 {slot['start']}~{slot['end']}")
+            p_str = f" {slot.get('period', '')}" if slot.get('period', '') and slot.get('period') != "선택안함" else ""
+            schedule_strs.append(f"{slot['day']}요일{p_str} {slot['start']}~{slot['end']}")
             if slot['day'] == current_day:
                 try:
                     st_time = datetime.datetime.strptime(slot["start"], "%H:%M").time()
@@ -162,7 +163,6 @@ def init_system():
             current_config["notices"] = []
             needs_update = True
             
-        # 과목별 수행평가 분리를 위한 초기 데이터 세팅
         if "subject_activities" not in current_config:
             current_config["subject_activities"] = {
                 "3학년 여행지리": ACTIVITIES.copy(),
@@ -178,7 +178,6 @@ def init_system():
             current_config["deadlines"] = {}
             needs_update = True
             
-        # 불필요한 과거 설정 찌꺼기 삭제
         for k in ["tabs", "pdfs", "questions"]:
             if k in current_config:
                 del current_config[k]
@@ -898,7 +897,7 @@ else:
                 st.markdown("---")
 
                 st.subheader("📢 메인 화면 내용 추가/수정/삭제 (자유 양식)")
-                st.info("💡 아래 표에 텍스트를 입력하면 학생들의 메인 화면 상단에 즉시 공지사항으로 표시됩니다. 표의 빈칸을 더블클릭하여 내용을 작성하고 행을 추가/삭제할 수 있습니다.")
+                st.info("💡 표의 빈칸을 더블클릭하여 내용을 작성하고 행을 추가/삭제할 수 있습니다. 저장 시 학생들 화면 최상단에 노출됩니다.")
                 fresh_config = load_json(CONFIG_FILE, {})
 
                 current_notices = fresh_config.get("notices", [])
@@ -940,15 +939,20 @@ else:
                                 f_time = col_f2.time_input(f"[{c_group}] 최종 마감 시간", value=cf_dt.time(), key=f"f_time_{c_group}")
 
                                 st.write("📌 주간 수업 시간표 (최대 3개)")
-                                c_slots = c_data.get("slots", [{"day": "선택안함", "start": "00:00", "end": "00:00"}] * 3)
-                                while len(c_slots) < 3: c_slots.append({"day": "선택안함", "start": "00:00", "end": "00:00"})
+                                c_slots = c_data.get("slots", [{"day": "선택안함", "period": "선택안함", "start": "00:00", "end": "00:00"}] * 3)
+                                while len(c_slots) < 3: c_slots.append({"day": "선택안함", "period": "선택안함", "start": "00:00", "end": "00:00"})
 
                                 updated_slots = []
                                 for i in range(3):
-                                    sc1, sc2, sc3 = st.columns(3)
+                                    sc1, sc2, sc3, sc4 = st.columns(4)
                                     day_opts = ["선택안함", "월", "화", "수", "목", "금"]
+                                    period_opts = ["선택안함", "1교시", "2교시", "3교시", "4교시", "5교시", "6교시", "7교시", "8교시", "방과후"]
+                                    
                                     cur_day = c_slots[i].get("day", "선택안함")
                                     day_idx = day_opts.index(cur_day) if cur_day in day_opts else 0
+                                    
+                                    cur_period = c_slots[i].get("period", "선택안함")
+                                    period_idx = period_opts.index(cur_period) if cur_period in period_opts else 0
 
                                     try:
                                         st_t = datetime.datetime.strptime(c_slots[i].get("start", "09:00"), "%H:%M").time()
@@ -958,10 +962,18 @@ else:
                                         en_t = datetime.datetime.strptime("09:50", "%H:%M").time()
 
                                     slot_day = sc1.selectbox(f"수업 {i+1} 요일", day_opts, index=day_idx, key=f"day_{c_group}_{i}")
-                                    slot_start = sc2.time_input(f"수업 {i+1} 시작", value=st_t, key=f"st_{c_group}_{i}")
-                                    slot_end = sc3.time_input(f"수업 {i+1} 종료", value=en_t, key=f"en_{c_group}_{i}")
+                                    slot_period = sc2.selectbox(f"수업 {i+1} 교시", period_opts, index=period_idx, key=f"period_{c_group}_{i}")
+                                    
+                                    # step=600은 10분 단위 설정 (스트림릿 지원)
+                                    slot_start = sc3.time_input(f"수업 {i+1} 시작", value=st_t, key=f"st_{c_group}_{i}", step=600)
+                                    slot_end = sc4.time_input(f"수업 {i+1} 종료", value=en_t, key=f"en_{c_group}_{i}", step=600)
 
-                                    updated_slots.append({"day": slot_day, "start": slot_start.strftime("%H:%M"), "end": slot_end.strftime("%H:%M")})
+                                    updated_slots.append({
+                                        "day": slot_day,
+                                        "period": slot_period,
+                                        "start": slot_start.strftime("%H:%M"),
+                                        "end": slot_end.strftime("%H:%M")
+                                    })
 
                                 new_act_deadlines[c_group] = {"final_dl": f"{f_date} {f_time.strftime('%H:%M')}", "slots": updated_slots}
                         
@@ -1116,7 +1128,7 @@ else:
                 
                 student_list = []
                 for uid, info in all_users.items():
-                    if info.get("role") == "학생":
+                    if info.get("role") == "학생" and info.get("approved", True):
                         s_subj = info.get("subject", "").strip()
                         s_class = info.get("class_group", "").strip()
                         
