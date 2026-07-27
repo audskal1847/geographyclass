@@ -39,9 +39,9 @@ ADMIN_ACCOUNTS = {
 
 # 📌 3학년 하드코딩 기본 활동지 3종
 ACTIVITIES = [
-    "[수행평가 1] - 영상으로 떠나는 여행",
-    "[수행평가 2] - 나를 성장시킨 장소 지도 만들기",
-    "[수행평가 3] - 나의 세계관에 대해 알아가는 여행"
+    "[활동지1] - 수행평가 1 (영상으로 떠나는 여행)",
+    "[활동지2] - 수행평가 2 (나를 성장시킨 장소 지도 만들기)",
+    "[활동지3] - 수행평가 3 (나의 세계관에 대해 알아가는 '여행')"
 ]
 
 INFO_BOX = "<div style='background-color: #f0f4f8; padding: 15px; border-radius: 8px; font-size: 17px; font-weight: 600; color: #222; margin-bottom: 15px; border-left: 5px solid #0056b3; line-height: 1.5;'>{}</div>"
