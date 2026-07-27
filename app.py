@@ -34,9 +34,9 @@ ADMIN_ACCOUNTS = {
 
 # 📌 수행평가 중심 활동지 3종 구성
 ACTIVITIES = [
-    "[수행평가 1] - 영상으로 떠나는 여행",
-    "[수행평가 2] - 나를 성장시킨 장소 지도 만들기",
-    "[수행평가 3] - 나의 세계관에 대해 알아가는 여행"
+    "[활동지1] - 수행평가 1 (영상으로 떠나는 여행)",
+    "[활동지2] - 수행평가 2 (나를 성장시킨 장소 지도 만들기)",
+    "[활동지3] - 수행평가 3 (나의 세계관에 대해 알아가는 '여행')"
 ]
 
 INFO_BOX = "<div style='background-color: #f0f4f8; padding: 15px; border-radius: 8px; font-size: 17px; font-weight: 600; color: #222; margin-bottom: 15px; border-left: 5px solid #0056b3; line-height: 1.5;'>{}</div>"
@@ -599,10 +599,22 @@ def render_activity3(user_key, u_name, current_role):
 
 # --- 메인 공지사항 렌더링 ---
 def render_class_overview(current_role, u_info):
-    st.subheader(f"🎯 [{u_info.get('subject', '전체')}] 수행평가 모듈 안내")
+    st.subheader(f"🎯 [{u_info.get('subject', '전체')}] 수행평가 및 활동 모듈")
     st.markdown("---")
     
     app_config = load_json(CONFIG_FILE, {})
+    
+    # 📌 (해결 1) 공지사항 즉각 렌더링 로직 위치 복원
+    notices = app_config.get("notices", [])
+    if notices:
+        st.markdown("### 📢 알림 및 공지사항")
+        for notice in notices:
+            t = notice.get("제목", "").strip()
+            c = notice.get("내용", "").strip()
+            if t or c:
+                st.info(f"**{t}**\n\n{c}")
+        st.markdown("---")
+
     materials = app_config.get("materials", [])
     if materials:
         st.subheader("👨‍🏫 수업 공지 및 자료실")
@@ -987,8 +999,12 @@ else:
                     if info.get("role") == "학생":
                         s_subj = info.get("subject", "").strip()
                         s_class = info.get("class_group", "").strip()
-                        if s_subj == view_subj.strip():
-                            if view_class == "전체 보기" or s_class == view_class.strip():
+                        
+                        target_subj = view_subj.strip()
+                        target_class = view_class.strip()
+                        
+                        if s_subj == target_subj:
+                            if target_class == "전체 보기" or s_class == target_class:
                                 student_list.append(uid)
                 
                 if not student_list:
