@@ -520,7 +520,7 @@ def render_class_overview(current_role, u_info):
                 if st.button(f"📄 {act}", use_container_width=True): change_page(act)
     else: st.info("아직 이 과목에 할당된 수행평가 목록이 없습니다.")
 
-st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", layout="wide")
+st.set_page_config(page_title="지리 수업 및 활동 어시스트 프로그램", layout="wide")
 st.markdown("""
 <style>
 [data-testid="stSidebar"] .stMarkdown p, [data-testid="stSidebar"] .stSelectbox label p, [data-testid="stSidebar"] .stTextInput label p, [data-testid="stSidebar"] .stRadio label p, [data-testid="stSidebar"] div[data-baseweb="radio"] div { font-size: 20px !important; font-weight: 900 !important; color: #111111 !important; }
