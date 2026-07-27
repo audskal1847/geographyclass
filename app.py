@@ -121,6 +121,9 @@ def init_system():
         if "deadlines" not in current_config:
             current_config["deadlines"] = {act: {"start": "2024-01-01 00:00", "end": "2030-12-31 23:59"} for act in ACTIVITIES}
             needs_update = True
+        if "notices" not in current_config:
+            current_config["notices"] = []
+            needs_update = True
             
         for k in ["tabs", "pdfs", "questions"]:
             if k in current_config:
@@ -296,7 +299,6 @@ def render_activity1(user_key, u_name, current_role):
     category = ACTIVITIES[0]
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
     
-    # 📌 입력 기간 확인 로직
     is_active, s_str, e_str = check_active(category)
     disabled_flag = (current_role == "학생" and not is_active)
     
@@ -833,12 +835,41 @@ else:
             menu_tabs = st.tabs(["📌 수업 공지 및 기한 설정", "👥 회원 관리", "📥 학생 자료 조회", "💾 데이터 백업 및 복구(중요)"])
             
             with menu_tabs[0]:
+                if st.session_state.get("admin_save_success", False):
+                    st.balloons()
+                    st.markdown("""
+                    <div style='text-align: center; padding: 25px; background-color: #e8f5e9; color: #2e7d32; border-radius: 15px; border: 3px solid #4CAF50; margin: 20px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
+                        <h2 style='margin:0 0 10px 0; color: #2e7d32;'>🎉 화면 저장이 완료되었습니다!</h2>
+                        <p style='margin:0; font-size: 18px; font-weight: bold;'>변경하신 내용이 데이터베이스에 안전하게 저장되어 즉시 반영됩니다.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.session_state.admin_save_success = False
+
                 render_class_overview(current_role, u_info)
-                
+                st.markdown("---")
+
+                st.subheader("📢 메인 화면 내용 추가/수정/삭제 (자유 양식)")
+                st.info("💡 아래 표에 텍스트를 입력하면 학생들의 메인 화면 상단에 즉시 공지사항으로 표시됩니다. 표의 빈칸을 더블클릭하여 내용을 작성하고 행을 추가/삭제할 수 있습니다.")
+                fresh_config = load_json(CONFIG_FILE, {})
+
+                current_notices = fresh_config.get("notices", [])
+                df_notices = pd.DataFrame(current_notices) if current_notices else pd.DataFrame([{"제목": "", "내용": ""}])
+
+                edited_notices = st.data_editor(df_notices, num_rows="dynamic", use_container_width=True, hide_index=True)
+
+                if st.button("메인 화면 공지사항 저장 및 적용", type="primary"):
+                    valid_notices = []
+                    for row in edited_notices.to_dict('records'):
+                        if str(row.get("제목", "")).strip() or str(row.get("내용", "")).strip():
+                            valid_notices.append(row)
+                    fresh_config["notices"] = valid_notices
+                    save_json(CONFIG_FILE, fresh_config)
+                    st.session_state.admin_save_success = True
+                    st.rerun()
+
                 st.markdown("---")
                 st.subheader("⏰ 수행평가 제출 기간(타이머) 설정")
                 st.info("💡 설정한 기간 외에는 학생들이 활동지에 내용을 입력하거나 저장(제출)할 수 없도록 완벽하게 차단됩니다.")
-                fresh_config = load_json(CONFIG_FILE, {})
                 deadlines = fresh_config.get("deadlines", {})
                 
                 with st.form("deadline_form"):
@@ -866,7 +897,7 @@ else:
                     if st.form_submit_button("제출 기간 저장 및 적용", type="primary"):
                         fresh_config["deadlines"] = new_deadlines
                         save_json(CONFIG_FILE, fresh_config)
-                        st.success("기간 설정이 안전하게 저장되었습니다! 학생들의 화면에 즉시 적용됩니다.")
+                        st.session_state.admin_save_success = True
                         st.rerun()
 
                 st.markdown("---")
@@ -878,11 +909,11 @@ else:
                     if st.form_submit_button("등록", type="primary"):
                         if mat_title and mat_link:
                             new_mat = {"id": f"mat_{datetime.datetime.now().strftime('%d%H%M%S')}", "title": mat_title, "type": "link", "content": mat_link, "subject": mat_subj}
-                            fresh_config = load_json(CONFIG_FILE, {})
                             if "materials" not in fresh_config: fresh_config["materials"] = []
                             fresh_config["materials"].append(new_mat)
                             save_json(CONFIG_FILE, fresh_config)
-                            st.success("등록 완료!"); st.rerun()
+                            st.session_state.admin_save_success = True
+                            st.rerun()
 
             with menu_tabs[1]:
                 all_users = load_json(USERS_FILE, {})
