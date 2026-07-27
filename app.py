@@ -95,7 +95,6 @@ def check_active(act_name, class_group):
     for slot in slots:
         if slot['day'] != "선택안함":
             p_str = f" {slot.get('period', '')}" if slot.get('period', '') and slot.get('period') != "선택안함" else ""
-            # 취소선 방지를 위해 물결표(~) 대신 하이픈(-) 사용
             schedule_strs.append(f"{slot['day']}요일{p_str} {slot['start']} - {slot['end']}")
             if slot['day'] == current_day:
                 try:
@@ -354,6 +353,7 @@ def generate_activity_html(act_name, ans, u_name):
     html += "</body></html>"
     return html
 
+
 # --- [3] 하드코딩 수행평가 활동지 렌더링 함수들 ---
 def render_activity1(user_key, u_name, current_role, user_class):
     category = ACTIVITIES[0]
@@ -423,7 +423,6 @@ def render_activity1(user_key, u_name, current_role, user_class):
         st.markdown("---")
         html_data = generate_activity_html(category, ans, u_name)
         st.download_button(f"📥 {category} 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_수행평가1.html", mime="text/html")
-
 
 def render_activity2(user_key, u_name, current_role, user_class):
     category = ACTIVITIES[1]
@@ -1305,42 +1304,53 @@ else:
 
             # --- 💾 탭 5: 데이터 백업 및 복구 ---
             with menu_tabs[4]:
-                st.subheader("💾 데이터베이스(DB) 백업 파일 저장 및 불러오기")
-                st.info("💡 동료 선생님의 훌륭한 아이디어입니다! 프로그램 코드를 업데이트하거나 서버가 재부팅되어도, 아래에서 다운로드해둔 DB 파일만 있으면 언제든 모든 데이터를 100% 복구할 수 있습니다.")
-                
+                st.subheader("💾 시스템 데이터베이스(DB) 개별 백업 및 복구")
+                st.error("🚨 [주의] 데이터 복구(업로드) 시 기존 데이터는 지워지고 업로드한 파일로 완전히 덮어씌워집니다. 신중하게 작업해 주세요!")
+
                 col_bk1, col_bk2 = st.columns(2)
                 with col_bk1:
-                    st.markdown("#### 1️⃣ [수동 백업] DB 파일 저장")
-                    st.write("현재까지 가입한 학생 목록과 제출된 모든 수행평가 데이터를 내 컴퓨터에 안전하게 파일로 저장합니다.")
-                    
-                    all_users_str = load_json(USERS_FILE, {})
-                    all_data_str = load_json(DATA_FILE, {})
-                    all_config_str = load_json(CONFIG_FILE, {})
-                    
-                    backup_dict = {
-                        "users": all_users_str, 
-                        "data": all_data_str,
-                        "config": all_config_str
-                    }
-                    backup_json = json.dumps(backup_dict, ensure_ascii=False, indent=2)
-                    
-                    st.download_button("⬇️ 현재 전체 DB 파일 다운로드 (.json)", data=backup_json.encode('utf-8-sig'), file_name=f"backup_DB_전체_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.json", type="primary", use_container_width=True)
-                
+                    st.markdown("#### 1️⃣ 현재 시스템 DB 다운로드 (백업)")
+                    st.info("💡 만약의 사태에 대비하여 아래 세 가지 파일을 각각 다운로드하여 보관하세요.")
+
+                    str_data = json.dumps(load_json(DATA_FILE, {}), ensure_ascii=False, indent=2)
+                    st.download_button("📥 1. 학생 학습 데이터 백업 (learning_data.json)", data=str_data.encode('utf-8-sig'), file_name=f"learning_data_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.json", use_container_width=True)
+
+                    str_users = json.dumps(load_json(USERS_FILE, {}), ensure_ascii=False, indent=2)
+                    st.download_button("📥 2. 회원 정보 데이터 백업 (users.json)", data=str_users.encode('utf-8-sig'), file_name=f"users_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.json", use_container_width=True)
+
+                    str_config = json.dumps(load_json(CONFIG_FILE, {}), ensure_ascii=False, indent=2)
+                    st.download_button("📥 3. 시스템 설정 데이터 백업 (config.json)", data=str_config.encode('utf-8-sig'), file_name=f"config_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.json", use_container_width=True)
+
                 with col_bk2:
-                    st.markdown("#### 2️⃣ [데이터 복원] DB 파일 불러오기")
-                    st.write("서버 초기화 시, 다운로드 해두었던 전체 백업 파일을 아래에 업로드하여 과거 데이터를 완벽하게 되살립니다.")
-                    uploaded_file = st.file_uploader("백업 파일(.json) 업로드", type="json", label_visibility="collapsed")
-                    if st.button("위 파일로 시스템 전체 데이터 복구 실행", type="primary", use_container_width=True):
-                        if uploaded_file:
+                    st.markdown("#### 2️⃣ 과거 시스템 DB 불러오기 (복구)")
+                    st.info("💡 보관해둔 개별 json 파일을 아래에 각각 업로드하면 해당 영역만 100% 복구됩니다.")
+
+                    st.write("📂 [1] 학생 학습 데이터 복구")
+                    up_data = st.file_uploader("learning_data.json 업로드", type="json", key="up_data", label_visibility="collapsed")
+                    if st.button("학생 학습 데이터 복구 실행", use_container_width=True):
+                        if up_data:
                             try:
-                                restored = json.load(uploaded_file)
-                                if "users" in restored: save_json(USERS_FILE, restored["users"])
-                                if "data" in restored: save_json(DATA_FILE, restored["data"])
-                                if "config" in restored: save_json(CONFIG_FILE, restored["config"])
-                                st.success("🎉 데이터 복구가 완벽히 완료되었습니다! 변경사항 적용을 위해 아래 버튼을 클릭해주세요.")
-                                if st.button("🔄 시스템 새로고침", type="primary"):
-                                    st.rerun()
-                            except:
-                                st.error("❌ 올바른 백업 파일이 아닙니다.")
-                        else:
-                            st.warning("파일을 먼저 업로드해주세요.")
+                                restored = json.load(up_data)
+                                save_json(DATA_FILE, restored)
+                                st.success("✅ 학습 데이터 복구 완료!"); st.rerun()
+                            except: st.error("❌ 올바른 json 파일이 아닙니다.")
+
+                    st.write("📂 [2] 회원 정보 데이터 복구")
+                    up_users = st.file_uploader("users.json 업로드", type="json", key="up_users", label_visibility="collapsed")
+                    if st.button("회원 정보 복구 실행", use_container_width=True):
+                        if up_users:
+                            try:
+                                restored = json.load(up_users)
+                                save_json(USERS_FILE, restored)
+                                st.success("✅ 회원 정보 복구 완료!"); st.rerun()
+                            except: st.error("❌ 올바른 json 파일이 아닙니다.")
+
+                    st.write("📂 [3] 시스템 설정 데이터 복구")
+                    up_config = st.file_uploader("config.json 업로드", type="json", key="up_config", label_visibility="collapsed")
+                    if st.button("시스템 설정 복구 실행", use_container_width=True):
+                        if up_config:
+                            try:
+                                restored = json.load(up_config)
+                                save_json(CONFIG_FILE, restored)
+                                st.success("✅ 시스템 설정 복구 완료!"); st.rerun()
+                            except: st.error("❌ 올바른 json 파일이 아닙니다.")
