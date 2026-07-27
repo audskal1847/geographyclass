@@ -10,7 +10,6 @@ import zipfile
 
 # --- [0] 서버 한국시간(KST) 보정 함수 ---
 def get_kst_now():
-    # 스트림릿 클라우드는 기본 UTC이므로 +9시간 보정
     return datetime.datetime.utcnow() + datetime.timedelta(hours=9)
 
 # --- [1] 파일 경로 설정 및 상수 정의 ---
@@ -353,7 +352,6 @@ def generate_activity_html(act_name, ans, u_name):
     html += "</body></html>"
     return html
 
-
 # --- [3] 하드코딩 수행평가 활동지 렌더링 함수들 ---
 def render_activity1(user_key, u_name, current_role, user_class):
     category = ACTIVITIES[0]
@@ -366,7 +364,7 @@ def render_activity1(user_key, u_name, current_role, user_class):
     st.markdown("---")
     
     if current_role == "학생":
-        if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
+        if disabled_flag: st.error(status_msg, icon="🚫")
         else: st.success(status_msg, icon="✅")
     
     st.markdown("#### 1. 자신이 선택한 영상에 대한 첫번째 질문")
@@ -436,7 +434,7 @@ def render_activity2(user_key, u_name, current_role, user_class):
     st.info("한 사람의 살아온 과정은 '장소'의 영향을 받기 마련입니다. 우리의 삶이 이어지는 '장소'는 개인의 느낌과 의미 부여에 따라 저마다 다른 감정을 느낍니다. 이를 지리에서는 '장소감(Sense of place)' 이라고 합니다.\n\n19년 동안의 인생을 살아오면서 지금의 내가 있기까지 성장의 경험을 했던 혹은 나에게 특별한 의미가 있는 장소들을 떠올려 봅시다. 그리고 지금의 내가 있기까지의 기억이 남는 장소를 선정해서 '과거로 떠나는 나를 성장시킨 장소 지도'를 만들어 봅시다. 소중했던 사람들과의 좋은 기억과 추억이 남아 있는 장소로 한 번 떠나봅시다.")
     
     if current_role == "학생":
-        if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
+        if disabled_flag: st.error(status_msg, icon="🚫")
         else: st.success(status_msg, icon="✅")
         
     st.markdown("---")
@@ -507,7 +505,7 @@ def render_activity3(user_key, u_name, current_role, user_class):
     st.markdown("---")
 
     if current_role == "학생":
-        if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
+        if disabled_flag: st.error(status_msg, icon="🚫")
         else: st.success(status_msg, icon="✅")
 
     st.markdown("#### 1. 세계 인식 수준에 대한 확인")
@@ -630,7 +628,7 @@ def render_custom_activity(user_key, u_name, current_role, user_class, act_name,
     st.markdown("---")
 
     if current_role == "학생":
-        if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
+        if disabled_flag: st.error(status_msg, icon="🚫")
         else: st.success(status_msg, icon="✅")
 
     custom_form = config.get("custom_forms", {}).get(act_name, [])
@@ -701,7 +699,6 @@ def render_class_overview(current_role, u_info):
     st.markdown("### 📝 학년별 수행평가 목록")
     st.caption("아래 버튼을 눌러 해당 수행평가 작성 화면으로 이동하세요.")
     
-    # 📌 과목에 연동된 동적/정적 활동지 버튼 렌더링
     acts_for_subj = app_config.get("subject_activities", {}).get(u_info.get('subject', '전체'), [])
     
     if acts_for_subj:
@@ -936,7 +933,8 @@ else:
 
                                 col_f1, col_f2 = st.columns(2)
                                 f_date = col_f1.date_input(f"[{c_group}] 최종 제출 마감일", value=cf_dt.date(), key=f"f_date_{c_group}")
-                                f_time = col_f2.time_input(f"[{c_group}] 최종 마감 시간", value=cf_dt.time(), key=f"f_time_{c_group}")
+                                # 📌 오류 개선: 텍스트 입력창 적용 (자유 타이핑)
+                                f_time_str = col_f2.text_input(f"[{c_group}] 최종 마감 시간 (HH:MM 입력)", value=cf_dt.strftime("%H:%M"), key=f"f_time_{c_group}")
 
                                 st.write("📌 주간 수업 시간표 (최대 3개)")
                                 c_slots = c_data.get("slots", [{"day": "선택안함", "period": "선택안함", "start": "00:00", "end": "00:00"}] * 3)
@@ -954,21 +952,24 @@ else:
                                     cur_period = c_slots[i].get("period", "선택안함")
                                     period_idx = period_opts.index(cur_period) if cur_period in period_opts else 0
 
-                                    try:
-                                        st_t = datetime.datetime.strptime(c_slots[i].get("start", "09:00"), "%H:%M").time()
-                                        en_t = datetime.datetime.strptime(c_slots[i].get("end", "09:50"), "%H:%M").time()
-                                    except:
-                                        st_t = datetime.datetime.strptime("09:00", "%H:%M").time()
-                                        en_t = datetime.datetime.strptime("09:50", "%H:%M").time()
+                                    st_t_str = c_slots[i].get("start", "09:00")
+                                    en_t_str = c_slots[i].get("end", "09:50")
 
                                     slot_day = sc1.selectbox(f"수업 {i+1} 요일", day_opts, index=day_idx, key=f"day_{c_group}_{i}")
                                     slot_period = sc2.selectbox(f"수업 {i+1} 교시", period_opts, index=period_idx, key=f"period_{c_group}_{i}")
-                                    slot_start = sc3.time_input(f"수업 {i+1} 시작", value=st_t, key=f"st_{c_group}_{i}", step=600)
-                                    slot_end = sc4.time_input(f"수업 {i+1} 종료", value=en_t, key=f"en_{c_group}_{i}", step=600)
+                                    
+                                    # 📌 오류 개선: 텍스트 입력창으로 전면 교체 (자유 타이핑)
+                                    slot_start_str = sc3.text_input(f"수업 {i+1} 시작 (HH:MM)", value=st_t_str, key=f"st_{c_group}_{i}")
+                                    slot_end_str = sc4.text_input(f"수업 {i+1} 종료 (HH:MM)", value=en_t_str, key=f"en_{c_group}_{i}")
 
-                                    updated_slots.append({"day": slot_day, "period": slot_period, "start": slot_start.strftime("%H:%M"), "end": slot_end.strftime("%H:%M")})
+                                    updated_slots.append({
+                                        "day": slot_day, 
+                                        "period": slot_period, 
+                                        "start": slot_start_str, 
+                                        "end": slot_end_str
+                                    })
 
-                                new_act_deadlines[c_group] = {"final_dl": f"{f_date} {f_time.strftime('%H:%M')}", "slots": updated_slots}
+                                new_act_deadlines[c_group] = {"final_dl": f"{f_date} {f_time_str}", "slots": updated_slots}
                         
                         if st.form_submit_button("이 수행평가의 반별 시간표 및 마감일 일괄 저장", type="primary"):
                             fresh_config["deadlines"][selected_act_for_setting] = new_act_deadlines
