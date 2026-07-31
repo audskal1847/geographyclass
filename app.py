@@ -242,10 +242,11 @@ def generate_html_content(act_name, ans):
         html += f"<p><b>▶ 어떤 세계관을 갖고 싶은가?</b></p><div class='content-box'>{ans.get('goal_2','')}</div>"
         
     elif act_name == ACT_2_1:
+        html += f"<h4>👥 모둠 구성원</h4><ul><li>1: {ans.get('m1_id','')} {ans.get('m1_name','')}</li><li>2: {ans.get('m2_id','')} {ans.get('m2_name','')}</li><li>3: {ans.get('m3_id','')} {ans.get('m3_name','')}</li><li>4: {ans.get('m4_id','')} {ans.get('m4_name','')}</li></ul>"
         html += "<h3>Step 1. 우리 지역에 대한 '밈' 수집 및 지리 정보 팩트 체크 일지</h3>"
-        html += f"<p><b>1. 유쾌한 편견이나 밈:</b> {ans.get('step1_1','')}</p>"
-        html += f"<p><b>2. 대중에게 심어준 우리 지역에 대한 주관적 이미지:</b> {ans.get('step1_2','')}</p>"
-        html += f"<p><b>3. 특별한 장소감, 장소성, 도시 정체성을 주는 장소:</b> {ans.get('step1_3','')}</p>"
+        html += f"<p><b>1. 우리가 선택한 우리 지역의 밈:</b> {ans.get('step1_1','')}</p>"
+        html += f"<p><b>2. 이 밈이 대중에게 심어준 우리 지역에 대한 주관적 이미지:</b> {ans.get('step1_2','')}</p>"
+        html += f"<p><b>3. 우리 모둠에게 특별한 장소감, 장소성, 도시 정체성을 주는 장소:</b> {ans.get('step1_3','')}</p>"
         html += f"<p><b>4. 그 장소에서 느끼는 감정이나 생각:</b> {ans.get('step1_4','')}</p>"
         html += "<h3>Step 2. 도시 발달 과정과 객관적 지표</h3>"
         html += f"<p><b>1. 우리 모둠이 탐구할 시기:</b> {ans.get('step2_1_period','')}</p>"
@@ -258,9 +259,10 @@ def generate_html_content(act_name, ans):
         html += f"<p><b>1. 기존 프레임(대중의 오해):</b> {ans.get('step4_1','')}</p>"
         html += f"<p><b>2. 우리 모둠이 도출한 지리적 본질:</b> {ans.get('step4_2','')}</p>"
         html += f"<p><b>3. 우리 모둠의 반전 광고 슬로건:</b> {ans.get('step4_3','')}</p>"
-        html += f"<p><b>4. 우리 모둠이 제안하는 울산의 거주 적합성 개선 아이디어:</b> {ans.get('step4_4','')}</p>"
+        html += f"<p><b>4. 우리 모둠이 제안하는 개선 아이디어:</b> {ans.get('step4_4','')}</p>"
 
     elif act_name == ACT_2_2:
+        html += f"<h4>👥 모둠 구성원</h4><ul><li>1: {ans.get('m1_id','')} {ans.get('m1_name','')}</li><li>2: {ans.get('m2_id','')} {ans.get('m2_name','')}</li><li>3: {ans.get('m3_id','')} {ans.get('m3_name','')}</li><li>4: {ans.get('m4_id','')} {ans.get('m4_name','')}</li></ul>"
         html += "<h3>Step 1. 우리 동네 현황 진단</h3>"
         html += f"<p><b>1. 대상 지역:</b> {ans.get('step1_1','')}</p>"
         html += "<h4>2. 15분 생활권 반경 내 필수 서비스 체크리스트</h4><table><tr><th>구분</th><th>필수 서비스 항목</th><th>충분</th><th>부족 or 없음</th></tr>"
@@ -316,6 +318,20 @@ def generate_activity_html(act_name, ans, u_name):
     return html
 
 # --- [3] 활동지 렌더링 함수들 ---
+def render_group_members(ans, disabled_flag):
+    st.markdown("#### 👥 모둠 구성원 (학번/이름)")
+    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+    m1_id = col_m1.text_input("모둠원1 학번", value=ans.get("m1_id", st.session_state.user_info.get("id", "")), disabled=disabled_flag)
+    m1_name = col_m1.text_input("모둠원1 이름", value=ans.get("m1_name", st.session_state.user_info.get("name", "")), disabled=disabled_flag)
+    m2_id = col_m2.text_input("모둠원2 학번", value=ans.get("m2_id", ""), disabled=disabled_flag)
+    m2_name = col_m2.text_input("모둠원2 이름", value=ans.get("m2_name", ""), disabled=disabled_flag)
+    m3_id = col_m3.text_input("모둠원3 학번", value=ans.get("m3_id", ""), disabled=disabled_flag)
+    m3_name = col_m3.text_input("모둠원3 이름", value=ans.get("m3_name", ""), disabled=disabled_flag)
+    m4_id = col_m4.text_input("모둠원4 학번", value=ans.get("m4_id", ""), disabled=disabled_flag)
+    m4_name = col_m4.text_input("모둠원4 이름", value=ans.get("m4_name", ""), disabled=disabled_flag)
+    st.markdown("---")
+    return m1_id, m1_name, m2_id, m2_name, m3_id, m3_name, m4_id, m4_name
+
 def render_activity1_3th(user_key, u_name, current_role, user_class):
     category = ACT_3_1
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
@@ -503,22 +519,42 @@ def render_activity1_2nd(user_key, u_name, current_role, user_class):
         if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
         else: st.success(status_msg, icon="✅")
 
+    # 📌 모둠 구성원 추가
+    m1_id, m1_name, m2_id, m2_name, m3_id, m3_name, m4_id, m4_name = render_group_members(ans, disabled_flag)
+
     st.markdown("#### Step 1. 우리 지역에 대한 '밈' 수집 및 지리 정보 팩트 체크 일지")
-    step1_1 = st.text_input("1. 우리 지역에 대한 유쾌한 편견이나 밈 선정", value=ans.get("step1_1", ""), disabled=disabled_flag)
-    step1_2 = st.text_input("2. 이 밈이 대중에게 심어준 우리 지역에 대한 주관적 이미지 (편견 혹은 선입견)", value=ans.get("step1_2", ""), disabled=disabled_flag)
+    st.markdown("▶ **교과서 13쪽 내용 中**")
+    st.info("개인이 여러 장소에서 경험을 쌓으며 형성하는 주관적인 감정을 장소감이라 합니다. 이 장소감이 여러 사람에게 공유되면서 형성된 독특한 이미지가 바로 장소성이며, 이것이 확장되어 그 도시만의 독특한 특성인 도시 정체성을 만듭니다.")
+    
+    step1_1 = st.text_input("1. 우리가 선택한 우리 지역의 인터넷, SNS, 혹은 타 지역 친구들에게 들었던 우리 지역에 대한 유쾌한 편견이나 밈을 하나 선정 '밈'", value=ans.get("step1_1", ""), disabled=disabled_flag)
+    step1_2 = st.text_input("2. 이 밈이 대중에게 심어준 우리 지역에 대한 주관적 이미지 (편견 혹은 선입견) 예) 울산은 9시만 되면 도시 전체가 소등?", value=ans.get("step1_2", ""), disabled=disabled_flag)
+    
+    st.markdown("▶ **나만의 주관적 장소감 성찰**")
+    st.info("타 지역 사람들의 선입견과 달리, '우리 지역에서 나를 성장시킨 장소'나 '우리가 가장 애착을 느끼는 장소'를 적고 그에 대한 우리의 감정이나 생각을 적어 보세요.")
+    
     step1_3 = st.text_input("3. 우리 모둠에게 특별한 장소감, 장소성, 도시 정체성을 주는 우리 지역의 장소", value=ans.get("step1_3", ""), disabled=disabled_flag)
     step1_4 = st.text_area("4. 그 장소에서 느끼는 감정이나 생각", value=ans.get("step1_4", ""), disabled=disabled_flag)
     
     st.markdown("---")
     st.markdown("#### Step 2. 도시 발달 과정과 객관적 지표")
+    st.markdown("▶ **교과서 14~15, 31~32쪽 내용 中**")
+    st.info("객관적 의미의 도시는 시가지로 구성되며 2·3차 산업 비율이 높은 공간입니다. 도시는 살아있는 생명체처럼 탄생, 성장, 정체, 쇠퇴, 전환의 도시 발달 과정을 겪습니다. 울산은 시대별로 역동적인 변화를 거쳐왔습니다.")
+    
+    st.markdown("▶ **울산의 역사적 발달 과정 추적**\n다음 제시된 울산의 발달 역사 중 우리 조가 탐구할 시기를 선택하고, 당시 울산의 핵심 공간과 객관적 특징을 매칭해 보세요.\n- 조선시대: 울산읍성 중심의 생활권 형성 (울산동헌, 울산객사 중심)\n- 1960~70년대: 특정 공업 지구 지정 이후 정유·조선·자동차 중심의 항만 산업단지 건설\n- 1980~90년대: 택지 개발로 인한 도시 범위 확대 및 대기·수질 오염 환경 문제 발생 (태화강 물고기 폐사)\n- 2000년대~현재: 에코폴리스 울산 선언(2004) 이후 태화강 국가정원 조성 및 도시 재생 사업 추진")
+    
     step2_1_period = st.radio("1. 우리 모둠이 탐구할 시기", ["조선시대", "1960~70년대", "1980~90년대", "2000년대~현재"], index=["조선시대", "1960~70년대", "1980~90년대", "2000년대~현재"].index(ans.get("step2_1_period", "조선시대")) if ans.get("step2_1_period") in ["조선시대", "1960~70년대", "1980~90년대", "2000년대~현재"] else 0, disabled=disabled_flag, horizontal=True)
-    step2_1_space = st.text_input("2. 선택한 시기의 핵심 공간", value=ans.get("step2_1_space", ""), disabled=disabled_flag)
-    step2_1_feat = st.text_input("   객관적 특징", value=ans.get("step2_1_feat", ""), disabled=disabled_flag)
+    step2_1_space = st.text_input("2-1. 선택한 시기의 핵심 공간", value=ans.get("step2_1_space", ""), disabled=disabled_flag)
+    step2_1_feat = st.text_input("2-2. 객관적 특징", value=ans.get("step2_1_feat", ""), disabled=disabled_flag)
+    
+    st.markdown("▶ **지리 데이터 기반 분석**\n우리 모둠이 선택한 시기 울산의 객관적 지표를 지리 정보 서비스나 통계 자료를 통해 확인해 보세요.\n- 추천 검색어: '울산광역시 통계포털', 'KOSIS 지역별 고용조사', '카카오맵/네이버맵 지적편집도'\n- 조사한 구체적 사실/통계 예시) 현재 울산의 제조업 종사자 비율이 약 40% 이상으로 전국 최고 수준이라는 점 / 태화강 수질이 생태 등급으로 회복된 지표 등")
     step2_3 = st.text_area("3. 선택한 시기의 객관적 지리 데이터 혹은 지표", value=ans.get("step2_3", ""), disabled=disabled_flag)
 
     st.markdown("---")
     st.markdown("#### Step 3. 살기 좋은 울산의 조건: 거주 적합성 진단")
-    st.info("💡 만족도 점수 항목을 클릭하여 별의 개수를 선택해주세요.")
+    st.markdown("▶ **교과서 38쪽 내용 中**")
+    st.info("일정한 곳에 머물러 살기 알맞은 조건이나 성질을 거주 적합성이라고 합니다. 이는 지속가능성, 이동성, 안전 및 보안, 서비스 효율성, 경제 성장, 도시 평판 등 삶의 질과 관련된 6대 요소로 이루어집니다. 개인의 연령, 직업, 가치관에 따라 선호하는 거주 적합성은 각기 다르게 나타납니다.")
+    st.markdown("▶ **우리의 시선으로 본 울산의 거주 적합성 스코어보드**\n울산에서 살아가는 10대 고등학생인 여러분의 관점에서, 현재 울산의 거주 적합성 요소를 5점 만점으로 평가하고 그 까닭을 서술해 보세요.")
+    
     stars = ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"]
     default_step3 = [{"거주 적합성 요인": "경제 성장", "만족도 점수": "⭐⭐⭐⭐", "한 줄 평가": "대한민국 최대의 산업수도답게 일자리와 경제적 활력이 뛰어남"}] + [{"거주 적합성 요인": "", "만족도 점수": "⭐⭐⭐", "한 줄 평가": ""} for _ in range(4)]
     step3_df = pd.DataFrame(ans.get("step3_df", default_step3))
@@ -526,6 +562,9 @@ def render_activity1_2nd(user_key, u_name, current_role, user_class):
 
     st.markdown("---")
     st.markdown("#### Step 4. 우리의 방식으로 해 보는 울산 브랜딩: 정체성 리뉴얼")
+    st.markdown("▶ **밈과 지리적 사실의 융합을 통한 '울산성(Ulsan-ity)' 재정의**")
+    st.info("STEP 1~3의 탐구 결과를 바탕으로, 울산의 프레임을 위트 있게 깨부수는 우리 모둠만의 울산 브랜딩 슬로건과 간단한 정책(시설)을 제안해 봅시다.")
+    
     step4_1 = st.text_input("1. 기존 프레임(대중의 오해)", value=ans.get("step4_1", ""), disabled=disabled_flag)
     step4_2 = st.text_input("2. 우리 모둠이 도출한 지리적 본질", value=ans.get("step4_2", ""), disabled=disabled_flag)
     step4_3 = st.text_input("3. 우리 모둠의 반전 광고 슬로건", value=ans.get("step4_3", ""), disabled=disabled_flag)
@@ -536,6 +575,7 @@ def render_activity1_2nd(user_key, u_name, current_role, user_class):
             current_data = load_json(DATA_FILE, {}) 
             if user_key not in current_data: current_data[user_key] = {}
             new_ans = {
+                "m1_id": m1_id, "m1_name": m1_name, "m2_id": m2_id, "m2_name": m2_name, "m3_id": m3_id, "m3_name": m3_name, "m4_id": m4_id, "m4_name": m4_name,
                 "step1_1": step1_1, "step1_2": step1_2, "step1_3": step1_3, "step1_4": step1_4,
                 "step2_1_period": step2_1_period, "step2_1_space": step2_1_space, "step2_1_feat": step2_1_feat, "step2_3": step2_3,
                 "step3_df": edited_step3_df.to_dict('records'),
@@ -562,8 +602,12 @@ def render_activity2_2nd(user_key, u_name, current_role, user_class):
         if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
         else: st.success(status_msg, icon="✅")
 
+    # 📌 모둠 구성원 추가
+    m1_id, m1_name, m2_id, m2_name, m3_id, m3_name, m4_id, m4_name = render_group_members(ans, disabled_flag)
+
     st.markdown("#### Step 1. 우리 동네 현황 진단")
-    step1_1 = st.text_input("1. 대상 지역 (도보 1분 / 반경 1km 생활권 분석)", value=ans.get("step1_1", ""), disabled=disabled_flag)
+    st.markdown("▶ **도보 1분 / 반경 1km 생활권 분석**\n실제 답사와 지도 앱 내용을 통한 필수 서비스 결손 현황 체크")
+    step1_1 = st.text_input("1. 대상 지역 (예: 학교 주변 인근 00아파트 00단지 일대)", value=ans.get("step1_1", ""), disabled=disabled_flag)
     
     st.markdown("**2. 15분 생활권 반경 내 필수 서비스 체크리스트**")
     default_step1_2 = [
@@ -578,20 +622,24 @@ def render_activity2_2nd(user_key, u_name, current_role, user_class):
     edited_step1_2_df = st.data_editor(step1_2_df, hide_index=True, use_container_width=True, disabled=["구분", "필수 서비스 항목"] if disabled_flag else [])
 
     st.markdown("**3. 선택한 지역의 핵심 문제점**")
+    st.info("반드시 실제 현장 답사 및 데이터에 기반한 내용을 작성할 것")
     step1_3_1 = st.text_area("문제점 1 / 데이터:", value=ans.get("step1_3_1", ""), disabled=disabled_flag, height=80)
     step1_3_2 = st.text_area("문제점 2 / 데이터:", value=ans.get("step1_3_2", ""), disabled=disabled_flag, height=80)
     step1_3_3 = st.text_area("문제점 3 / 데이터:", value=ans.get("step1_3_3", ""), disabled=disabled_flag, height=80)
 
     st.markdown("---")
     st.markdown("#### Step 2. 도시 개조 포인트를 활용한 트레이드오프 설계")
-    st.info("💡 100포인트를 한도 내에서 사용하여 공간을 재설계하세요.")
+    st.markdown("▶ **트레이드오프 설계**")
+    st.info("두 개 이상의 상충되는 요구사항(예: 성능 대 비용, 유연성 대 단순성) 사이에서 최선의 선택을 하기 위해 장단점을 저울질하고 조율하는 과정. 완벽한 설계는 존재하지 않으며, 모든 설계는 무엇인가를 얻는 대신 다른 것을 포기하는 구조를 가질 수 밖에 없음")
+    st.markdown("▶ **도시 개조 포인트**\n- 기본 100포인트 부여, 포인트를 활용하여 기존의 비효율적, 차량 중심 공간을 보행자를 위한 친환경 인프라로!!\n- 새롭게 추가하는 카테고리/코드/세부 개조 항목 관련한 포인트는 최소 10pt, 최대 20pt(10~20pt)\n- 포인트는 남김 없이 모두 사용해야 함\n- 최소한의 현실 가능성은 충족할 것 예) 지하철 개통, 공항 건설... ㅠ.ㅠ")
+    
     default_step2 = [{"순번": str(i+1), "선택 코드": "", "버릴 공간": "", "사용 포인트": "", "공간 재설계 이유 및 기대효과": ""} for i in range(8)]
     step2_df = pd.DataFrame(ans.get("step2_df", default_step2))
     edited_step2_df = st.data_editor(step2_df, hide_index=True, use_container_width=True, disabled=disabled_flag)
 
     st.markdown("---")
     st.markdown("#### Step 3. N분 도시 공간 지도 스케치 (이미지 업로드)")
-    st.info("💡 변경 전/후 스케치 사진을 각각 업로드하세요. 업로드 시 이미지로 자동 변환되어 저장됩니다.")
+    st.info("💡 변경 전과 변경 후의 지도 스케치(변경 인프라 및 보행선 관련 내용 표시) 사진을 각각 업로드하세요.")
     
     col_img1, col_img2 = st.columns(2)
     with col_img1:
@@ -610,6 +658,8 @@ def render_activity2_2nd(user_key, u_name, current_role, user_class):
 
     st.markdown("---")
     st.markdown("#### Step 4. 3분 공청회 발표를 위한 준비")
+    st.markdown("▶ **핵심 정책 슬로건과 발표 내용 요약**")
+    st.info("STEP 1~3의 탐구 결과를 바탕으로, 발표 자료를 만들어 봅시다.\n* 핵심 정책 슬로건에는 버릴공간과 문제점 + 채울 인프라와 미래 가치에 대한 내용이 반드시 들어가야 함.")
     step4_1 = st.text_input("1. 핵심 정책 슬로건", value=ans.get("step4_1", ""), disabled=disabled_flag)
     step4_2 = st.text_area("2. 실제 답사 및 데이터로 확인한 선택한 지역의 가장 심각한 공간 문제는 무엇이라고 생각하는가?", value=ans.get("step4_2", ""), disabled=disabled_flag)
     step4_3 = st.text_area("3. 한정된 100pt를 활용해 무엇을 버리고 무엇을 채웠는가? 그 이유는 무엇인가?", value=ans.get("step4_3", ""), disabled=disabled_flag)
@@ -620,6 +670,7 @@ def render_activity2_2nd(user_key, u_name, current_role, user_class):
             current_data = load_json(DATA_FILE, {}) 
             if user_key not in current_data: current_data[user_key] = {}
             new_ans = {
+                "m1_id": m1_id, "m1_name": m1_name, "m2_id": m2_id, "m2_name": m2_name, "m3_id": m3_id, "m3_name": m3_name, "m4_id": m4_id, "m4_name": m4_name,
                 "step1_1": step1_1, "step1_2_df": edited_step1_2_df.to_dict('records'),
                 "step1_3_1": step1_3_1, "step1_3_2": step1_3_2, "step1_3_3": step1_3_3,
                 "step2_df": edited_step2_df.to_dict('records'),
@@ -673,8 +724,6 @@ def render_custom_activity(user_key, u_name, current_role, user_class, act_name,
         html_data += "</body></html>"
         st.download_button("📥 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{act_name}.html", mime="text/html")
 
-
-# --- 메인 공지사항 렌더링 ---
 def render_class_overview(current_role, u_info):
     st.subheader(f"🎯 [{u_info.get('subject', '전체')}] 수행평가 및 활동 모듈")
     st.markdown("---")
@@ -760,6 +809,7 @@ if st.session_state.logged_in:
         st.session_state.current_page = "main"
         st.query_params.clear()
         st.rerun()
+
 else:
     auth_choice = st.sidebar.radio("원하는 작업을 선택하세요", ["회원가입", "로그인"])
     users = load_json(USERS_FILE, {})
@@ -886,6 +936,8 @@ else:
                 if not acts_for_subj: st.warning("등록된 활동지가 없습니다. [🗂️ 수행평가 문항 제작] 탭에서 먼저 활동지를 추가하세요.")
                 else:
                     selected_act_for_setting = st.selectbox("시간표를 설정할 수행평가 선택", acts_for_subj)
+                    
+                    # 📌 폼 밖으로 시간 입력 모드 선택 버튼 분리 (즉시 반영 목적)
                     time_input_mode = st.radio("⏰ 시간 입력 방식 선택 (편한 방식을 먼저 선택한 후 아래 설정을 진행하세요)", ["🔘 드롭다운 선택 (10분 단위)", "🔘 직접 타이핑 (자유 입력)"], horizontal=True)
                     st.markdown("<br>", unsafe_allow_html=True)
                     
@@ -1091,7 +1143,8 @@ else:
                     available_classes = CLASSES_MAP.get(view_subj, [])
                     view_class = st.radio("조회할 반 선택", ["전체 보기"] + available_classes, horizontal=True, key="view_class_select")
                 
-                view_mode = st.radio("조회 모드 선택", ["👤 특정 학생 실시간 집중 분석", "📅 항목별(활동지) 전체 현황 (엑셀 다운로드)"], horizontal=True)
+                # 📌 조회 모드 라디오 버튼을 무조건 노출되도록 밖으로 배치
+                view_mode = st.radio("조회 모드 선택", ["👤 특정 학생 실시간 집중 분석", "📅 항목별(수행평가) 전체 현황 (엑셀 다운로드)"], horizontal=True)
                 st.markdown("---")
 
                 all_users = load_json(USERS_FILE, {})
@@ -1212,6 +1265,7 @@ else:
                                         st.info(f"**어떤 세계관을 갖고 싶은가?**\n{ans.get('goal_2','')}")
                                         
                                     elif act == ACT_2_1:
+                                        st.write(f"**[모둠 구성원]** 1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}")
                                         st.write(f"1. 밈: {ans.get('step1_1','')}")
                                         st.write(f"2. 주관적 이미지: {ans.get('step1_2','')}")
                                         st.write(f"3. 특별한 장소: {ans.get('step1_3','')}")
@@ -1226,6 +1280,7 @@ else:
                                         st.write(f"- 4. 개선 아이디어: {ans.get('step4_4','')}")
 
                                     elif act == ACT_2_2:
+                                        st.write(f"**[모둠 구성원]** 1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}")
                                         st.write(f"1. 대상 지역: {ans.get('step1_1','')}")
                                         st.write("**2. 15분 생활권 필수 서비스 체크리스트**")
                                         st.dataframe(pd.DataFrame(ans.get("step1_2_df", [])), use_container_width=True)
@@ -1265,7 +1320,8 @@ else:
                             html_content = generate_portfolio_html(student_answers, u_name, u_class_selected, view_subj, load_json(CONFIG_FILE, {}))
                             st.download_button(label=f"📄 {u_name} 학생 개별 포트폴리오 다운로드 (웹문서)", data=html_content.encode('utf-8-sig'), file_name=f"{u_name}_{view_subj}_포트폴리오.html", mime="text/html", type="primary")
 
-                    elif view_mode == "📅 항목별(활동지) 전체 현황 (엑셀 다운로드)":
+                    # 📌 엑셀(CSV) 전체 학생 다운로드 및 세로 정렬 연동
+                    elif view_mode == "📅 항목별(수행평가) 전체 현황 (엑셀 다운로드)":
                         acts_for_subj = load_json(CONFIG_FILE, {}).get("subject_activities", {}).get(view_subj, [])
                         if not acts_for_subj:
                             st.warning("선택한 과목에 등록된 수행평가가 없습니다.")
@@ -1421,6 +1477,7 @@ else:
                                     csv_data.append(["어떤 세계관을 갖고 싶은가?", ans.get("goal_2", "")])
                                     
                                 elif selected_view == ACT_2_1:
+                                    st.write(f"**[모둠 구성원]** 1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}")
                                     st.write(f"1. 밈: {ans.get('step1_1','')}")
                                     st.write(f"2. 주관적 이미지: {ans.get('step1_2','')}")
                                     st.write(f"3. 특별한 장소: {ans.get('step1_3','')}")
@@ -1434,6 +1491,7 @@ else:
                                     st.write(f"- 3. 슬로건: {ans.get('step4_3','')}")
                                     st.write(f"- 4. 개선 아이디어: {ans.get('step4_4','')}")
                                     
+                                    csv_data.append(["모둠 구성원", f"1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}"])
                                     csv_data.append(["1. 밈 수집", ans.get("step1_1", "")])
                                     csv_data.append(["2. 주관적 이미지", ans.get("step1_2", "")])
                                     csv_data.append(["3. 특별한 장소", ans.get("step1_3", "")])
@@ -1449,6 +1507,7 @@ else:
                                     csv_data.append(["4. 개선 아이디어", ans.get("step4_4", "")])
                                     
                                 elif selected_view == ACT_2_2:
+                                    st.write(f"**[모둠 구성원]** 1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}")
                                     st.write(f"1. 대상 지역: {ans.get('step1_1','')}")
                                     st.write("**2. 15분 생활권 필수 서비스 체크리스트**")
                                     st.dataframe(pd.DataFrame(ans.get("step1_2_df", [])), use_container_width=True)
@@ -1457,11 +1516,25 @@ else:
                                     st.write(f"- 문제점 3: {ans.get('step1_3_3','')}")
                                     st.write("**트레이드오프 설계표**")
                                     st.dataframe(pd.DataFrame(ans.get("step2_df", [])), use_container_width=True)
+                                    
+                                    col_v1, col_v2 = st.columns(2)
+                                    if ans.get("img_before"):
+                                        with col_v1:
+                                            img_bytes = base64.b64decode(ans["img_before"])
+                                            st.image(img_bytes, caption="변경 전 스케치", use_container_width=True)
+                                            st.download_button("📥 변경 전 스케치 원본 다운로드", img_bytes, file_name=f"{u_name}_변경전_스케치.png", mime="image/png")
+                                    if ans.get("img_after"):
+                                        with col_v2:
+                                            img_bytes = base64.b64decode(ans["img_after"])
+                                            st.image(img_bytes, caption="변경 후 스케치", use_container_width=True)
+                                            st.download_button("📥 변경 후 스케치 원본 다운로드", img_bytes, file_name=f"{u_name}_변경후_스케치.png", mime="image/png")
+                                            
                                     st.write(f"- 1. 슬로건: {ans.get('step4_1','')}")
                                     st.write(f"- 2. 공간 문제: {ans.get('step4_2','')}")
                                     st.write(f"- 3. 버리고 채운 것: {ans.get('step4_3','')}")
                                     st.write(f"- 4. 일상 변화: {ans.get('step4_4','')}")
                                     
+                                    csv_data.append(["모둠 구성원", f"1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}"])
                                     csv_data.append(["1. 대상 지역", ans.get("step1_1", "")])
                                     for row in ans.get("step1_2_df", []): csv_data.append([row.get("구분", ""), f"항목: {row.get('필수 서비스 항목', '')} / 충분: {row.get('충분', '')} / 부족: {row.get('부족 or 없음', '')}"])
                                     csv_data.append(["문제점 1", ans.get("step1_3_1", "")])
