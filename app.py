@@ -48,8 +48,6 @@ ACTIVITIES = [ACT_3_1, ACT_3_2, ACT_3_3, ACT_2_1, ACT_2_2]
 # 10분 단위 드롭다운 옵션 생성
 TIME_OPTIONS = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(24) for m in range(0, 60, 10)]
 
-INFO_BOX = "<div style='background-color: #f0f4f8; padding: 15px; border-radius: 8px; font-size: 17px; font-weight: 600; color: #222; margin-bottom: 15px; border-left: 5px solid #0056b3; line-height: 1.5;'>{}</div>"
-
 db_lock = threading.RLock()
 
 def get_time_index(t_str):
@@ -323,8 +321,11 @@ def generate_activity_html(act_name, ans, u_name):
 def render_group_members(ans, disabled_flag):
     st.markdown("#### 👥 모둠 구성원 (학번/이름)")
     col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-    m1_id = col_m1.text_input("모둠원1 학번", value=ans.get("m1_id", st.session_state.user_info.get("id", "")), disabled=disabled_flag)
-    m1_name = col_m1.text_input("모둠원1 이름", value=ans.get("m1_name", st.session_state.user_info.get("name", "")), disabled=disabled_flag)
+    # 교사 테스트 시 st.session_state.user_info.get("id")는 "audskal" 등이므로 기본값 처리 조심
+    default_id = st.session_state.user_info.get("id", "") if st.session_state.user_info.get("role") == "학생" else ""
+    default_name = st.session_state.user_info.get("name", "") if st.session_state.user_info.get("role") == "학생" else ""
+    m1_id = col_m1.text_input("모둠원1 학번", value=ans.get("m1_id", default_id), disabled=disabled_flag)
+    m1_name = col_m1.text_input("모둠원1 이름", value=ans.get("m1_name", default_name), disabled=disabled_flag)
     m2_id = col_m2.text_input("모둠원2 학번", value=ans.get("m2_id", ""), disabled=disabled_flag)
     m2_name = col_m2.text_input("모둠원2 이름", value=ans.get("m2_name", ""), disabled=disabled_flag)
     m3_id = col_m3.text_input("모둠원3 학번", value=ans.get("m3_id", ""), disabled=disabled_flag)
@@ -338,12 +339,14 @@ def render_activity1_3th(user_key, u_name, current_role, user_class):
     category = ACT_3_1
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
     is_active, status_msg = check_active(category, user_class)
+    # 📌 교사는 언제나 수정 가능하도록 제한 해제
     disabled_flag = (current_role == "학생" and not is_active)
     
+    if current_role == "관리자": st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
     st.markdown(f"### ♣ {category}")
     st.markdown("---")
     if current_role == "학생":
-        if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
+        if disabled_flag: st.error(status_msg, icon="🚫")
         else: st.success(status_msg, icon="✅")
     
     a1_1 = st.text_input("1. 영상의 제목", value=ans.get("a1_1", ""), disabled=disabled_flag)
@@ -369,7 +372,7 @@ def render_activity1_3th(user_key, u_name, current_role, user_class):
     a3_10 = st.text_input("10) 어울리는 BGM:", value=ans.get("a3_10", ""), disabled=disabled_flag)
     a3_11 = st.text_area("11) 그 이유는?:", value=ans.get("a3_11", ""), key="a3_11", disabled=disabled_flag)
     
-    if current_role == "학생" and not disabled_flag:
+    if not disabled_flag:
         if st.button("저장하기", type="primary", key="save_act1_3th"):
             current_data = load_json(DATA_FILE, {}) 
             if user_key not in current_data: current_data[user_key] = {}
@@ -378,10 +381,10 @@ def render_activity1_3th(user_key, u_name, current_role, user_class):
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons()
             st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; color:#2e7d32; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 10px 0;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
-    if current_role == "관리자": st.info("💡 교사/관리자 모드 미리보기입니다.")
+            
     if ans:
         st.markdown("---"); html_data = generate_activity_html(category, ans, u_name)
-        st.download_button("📥 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
+        st.download_button("📥 내 작성 내용 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
 
 def render_activity2_3th(user_key, u_name, current_role, user_class):
     category = ACT_3_2
@@ -389,10 +392,11 @@ def render_activity2_3th(user_key, u_name, current_role, user_class):
     is_active, status_msg = check_active(category, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
     
+    if current_role == "관리자": st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
     st.markdown(f"### ♣ {category}")
     st.markdown("---")
     if current_role == "학생":
-        if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
+        if disabled_flag: st.error(status_msg, icon="🚫")
         else: st.success(status_msg, icon="✅")
         
     q1_1 = st.text_input("1-1) 나에게 편안함을 주는 장소(공간)이/가 있는가?", value=ans.get("q1_1", ""), disabled=disabled_flag)
@@ -414,7 +418,7 @@ def render_activity2_3th(user_key, u_name, current_role, user_class):
     q8_1 = st.text_input("8-1) 시간을 돌려 과거로 돌아갈 수 있다면 다시 가 보고 싶은 장소(공간)이/가 있는가?", value=ans.get("q8_1", ""), disabled=disabled_flag)
     q8_2 = st.text_area("8-2) 장소(공간)로/으로 다시 가 보고 싶은 이유는 무엇 때문인가?", value=ans.get("q8_2", ""), disabled=disabled_flag)
     
-    if current_role == "학생" and not disabled_flag:
+    if not disabled_flag:
         if st.button("저장하기", type="primary", key="save_act2_3th"):
             current_data = load_json(DATA_FILE, {}) 
             if user_key not in current_data: current_data[user_key] = {}
@@ -423,10 +427,9 @@ def render_activity2_3th(user_key, u_name, current_role, user_class):
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons(); st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; color:#2e7d32; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 10px 0;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
             
-    if current_role == "관리자": st.info("💡 교사/관리자 모드 미리보기입니다.")
     if ans:
         st.markdown("---"); html_data = generate_activity_html(category, ans, u_name)
-        st.download_button("📥 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
+        st.download_button("📥 내 작성 내용 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
 
 def render_activity3_3th(user_key, u_name, current_role, user_class):
     category = ACT_3_3
@@ -434,10 +437,11 @@ def render_activity3_3th(user_key, u_name, current_role, user_class):
     is_active, status_msg = check_active(category, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
     
+    if current_role == "관리자": st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
     st.markdown(f"### ♣ {category}")
     st.markdown("---")
     if current_role == "학생":
-        if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
+        if disabled_flag: st.error(status_msg, icon="🚫")
         else: st.success(status_msg, icon="✅")
 
     st.markdown("#### 1. 세계 인식 수준에 대한 확인")
@@ -486,7 +490,7 @@ def render_activity3_3th(user_key, u_name, current_role, user_class):
     goal_1 = st.text_area("▶ 어떤 사람이 되고 싶은가?", value=ans.get("goal_1", ""), height=100, disabled=disabled_flag)
     goal_2 = st.text_area("▶ 어떤 세계관을 갖고 싶은가?", value=ans.get("goal_2", ""), height=100, disabled=disabled_flag)
     
-    if current_role == "학생" and not disabled_flag:
+    if not disabled_flag:
         if st.button("저장하기", type="primary", key="save_act3_3th"):
             current_data = load_json(DATA_FILE, {}) 
             if user_key not in current_data: current_data[user_key] = {}
@@ -504,10 +508,9 @@ def render_activity3_3th(user_key, u_name, current_role, user_class):
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons(); st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; color:#2e7d32; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 10px 0;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
             
-    if current_role == "관리자": st.info("💡 교사/관리자 모드 미리보기입니다.")
     if ans:
         st.markdown("---"); html_data = generate_activity_html(category, ans, u_name)
-        st.download_button("📥 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
+        st.download_button("📥 내 작성 내용 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
 
 def render_activity1_2nd(user_key, u_name, current_role, user_class):
     category = ACT_2_1
@@ -515,13 +518,13 @@ def render_activity1_2nd(user_key, u_name, current_role, user_class):
     is_active, status_msg = check_active(category, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
     
+    if current_role == "관리자": st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
     st.markdown(f"### ♣ {category}")
     st.markdown("---")
     if current_role == "학생":
-        if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
+        if disabled_flag: st.error(status_msg, icon="🚫")
         else: st.success(status_msg, icon="✅")
 
-    # 📌 모둠 구성원 추가
     m1_id, m1_name, m2_id, m2_name, m3_id, m3_name, m4_id, m4_name = render_group_members(ans, disabled_flag)
 
     st.markdown("#### Step 1. 우리 지역에 대한 '밈' 수집 및 지리 정보 팩트 체크 일지")
@@ -539,7 +542,6 @@ def render_activity1_2nd(user_key, u_name, current_role, user_class):
     
     st.markdown("---")
     st.markdown("#### Step 2. 도시 발달 과정과 객관적 지표")
-    # 📌 교과서 페이지 번호 취소선 오류 해결 (하이픈 사용)
     st.markdown("▶ **교과서 14-15, 31-32쪽 내용 中**")
     st.info("객관적 의미의 도시는 시가지로 구성되며 2·3차 산업 비율이 높은 공간입니다. 도시는 살아있는 생명체처럼 탄생, 성장, 정체, 쇠퇴, 전환의 도시 발달 과정을 겪습니다. 울산은 시대별로 역동적인 변화를 거쳐왔습니다.")
     
@@ -573,7 +575,7 @@ def render_activity1_2nd(user_key, u_name, current_role, user_class):
     step4_3 = st.text_input("3. 우리 모둠의 반전 광고 슬로건", value=ans.get("step4_3", ""), disabled=disabled_flag)
     step4_4 = st.text_area("4. 우리 모둠이 제안하는 울산의 거주 적합성 개선 아이디어", value=ans.get("step4_4", ""), disabled=disabled_flag)
 
-    if current_role == "학생" and not disabled_flag:
+    if not disabled_flag:
         if st.button("저장하기", type="primary", key="save_act1_2nd"):
             current_data = load_json(DATA_FILE, {}) 
             if user_key not in current_data: current_data[user_key] = {}
@@ -588,10 +590,9 @@ def render_activity1_2nd(user_key, u_name, current_role, user_class):
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons(); st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; color:#2e7d32; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 10px 0;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
             
-    if current_role == "관리자": st.info("💡 교사/관리자 모드 미리보기입니다.")
     if ans:
         st.markdown("---"); html_data = generate_activity_html(category, ans, u_name)
-        st.download_button("📥 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
+        st.download_button("📥 내 작성 내용 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
 
 def render_activity2_2nd(user_key, u_name, current_role, user_class):
     category = ACT_2_2
@@ -599,13 +600,13 @@ def render_activity2_2nd(user_key, u_name, current_role, user_class):
     is_active, status_msg = check_active(category, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
     
+    if current_role == "관리자": st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
     st.markdown(f"### ♣ {category}")
     st.markdown("---")
     if current_role == "학생":
-        if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
+        if disabled_flag: st.error(status_msg, icon="🚫")
         else: st.success(status_msg, icon="✅")
 
-    # 📌 모둠 구성원 추가
     m1_id, m1_name, m2_id, m2_name, m3_id, m3_name, m4_id, m4_name = render_group_members(ans, disabled_flag)
 
     st.markdown("#### Step 1. 우리 동네 현황 진단")
@@ -636,7 +637,6 @@ def render_activity2_2nd(user_key, u_name, current_role, user_class):
     st.info("두 개 이상의 상충되는 요구사항(예: 성능 대 비용, 유연성 대 단순성) 사이에서 최선의 선택을 하기 위해 장단점을 저울질하고 조율하는 과정. 완벽한 설계는 존재하지 않으며, 모든 설계는 무엇인가를 얻는 대신 다른 것을 포기하는 구조를 가질 수 밖에 없음")
     st.markdown("▶ **도시 개조 포인트**\n- 기본 100포인트 부여, 포인트를 활용하여 기존의 비효율적, 차량 중심 공간을 보행자를 위한 친환경 인프라로!!\n- 새롭게 추가하는 카테고리/코드/세부 개조 항목 관련한 포인트는 최소 10pt, 최대 20pt(10~20pt)\n- 포인트는 남김 없이 모두 사용해야 함\n- 최소한의 현실 가능성은 충족할 것 예) 지하철 개통, 공항 건설... ㅠ.ㅠ")
     
-    # 📌 누락되었던 학생 참고용 카테고리/코드표 렌더링 추가
     st.markdown("""
     | 카테고리 | 코드 | 세부 개조 항목 | 비용 |
     |---|---|---|---|
@@ -695,7 +695,7 @@ def render_activity2_2nd(user_key, u_name, current_role, user_class):
     step4_3 = st.text_area("3. 한정된 100pt를 활용해 무엇을 버리고 무엇을 채웠는가? 그 이유는 무엇인가?", value=ans.get("step4_3", ""), disabled=disabled_flag)
     step4_4 = st.text_area("4. 공간 재설계로 인해 일상이 어떻게 변화할 것이라고 생각하는가?", value=ans.get("step4_4", ""), disabled=disabled_flag)
 
-    if current_role == "학생" and not disabled_flag:
+    if not disabled_flag:
         if st.button("저장하기", type="primary", key="save_act2_2nd"):
             current_data = load_json(DATA_FILE, {}) 
             if user_key not in current_data: current_data[user_key] = {}
@@ -711,20 +711,23 @@ def render_activity2_2nd(user_key, u_name, current_role, user_class):
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons(); st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; color:#2e7d32; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 10px 0;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
             
-    if current_role == "관리자": st.info("💡 교사/관리자 모드 미리보기입니다.")
     if ans:
         st.markdown("---"); html_data = generate_activity_html(category, ans, u_name)
-        st.download_button("📥 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
+        st.download_button("📥 내 작성 내용 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
 
 def render_custom_activity(user_key, u_name, current_role, user_class, act_name, config):
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(act_name, {})
     is_active, status_msg = check_active(act_name, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
+    
+    if current_role == "관리자": 
+        disabled_flag = False
+        st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
 
     st.markdown(f"### ♣ {act_name}")
     st.markdown("---")
     if current_role == "학생":
-        if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
+        if disabled_flag: st.error(status_msg, icon="🚫")
         else: st.success(status_msg, icon="✅")
 
     custom_form = config.get("custom_forms", {}).get(act_name, [])
@@ -738,7 +741,7 @@ def render_custom_activity(user_key, u_name, current_role, user_class, act_name,
         elif q_type == "textarea": new_ans[q_id] = st.text_area(f"{q_label} 입력", value=ans.get(q_id, ""), height=150, disabled=disabled_flag, label_visibility="collapsed")
         st.markdown("<br>", unsafe_allow_html=True)
 
-    if current_role == "학생" and not disabled_flag:
+    if not disabled_flag:
         if st.button("저장하기", type="primary", key=f"save_{act_name}"):
             current_data = load_json(DATA_FILE, {})
             if user_key not in current_data: current_data[user_key] = {}
@@ -746,27 +749,26 @@ def render_custom_activity(user_key, u_name, current_role, user_class, act_name,
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons(); st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; color:#2e7d32; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 10px 0;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
 
-    if current_role == "관리자": st.info("💡 교사/관리자 모드 미리보기 화면입니다.")
     if ans:
         st.markdown("---")
         html_data = f"<!DOCTYPE html><html lang='ko'><head><meta charset='UTF-8'><title>{u_name}</title><style>body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; }} h2 {{ color: #2c3e50; border-left: 5px solid #3498db; padding-left: 10px; }} h3 {{ color: #2980b9; }} .content-box {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #e9ecef; white-space: pre-wrap; margin-bottom: 20px; }}</style></head><body><div style='text-align: right; margin-bottom: 20px;'><b>이름:</b> {u_name}</div><h2>▶ {act_name}</h2>"
         for q in custom_form: html_data += f"<h3>{q['label']}</h3><div class='content-box'>{ans.get(q['id'],'')}</div>"
         html_data += "</body></html>"
-        st.download_button("📥 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{act_name}.html", mime="text/html")
+        st.download_button("📥 내 작성 내용 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{act_name}.html", mime="text/html")
 
-def render_class_overview(current_role, u_info):
-    st.subheader(f"🎯 [{u_info.get('subject', '전체')}] 수행평가 및 활동 모듈")
+def render_class_overview(current_role, u_info, view_subj):
+    st.subheader(f"🎯 [{view_subj}] 수행평가 및 활동 모듈")
     st.markdown("---")
     app_config = load_json(CONFIG_FILE, {})
     
-    # 📌 추가된 사용자 정의 메인 블록(공지사항) 렌더링 기능 복원
-    custom_blocks = app_config.get("custom_blocks", [])
+    # 공지 블록 필터링 렌더링
+    custom_blocks = [b for b in app_config.get("custom_blocks", []) if b.get("subject", "전체 공지") in ["전체 공지", view_subj]]
     for block in custom_blocks:
         with st.expander(block["title"], expanded=True):
             st.markdown(block["content"])
 
-    # 📌 동적 외부 링크 영역 복원
-    dynamic_links = app_config.get("dynamic_links", [])
+    # 동적 링크 필터링 렌더링
+    dynamic_links = [l for l in app_config.get("dynamic_links", []) if l.get("subject", "전체 공지") in ["전체 공지", view_subj]]
     if dynamic_links:
         grouped_links = {}
         for link in dynamic_links:
@@ -783,7 +785,8 @@ def render_class_overview(current_role, u_info):
             col_idx += 1
         st.markdown("---")
 
-    notices = app_config.get("notices", [])
+    # 일반 공지사항 표 필터링 렌더링
+    notices = [n for n in app_config.get("notices", []) if n.get("subject", "전체 공지") in ["전체 공지", view_subj]]
     if notices:
         st.markdown("### 📢 알림 및 공지사항")
         for notice in notices:
@@ -795,7 +798,7 @@ def render_class_overview(current_role, u_info):
     if materials:
         st.subheader("👨‍🏫 수업 공지 및 자료실")
         for mat in materials:
-            if mat.get("subject", "전체") in ["전체", u_info.get('subject', '')]:
+            if mat.get("subject", "전체 공지") in ["전체 공지", view_subj]:
                 if mat["type"] == "link": st.markdown(f"🔗 **[{mat['title']}]({mat['content']})**")
                 elif mat["type"] == "file" and os.path.exists(mat["content"]):
                     with open(mat["content"], "rb") as f: st.download_button(f"📥 {mat['title']} ({mat['filename']}) 다운로드", f, file_name=mat['filename'], key=f"mat_dl_{mat['id']}")
@@ -803,7 +806,7 @@ def render_class_overview(current_role, u_info):
 
     st.markdown("### 📝 학년별 수행평가 목록")
     st.caption("아래 버튼을 눌러 해당 수행평가 작성 화면으로 이동하세요.")
-    acts_for_subj = app_config.get("subject_activities", {}).get(u_info.get('subject', '전체'), [])
+    acts_for_subj = app_config.get("subject_activities", {}).get(view_subj, [])
     if acts_for_subj:
         cols = st.columns(3)
         for idx, act in enumerate(acts_for_subj):
@@ -853,10 +856,15 @@ st.sidebar.title("🔒 인증 센터")
 
 if st.session_state.logged_in:
     u_info = st.session_state.user_info
-    if u_info['role'] == "관리자": sidebar_html = f"<div style='background-color:#e8f4f8; padding:10px; border-radius:5px; margin-bottom:15px; line-height:1.4;'><div style='font-size:15px; font-weight:bold; color:#0056b3; margin-bottom:3px;'>🟢 {u_info['name']} 님 로그인 중</div><div style='font-size:14px; color:#333; margin-bottom:2px;'>📘 과목: {u_info.get('subject', '전체')}</div><div style='font-size:14px; color:#333;'>🛡️ 권한: {u_info['role']}</div></div>"
-    else: sidebar_html = f"<div style='background-color:#e8f4f8; padding:10px; border-radius:5px; margin-bottom:15px; line-height:1.4;'><div style='font-size:15px; font-weight:bold; color:#0056b3; margin-bottom:3px;'>🟢 {u_info['name']} 님 로그인 중</div><div style='font-size:14px; color:#333; margin-bottom:2px;'>📘 과목: {u_info.get('subject', '전체')}</div><div style='font-size:14px; color:#333; margin-bottom:2px;'>🏫 소속: {u_info.get('class_group', '')}</div><div style='font-size:14px; color:#333;'>🛡️ 권한: {u_info['role']}</div></div>"
+    if u_info['role'] == "관리자": 
+        sidebar_html = f"<div style='background-color:#e8f4f8; padding:10px; border-radius:5px; margin-bottom:15px; line-height:1.4;'><div style='font-size:15px; font-weight:bold; color:#0056b3; margin-bottom:3px;'>🟢 {u_info['name']} 님 로그인 중</div><div style='font-size:14px; color:#333; margin-bottom:2px;'>📘 과목: {u_info.get('subject', '전체')}</div><div style='font-size:14px; color:#333;'>🛡️ 권한: {u_info['role']}</div></div>"
+        st.sidebar.markdown(sidebar_html, unsafe_allow_html=True)
+        # 📌 관리자 사이드바 미리보기 과목 선택 메뉴
+        st.session_state.admin_view_subject = st.sidebar.selectbox("👀 관리 및 미리보기 과목", ["전체 공지"] + SUBJECTS)
+    else: 
+        sidebar_html = f"<div style='background-color:#e8f4f8; padding:10px; border-radius:5px; margin-bottom:15px; line-height:1.4;'><div style='font-size:15px; font-weight:bold; color:#0056b3; margin-bottom:3px;'>🟢 {u_info['name']} 님 로그인 중</div><div style='font-size:14px; color:#333; margin-bottom:2px;'>📘 과목: {u_info.get('subject', '전체')}</div><div style='font-size:14px; color:#333; margin-bottom:2px;'>🏫 소속: {u_info.get('class_group', '')}</div><div style='font-size:14px; color:#333;'>🛡️ 권한: {u_info['role']}</div></div>"
+        st.sidebar.markdown(sidebar_html, unsafe_allow_html=True)
         
-    st.sidebar.markdown(sidebar_html, unsafe_allow_html=True)
     if st.sidebar.button("로그아웃", type="primary", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.user_info = None
@@ -944,7 +952,7 @@ else:
     else:
         if current_role == "학생":
             st.title("🏫 수업 및 활동 어시스트 프로그램")
-            render_class_overview(current_role, u_info)
+            render_class_overview(current_role, u_info, u_info.get('subject', '전체'))
             student_answers = learning_data.get(current_user_key, {})
             if student_answers:
                 st.markdown("---")
@@ -955,7 +963,6 @@ else:
 
         elif current_role == "관리자":
             st.title("🛠️ 관리자(교사) 대시보드")
-            # 📌 메뉴 탭에 메인 화면 수정 탭 복구/통합
             menu_tabs = st.tabs(["📌 메인 화면/기한 설정", "🗂️ 수행평가 문항 제작", "👥 회원 관리", "📥 학생 제출 자료 조회 및 관리", "💾 DB 백업 및 복구"])
             
             with menu_tabs[0]:
@@ -964,22 +971,27 @@ else:
                     st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; color:#2e7d32; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 10px 0;'>🎉 화면 저장이 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:bold;'>변경하신 내용이 안전하게 저장되어 즉시 반영됩니다.</p></div>", unsafe_allow_html=True)
                     st.session_state.admin_save_success = False
 
-                render_class_overview(current_role, u_info)
+                admin_view_subj = st.session_state.get("admin_view_subject", "전체 공지")
+                
+                # 📌 교사용 미리보기 렌더링
+                st.subheader(f"🖥️ [{admin_view_subj}] 학생 화면 미리보기 및 활동지 테스트")
+                render_class_overview(current_role, u_info, admin_view_subj)
                 st.markdown("---")
                 
-                # 📌 1. 메인 화면 동적 링크 및 블록 추가 복구
-                st.subheader("📝 자유 텍스트/공지 블록 추가 (메인 화면)")
-                st.info("💡 링크 외에도 안내문, 팁, 텍스트 등 원하는 내용을 박스 형태로 메인 화면에 자유롭게 추가할 수 있습니다.")
+                st.subheader(f"⚙️ [{admin_view_subj}] 메인 화면 편집 및 기한 설정")
                 fresh_config = load_json(CONFIG_FILE, {})
+                
+                st.markdown("#### 📝 자유 텍스트/공지 블록 추가 (메인 화면)")
+                st.info("💡 링크 외에도 안내문, 팁, 텍스트 등 원하는 내용을 박스 형태로 메인 화면에 자유롭게 추가할 수 있습니다.")
                 col_cb1, col_cb2 = st.columns(2)
                 with col_cb1:
                     st.write("➕ **새로운 블록 만들기**")
                     with st.form("add_custom_block"):
-                        cb_title = st.text_input("블록 제목 (예: 📢 내일 캠프 준비물 안내)")
+                        cb_title = st.text_input("블록 제목 (예: 📢 내일 수업 준비물 안내)")
                         cb_content = st.text_area("내용 입력 (엔터 및 줄바꿈 지원)")
                         if st.form_submit_button("블록 생성하기", type="primary"):
                             if cb_title and cb_content:
-                                new_block = {"id": f"cb_{datetime.datetime.now().strftime('%d%H%M%S')}", "title": cb_title, "content": cb_content}
+                                new_block = {"id": f"cb_{datetime.datetime.now().strftime('%d%H%M%S')}", "title": cb_title, "content": cb_content, "subject": admin_view_subj}
                                 if "custom_blocks" not in fresh_config: fresh_config["custom_blocks"] = []
                                 fresh_config["custom_blocks"].append(new_block)
                                 save_json(CONFIG_FILE, fresh_config)
@@ -987,19 +999,20 @@ else:
                             else: st.warning("제목과 내용을 모두 입력해주세요.")
                 with col_cb2:
                     st.write("❌ **기존 블록 삭제**")
-                    current_blocks = fresh_config.get("custom_blocks", [])
+                    current_blocks = [b for b in fresh_config.get("custom_blocks", []) if b.get("subject", "전체 공지") == admin_view_subj]
                     if current_blocks:
                         del_cb_target = st.selectbox("삭제할 블록 선택", current_blocks, format_func=lambda x: x["title"])
                         if st.button("선택한 블록 삭제하기", type="primary"):
-                            fresh_config["custom_blocks"] = [b for b in fresh_config.get("custom_blocks", []) if b["id"] != del_cb_target["id"]]
+                            other_blocks = [b for b in fresh_config.get("custom_blocks", []) if b["id"] != del_cb_target["id"]]
+                            fresh_config["custom_blocks"] = other_blocks
                             save_json(CONFIG_FILE, fresh_config)
                             st.session_state.admin_save_success = True; st.rerun()
-                    else: st.info("현재 등록된 커스텀 블록이 없습니다.")
+                    else: st.info("현재 과목에 등록된 커스텀 블록이 없습니다.")
 
                 st.markdown("---")
-                st.subheader("🔗 메인 화면 즐겨찾기/공지 링크 관리")
+                st.markdown("#### 🔗 메인 화면 즐겨찾기/공지 링크 관리")
                 st.info("💡 아래에서 등록한 링크들은 메인 화면에 버튼 형태로 학생들에게 즉시 노출됩니다.")
-                current_dynamic_links = fresh_config.get("dynamic_links", [])
+                current_dynamic_links = [l for l in fresh_config.get("dynamic_links", []) if l.get("subject", "전체 공지") == admin_view_subj]
                 col_dl1, col_dl2 = st.columns(2)
                 with col_dl1:
                     st.write("➕ **새로운 외부 링크 추가**")
@@ -1013,7 +1026,7 @@ else:
                         new_dl_url = st.text_input("URL 주소 (https://...)")
                         if st.form_submit_button("링크 추가하기", type="primary"):
                             if final_dl_group and new_dl_title and new_dl_url:
-                                new_link = {"id": f"dl_{datetime.datetime.now().strftime('%d%H%M%S')}", "group": final_dl_group, "title": new_dl_title, "url": new_dl_url}
+                                new_link = {"id": f"dl_{datetime.datetime.now().strftime('%d%H%M%S')}", "group": final_dl_group, "title": new_dl_title, "url": new_dl_url, "subject": admin_view_subj}
                                 if "dynamic_links" not in fresh_config: fresh_config["dynamic_links"] = []
                                 fresh_config["dynamic_links"].append(new_link)
                                 save_json(CONFIG_FILE, fresh_config)
@@ -1024,106 +1037,104 @@ else:
                     if current_dynamic_links:
                         del_dl_target = st.selectbox("삭제할 링크를 선택하세요", current_dynamic_links, format_func=lambda x: f"[{x['group']}] {x['title']}")
                         if st.button("선택한 링크 삭제하기", type="primary"):
-                            fresh_config["dynamic_links"] = [l for l in fresh_config.get("dynamic_links", []) if l["id"] != del_dl_target["id"]]
+                            other_links = [l for l in fresh_config.get("dynamic_links", []) if l["id"] != del_dl_target["id"]]
+                            fresh_config["dynamic_links"] = other_links
                             save_json(CONFIG_FILE, fresh_config)
                             st.session_state.admin_save_success = True; st.rerun()
-                    else: st.info("등록된 링크가 없습니다.")
+                    else: st.info("현재 과목에 등록된 링크가 없습니다.")
 
                 st.markdown("---")
-                st.subheader("📢 메인 화면 표 형식 공지사항 (자유 양식)")
-                current_notices = fresh_config.get("notices", [])
+                st.markdown("#### 📢 메인 화면 표 형식 공지사항 (자유 양식)")
+                all_notices = fresh_config.get("notices", [])
+                current_notices = [n for n in all_notices if n.get("subject", "전체 공지") == admin_view_subj]
                 df_notices = pd.DataFrame(current_notices) if current_notices else pd.DataFrame([{"제목": "", "내용": ""}])
                 edited_notices = st.data_editor(df_notices, num_rows="dynamic", use_container_width=True, hide_index=True)
                 if st.button("표 형식 공지사항 저장 및 적용", type="primary"):
-                    valid_notices = [row for row in edited_notices.to_dict('records') if str(row.get("제목", "")).strip() or str(row.get("내용", "")).strip()]
-                    fresh_config["notices"] = valid_notices
+                    new_notices = [{"subject": admin_view_subj, "제목": str(row.get("제목", "")), "내용": str(row.get("내용", ""))} for row in edited_notices.to_dict('records') if str(row.get("제목", "")).strip() or str(row.get("내용", "")).strip()]
+                    other_notices = [n for n in all_notices if n.get("subject", "전체 공지") != admin_view_subj]
+                    fresh_config["notices"] = other_notices + new_notices
                     save_json(CONFIG_FILE, fresh_config)
                     st.session_state.admin_save_success = True; st.rerun()
 
                 st.markdown("---")
-                # 📌 2. 시간 설정 듀얼 모드 바깥으로 빼내기
-                st.subheader("⏰ 과목/반별 수행평가 수업 시간표 및 제출 기한 설정")
+                st.markdown("#### ⏰ 과목/반별 수행평가 수업 시간표 및 제출 기한 설정")
                 st.info("💡 설정한 마감일과 주간 수업 시간 외에는 학생들의 접속과 입력이 완전히 차단됩니다.")
                 
-                subj_for_dl = st.selectbox("시간표를 설정할 과목 선택", SUBJECTS)
-                acts_for_subj = fresh_config.get("subject_activities", {}).get(subj_for_dl, [])
-                
-                if not acts_for_subj: st.warning("등록된 활동지가 없습니다. [🗂️ 수행평가 문항 제작] 탭에서 먼저 활동지를 추가하세요.")
-                else:
-                    selected_act_for_setting = st.selectbox("시간표를 설정할 수행평가 선택", acts_for_subj)
-                    
-                    # 라디오 버튼을 Form 바깥으로 이동하여 즉시 렌더링 변경
-                    time_input_mode = st.radio("⏰ 시간 입력 방식 선택 (원하시는 방식을 고르면 폼의 입력 방식이 즉시 변경됩니다)", ["🔘 드롭다운 선택 (10분 단위)", "🔘 직접 타이핑 (자유 입력)"], horizontal=True)
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    
-                    if "deadlines" not in fresh_config: fresh_config["deadlines"] = {}
-                    new_act_deadlines = fresh_config["deadlines"].get(selected_act_for_setting, {})
-
-                    with st.form(f"deadline_form_for_{selected_act_for_setting}"):
-                        st.markdown(f"#### 📘 {subj_for_dl} - {selected_act_for_setting} 반별 시간표")
+                if admin_view_subj in SUBJECTS:
+                    subj_for_dl = admin_view_subj
+                    acts_for_subj = fresh_config.get("subject_activities", {}).get(subj_for_dl, [])
+                    if not acts_for_subj: st.warning("등록된 활동지가 없습니다.")
+                    else:
+                        selected_act_for_setting = st.selectbox("시간표를 설정할 수행평가 선택", acts_for_subj)
+                        time_input_mode = st.radio("⏰ 시간 입력 방식 선택 (편한 방식을 먼저 선택한 후 아래 설정을 진행하세요)", ["🔘 드롭다운 선택 (10분 단위)", "🔘 직접 타이핑 (자유 입력)"], horizontal=True)
+                        st.markdown("<br>", unsafe_allow_html=True)
                         
-                        for c_group in CLASSES_MAP[subj_for_dl]:
-                            with st.expander(f"🏫 {c_group} 시간표 설정", expanded=False):
-                                c_data = new_act_deadlines.get(c_group, {})
-                                c_final = c_data.get("final_dl", "2030-12-31 23:59")
-                                try: cf_dt = datetime.datetime.strptime(c_final, "%Y-%m-%d %H:%M")
-                                except: cf_dt = get_kst_now() + datetime.timedelta(days=30)
+                        if "deadlines" not in fresh_config: fresh_config["deadlines"] = {}
+                        new_act_deadlines = fresh_config["deadlines"].get(selected_act_for_setting, {})
 
-                                col_f1, col_f2 = st.columns(2)
-                                f_date = col_f1.date_input(f"[{c_group}] 최종 제출 마감일", value=cf_dt.date(), key=f"f_date_{c_group}")
-                                
-                                if time_input_mode == "🔘 드롭다운 선택 (10분 단위)":
-                                    f_time_str = col_f2.selectbox(f"[{c_group}] 최종 마감 시간", TIME_OPTIONS, index=get_time_index(cf_dt.strftime("%H:%M")), key=f"f_time_sel_{c_group}")
-                                else:
-                                    f_time_str = col_f2.text_input(f"[{c_group}] 최종 마감 시간 (HH:MM 입력)", value=cf_dt.strftime("%H:%M"), key=f"f_time_txt_{c_group}")
+                        with st.form(f"deadline_form_for_{selected_act_for_setting}"):
+                            for c_group in CLASSES_MAP[subj_for_dl]:
+                                with st.expander(f"🏫 {c_group} 시간표 설정", expanded=False):
+                                    c_data = new_act_deadlines.get(c_group, {})
+                                    c_final = c_data.get("final_dl", "2030-12-31 23:59")
+                                    try: cf_dt = datetime.datetime.strptime(c_final, "%Y-%m-%d %H:%M")
+                                    except: cf_dt = get_kst_now() + datetime.timedelta(days=30)
 
-                                st.write("📌 주간 수업 시간표 (최대 3개)")
-                                c_slots = c_data.get("slots", [{"day": "선택안함", "period": "선택안함", "start": "00:00", "end": "00:00"}] * 3)
-                                while len(c_slots) < 3: c_slots.append({"day": "선택안함", "period": "선택안함", "start": "00:00", "end": "00:00"})
-
-                                updated_slots = []
-                                for i in range(3):
-                                    sc1, sc2, sc3, sc4 = st.columns(4)
-                                    day_opts = ["선택안함", "월", "화", "수", "목", "금"]
-                                    period_opts = ["선택안함", "1교시", "2교시", "3교시", "4교시", "5교시", "6교시", "7교시", "8교시", "방과후"]
-                                    
-                                    cur_day = c_slots[i].get("day", "선택안함")
-                                    day_idx = day_opts.index(cur_day) if cur_day in day_opts else 0
-                                    
-                                    cur_period = c_slots[i].get("period", "선택안함")
-                                    period_idx = period_opts.index(cur_period) if cur_period in period_opts else 0
-
-                                    st_t_str = c_slots[i].get("start", "09:00")
-                                    en_t_str = c_slots[i].get("end", "09:50")
-
-                                    slot_day = sc1.selectbox(f"수업 {i+1} 요일", day_opts, index=day_idx, key=f"day_{c_group}_{i}")
-                                    slot_period = sc2.selectbox(f"수업 {i+1} 교시", period_opts, index=period_idx, key=f"period_{c_group}_{i}")
+                                    col_f1, col_f2 = st.columns(2)
+                                    f_date = col_f1.date_input(f"[{c_group}] 최종 제출 마감일", value=cf_dt.date(), key=f"f_date_{c_group}")
                                     
                                     if time_input_mode == "🔘 드롭다운 선택 (10분 단위)":
-                                        slot_start_str = sc3.selectbox(f"수업 {i+1} 시작", TIME_OPTIONS, index=get_time_index(st_t_str), key=f"st_sel_{c_group}_{i}")
-                                        slot_end_str = sc4.selectbox(f"수업 {i+1} 종료", TIME_OPTIONS, index=get_time_index(en_t_str), key=f"en_sel_{c_group}_{i}")
+                                        f_time_str = col_f2.selectbox(f"[{c_group}] 최종 마감 시간", TIME_OPTIONS, index=get_time_index(cf_dt.strftime("%H:%M")), key=f"f_time_sel_{c_group}")
                                     else:
-                                        slot_start_str = sc3.text_input(f"수업 {i+1} 시작 (HH:MM 입력)", value=st_t_str, key=f"st_txt_{c_group}_{i}")
-                                        slot_end_str = sc4.text_input(f"수업 {i+1} 종료 (HH:MM 입력)", value=en_t_str, key=f"en_txt_{c_group}_{i}")
+                                        f_time_str = col_f2.text_input(f"[{c_group}] 최종 마감 시간 (HH:MM 입력)", value=cf_dt.strftime("%H:%M"), key=f"f_time_txt_{c_group}")
 
-                                    updated_slots.append({"day": slot_day, "period": slot_period, "start": slot_start_str, "end": slot_end_str})
+                                    st.write("📌 주간 수업 시간표 (최대 3개)")
+                                    c_slots = c_data.get("slots", [{"day": "선택안함", "period": "선택안함", "start": "00:00", "end": "00:00"}] * 3)
+                                    while len(c_slots) < 3: c_slots.append({"day": "선택안함", "period": "선택안함", "start": "00:00", "end": "00:00"})
 
-                                new_act_deadlines[c_group] = {"final_dl": f"{f_date} {f_time_str}", "slots": updated_slots}
-                        
-                        if st.form_submit_button("이 수행평가의 반별 시간표 및 마감일 일괄 저장", type="primary"):
-                            fresh_config["deadlines"][selected_act_for_setting] = new_act_deadlines
-                            save_json(CONFIG_FILE, fresh_config)
-                            st.session_state.admin_save_success = True; st.rerun()
+                                    updated_slots = []
+                                    for i in range(3):
+                                        sc1, sc2, sc3, sc4 = st.columns(4)
+                                        day_opts = ["선택안함", "월", "화", "수", "목", "금"]
+                                        period_opts = ["선택안함", "1교시", "2교시", "3교시", "4교시", "5교시", "6교시", "7교시", "8교시", "방과후"]
+                                        
+                                        cur_day = c_slots[i].get("day", "선택안함")
+                                        day_idx = day_opts.index(cur_day) if cur_day in day_opts else 0
+                                        cur_period = c_slots[i].get("period", "선택안함")
+                                        period_idx = period_opts.index(cur_period) if cur_period in period_opts else 0
+
+                                        st_t_str = c_slots[i].get("start", "09:00")
+                                        en_t_str = c_slots[i].get("end", "09:50")
+
+                                        slot_day = sc1.selectbox(f"수업 {i+1} 요일", day_opts, index=day_idx, key=f"day_{c_group}_{i}")
+                                        slot_period = sc2.selectbox(f"수업 {i+1} 교시", period_opts, index=period_idx, key=f"period_{c_group}_{i}")
+                                        
+                                        if time_input_mode == "🔘 드롭다운 선택 (10분 단위)":
+                                            slot_start_str = sc3.selectbox(f"수업 {i+1} 시작", TIME_OPTIONS, index=get_time_index(st_t_str), key=f"st_sel_{c_group}_{i}")
+                                            slot_end_str = sc4.selectbox(f"수업 {i+1} 종료", TIME_OPTIONS, index=get_time_index(en_t_str), key=f"en_sel_{c_group}_{i}")
+                                        else:
+                                            slot_start_str = sc3.text_input(f"수업 {i+1} 시작 (HH:MM 입력)", value=st_t_str, key=f"st_txt_{c_group}_{i}")
+                                            slot_end_str = sc4.text_input(f"수업 {i+1} 종료 (HH:MM 입력)", value=en_t_str, key=f"en_txt_{c_group}_{i}")
+
+                                        updated_slots.append({"day": slot_day, "period": slot_period, "start": slot_start_str, "end": slot_end_str})
+
+                                    new_act_deadlines[c_group] = {"final_dl": f"{f_date} {f_time_str}", "slots": updated_slots}
+                            
+                            if st.form_submit_button("이 수행평가의 반별 시간표 및 마감일 일괄 저장", type="primary"):
+                                fresh_config["deadlines"][selected_act_for_setting] = new_act_deadlines
+                                save_json(CONFIG_FILE, fresh_config)
+                                st.session_state.admin_save_success = True; st.rerun()
+                else:
+                    st.info("⏰ 기한 설정은 왼쪽 '관리 및 미리보기 과목'에서 개별 과목을 선택해야만 편집 가능합니다.")
 
                 st.markdown("---")
-                st.subheader("👨‍🏫 교사용 특강/수업 자료 업로드")
+                st.markdown("#### 👨‍🏫 교사용 특강/수업 자료 업로드")
                 with st.form("upload_mat"):
-                    mat_subj = st.selectbox("대상 과목", ["전체 공지"] + SUBJECTS)
                     mat_title = st.text_input("자료 제목")
                     mat_link = st.text_input("외부 링크 URL (있는 경우)")
                     if st.form_submit_button("등록", type="primary"):
                         if mat_title and mat_link:
-                            new_mat = {"id": f"mat_{datetime.datetime.now().strftime('%d%H%M%S')}", "title": mat_title, "type": "link", "content": mat_link, "subject": mat_subj}
+                            new_mat = {"id": f"mat_{datetime.datetime.now().strftime('%d%H%M%S')}", "title": mat_title, "type": "link", "content": mat_link, "subject": admin_view_subj}
                             if "materials" not in fresh_config: fresh_config["materials"] = []
                             fresh_config["materials"].append(new_mat)
                             save_json(CONFIG_FILE, fresh_config)
