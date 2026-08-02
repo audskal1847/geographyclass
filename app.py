@@ -182,29 +182,24 @@ def generate_points_html(df_records):
     html += "</table><br>"
     return html
 
-# 📌 해결책 C: 모둠원 데이터 자동 연동 스캐너 함수
+# 📌 모둠원 데이터 자동 연동 스캐너 함수
 def get_user_activity_data(user_key, u_id, u_subj, u_class, act_name, learning_data):
-    # 그룹 활동인 경우에만 전체 문서를 스캔하여 모둠원 포함 여부를 확인
     if act_name in [ACT_2_1, ACT_2_2]:
         u_id_str = str(u_id).strip()
         if not u_id_str:
             return user_key, learning_data.get(user_key, {}).get(act_name, {})
             
-        # 1순위: 자신이 모둠장(1번)으로 작성한 데이터가 우선권
         own_data = learning_data.get(user_key, {}).get(act_name, {})
         if str(own_data.get("m1_id", "")).strip() == u_id_str:
             return user_key, own_data
             
-        # 2순위: 타인이 작성한 데이터의 모둠원 목록(m1~m4)에 내 학번이 있는지 스캔
         for k, acts in learning_data.items():
-            # 같은 과목, 같은 반의 데이터만 스캔
             if k.startswith(f"{u_subj}_{u_class}_"):
                 a_data = acts.get(act_name, {})
                 members = [str(a_data.get(f"m{i}_id", "")).strip() for i in range(1, 5)]
                 if u_id_str in members:
-                    return k, a_data  # 모둠장(소유자)의 user_key와 데이터를 반환
+                    return k, a_data
                     
-    # 일반 활동이거나 그룹 정보가 없으면 본인의 데이터 반환
     return user_key, learning_data.get(user_key, {}).get(act_name, {})
 
 # --- [공통 HTML 포트폴리오 생성기] ---
@@ -318,7 +313,6 @@ def generate_html_content(act_name, ans):
         html += "</table><h4>3. 선택한 지역의 핵심 문제점</h4>"
         html += f"<p><b>문제점 1:</b> {ans.get('step1_3_1','')}</p><p><b>문제점 2:</b> {ans.get('step1_3_2','')}</p><p><b>문제점 3:</b> {ans.get('step1_3_3','')}</p>"
         
-        # 📌 HTML 생성 시 카테고리 병합(Rowspan) 함수 적용
         html += "<h3>Step 2. 도시 개조 포인트를 활용한 트레이드오프 설계</h3>"
         html += "<h4>[도시 개조 포인트 (학생 추가 포함)]</h4>"
         html += generate_points_html(ans.get("step2_point_df", []))
@@ -357,7 +351,6 @@ def generate_portfolio_html(user_key, u_info, view_subj, config, learning_data):
     """
     acts_for_subj = config.get("subject_activities", {}).get(view_subj, [])
     for act in acts_for_subj:
-        # 📌 포트폴리오 생성 시에도 모둠원 연동 데이터를 가져옵니다.
         owner_key, ans = get_user_activity_data(user_key, u_id, view_subj, u_class, act, learning_data)
         if not ans: continue
         html += f"<h2>▶ {act}</h2>"
@@ -604,13 +597,11 @@ def render_activity1_2nd(user_key, u_info, current_role):
     user_class = u_info.get("class_group", "")
     
     learning_data = load_json(DATA_FILE, {})
-    # 📌 현재 로그인한 학생이 모둠원으로 등록된 다른 문서가 있는지 스캔
     owner_key, ans = get_user_activity_data(user_key, u_id, u_subj, user_class, category, learning_data)
     
     is_active, status_msg = check_active(category, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
     
-    # 📌 본인(모둠장)이 아닌 조회 전용 모둠원인 경우 입력창 비활성화
     is_member_view = False
     if current_role == "학생" and owner_key != user_key:
         is_member_view = True
@@ -1098,7 +1089,6 @@ else:
 
     if st.session_state.current_page != "main":
         act_name = st.session_state.current_page
-        # 📌 렌더링 함수 호출에 u_info 변수 직접 전달
         if act_name == ACT_3_1: render_activity1_3th(current_user_key, u_info, current_role)
         elif act_name == ACT_3_2: render_activity2_3th(current_user_key, u_info, current_role)
         elif act_name == ACT_3_3: render_activity3_3th(current_user_key, u_info, current_role)
@@ -1114,12 +1104,28 @@ else:
             st.title("🏫 수업 및 활동 어시스트 프로그램")
             render_class_overview(current_role, u_info, u_info.get('subject', '전체'))
             
-            # 학생 화면 포트폴리오 다운로드 버튼
+            # 학생 화면 포트폴리오 다운로드 영역
             st.markdown("---")
-            st.subheader("📚 내 포트폴리오 전체 일괄 다운로드")
-            html_content = generate_portfolio_html(current_user_key, u_info, u_info['subject'], app_config, learning_data)
-            st.download_button(label=f"📥 {u_info['name']} 학생 전체 포트폴리오 다운로드 (웹문서)", data=html_content.encode('utf-8-sig'), file_name=f"{u_info['name']}_전체_포트폴리오.html", mime="text/html", type="primary")
+            st.subheader("📚 내 포트폴리오 일괄 다운로드")
+            html_content_all = generate_portfolio_html(current_user_key, u_info, u_info['subject'], app_config, learning_data)
+            st.download_button(label=f"📦 {u_info['name']} 학생 전체 포트폴리오 일괄 다운로드 (웹문서)", data=html_content_all.encode('utf-8-sig'), file_name=f"{u_info['name']}_전체_포트폴리오.html", mime="text/html", type="primary")
             st.caption("💡 다운로드한 파일을 인터넷 창으로 연 뒤 **[우클릭 ➔ 인쇄 ➔ PDF로 저장]** 하시면 제출용 파일이 완성됩니다.")
+            
+            # 📌 해결책 반영: 학생 메인화면 하단 개별 활동 결과물 다운로드 추가
+            st.markdown("---")
+            st.subheader("📄 개별 활동 결과물 다운로드")
+            st.caption("제출 완료한 활동지만 나타납니다.")
+            acts_for_subj = app_config.get("subject_activities", {}).get(u_info['subject'], [])
+            has_individual_dl = False
+            for act in acts_for_subj:
+                owner_key, ans = get_user_activity_data(current_user_key, u_info.get('id', ''), u_info.get('subject', '전체'), u_info.get('class_group', ''), act, learning_data)
+                if ans:
+                    has_individual_dl = True
+                    act_html = generate_activity_html(act, ans, u_info['name'])
+                    st.download_button(label=f"📥 [{act}] 결과물 다운로드", data=act_html.encode('utf-8-sig'), file_name=f"{u_info['name']}_{act}.html", mime="text/html", key=f"stu_dl_{act}")
+            
+            if not has_individual_dl:
+                st.info("아직 제출한 활동지가 없습니다.")
 
         elif current_role == "관리자":
             st.title("🛠️ 관리자(교사) 대시보드")
@@ -1453,11 +1459,9 @@ else:
                         has_data = False
                         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
                             for s_uid in student_list:
-                                # 📌 ZIP 다운로드 시에도 모둠 활동 연동 처리 반영
                                 u_info_iter = all_users[s_uid]
                                 acts_for_iter = load_json(CONFIG_FILE, {}).get("subject_activities", {}).get(view_subj, [])
                                 
-                                # 학생에게 데이터가 하나라도 있는지 체크 (모둠 데이터 포함)
                                 s_ans_dict = {}
                                 for act in acts_for_iter:
                                     _, temp_ans = get_user_activity_data(s_uid, u_info_iter.get('id',''), view_subj, u_info_iter.get('class_group',''), act, learning_data)
@@ -1466,7 +1470,6 @@ else:
                                 if s_ans_dict:
                                     u_n = u_info_iter.get('name', '학생')
                                     u_c = u_info_iter.get('class_group', '')
-                                    # s_uid 넘기면 generate_portfolio_html 내부에서 get_user_activity_data 처리하여 내용 채움
                                     h_content = generate_portfolio_html(s_uid, u_info_iter, view_subj, load_json(CONFIG_FILE, {}), learning_data)
                                     file_n = f"{u_c}_{u_n}_포트폴리오.html"
                                     zip_file.writestr(file_n, h_content.encode('utf-8-sig'))
@@ -1499,11 +1502,19 @@ else:
                             
                             st.markdown(f"### 👀 <span style='color:#0056b3'>{u_name}</span> 학생의 실시간 활동 내역", unsafe_allow_html=True)
                             
-                            has_answer = False
                             acts_for_subj = load_json(CONFIG_FILE, {}).get("subject_activities", {}).get(view_subj, [])
                             
+                            # 📌 해결책 반영: 교사용 화면 활동지 개별 필터링 기능
+                            filter_act = st.selectbox("👀 화면에서 조회할 활동지 필터링", ["전체 활동지 보기"] + acts_for_subj)
+                            st.markdown("---")
+                            
+                            has_answer = False
+                            
                             for act in acts_for_subj:
-                                # 📌 개별 조회 시 모둠 활동 연동 처리 반영
+                                # 필터링 조건: 전체보기가 아니면서, 선택한 활동지가 아니면 건너뜀
+                                if filter_act != "전체 활동지 보기" and act != filter_act:
+                                    continue
+                                    
                                 owner_key, ans = get_user_activity_data(selected_student, u_id_selected, view_subj, u_class_selected, act, learning_data)
                                 if ans:
                                     has_answer = True
@@ -1613,13 +1624,20 @@ else:
                                         for q in c_form:
                                             st.write(f"**{q['label']}**")
                                             st.info(ans.get(q['id'], ""))
+                                    
+                                    # 📌 해결책 반영: 교사용 화면 개별 활동 다운로드 추가
+                                    st.write("")
+                                    act_html = generate_activity_html(act, ans, u_name)
+                                    st.download_button(label=f"📥 [{act}] 개별 결과물 다운로드 (웹문서)", data=act_html.encode('utf-8-sig'), file_name=f"{u_name}_{act}.html", mime="text/html", key=f"teach_dl_{selected_student}_{act}")
+                                    st.markdown("---")
                             
                             if not has_answer:
-                                st.warning("아직 제출한 활동지 내역이 없는 학생입니다.")
+                                st.warning("해당 학생이 제출한 내역이 없거나 조건에 맞는 활동지가 없습니다.")
                             
-                            st.markdown("---")
-                            html_content = generate_portfolio_html(selected_student, u_info_sel, view_subj, load_json(CONFIG_FILE, {}), learning_data)
-                            st.download_button(label=f"📄 {u_name} 학생 개별 포트폴리오 다운로드 (웹문서)", data=html_content.encode('utf-8-sig'), file_name=f"{u_name}_{view_subj}_포트폴리오.html", mime="text/html", type="primary")
+                            # 📌 전체 포트폴리오 다운로드는 '전체 활동지 보기'일 때 하단에 고정 표시
+                            if has_answer and filter_act == "전체 활동지 보기":
+                                html_content = generate_portfolio_html(selected_student, u_info_sel, view_subj, load_json(CONFIG_FILE, {}), learning_data)
+                                st.download_button(label=f"📄 {u_name} 학생 전체 포트폴리오 일괄 다운로드 (웹문서)", data=html_content.encode('utf-8-sig'), file_name=f"{u_name}_{view_subj}_포트폴리오.html", mime="text/html", type="primary")
 
                     elif view_mode == "📅 항목별(수행평가) 전체 현황 (엑셀 다운로드)":
                         acts_for_subj = load_json(CONFIG_FILE, {}).get("subject_activities", {}).get(view_subj, [])
@@ -1636,7 +1654,6 @@ else:
                                 u_name = u_info_csv.get('name', '')
                                 u_class = u_info_csv.get('class_group', '')
                                 
-                                # 📌 관리자 엑셀 다운로드 시에도 모둠원 연동 데이터를 가져옵니다.
                                 owner_key, ans = get_user_activity_data(s_uid, u_id, view_subj, u_class, selected_view, learning_data)
                                 
                                 st.markdown(f"#### 👤 [{u_info_csv.get('subject', '')}] {u_class} - {u_name} ({u_id})")
