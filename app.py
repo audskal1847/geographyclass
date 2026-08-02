@@ -48,6 +48,8 @@ ACTIVITIES = [ACT_3_1, ACT_3_2, ACT_3_3, ACT_2_1, ACT_2_2]
 # 10분 단위 드롭다운 옵션 생성
 TIME_OPTIONS = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(24) for m in range(0, 60, 10)]
 
+INFO_BOX = "<div style='background-color: #f0f4f8; padding: 15px; border-radius: 8px; font-size: 17px; font-weight: 600; color: #222; margin-bottom: 15px; border-left: 5px solid #0056b3; line-height: 1.5;'>{}</div>"
+
 db_lock = threading.RLock()
 
 def get_time_index(t_str):
@@ -269,7 +271,14 @@ def generate_html_content(act_name, ans):
         for row in ans.get("step1_2_df", []): html += f"<tr><td>{row.get('구분','')}</td><td>{row.get('필수 서비스 항목','')}</td><td>{row.get('충분','')}</td><td>{row.get('부족 or 없음','')}</td></tr>"
         html += "</table><h4>3. 선택한 지역의 핵심 문제점</h4>"
         html += f"<p><b>문제점 1:</b> {ans.get('step1_3_1','')}</p><p><b>문제점 2:</b> {ans.get('step1_3_2','')}</p><p><b>문제점 3:</b> {ans.get('step1_3_3','')}</p>"
-        html += "<h3>Step 2. 도시 개조 포인트를 활용한 트레이드오프 설계</h3><table><tr><th>순번</th><th>선택 코드</th><th>버릴 공간</th><th>사용 포인트</th><th>공간 재설계 이유 및 기대효과</th></tr>"
+        
+        # 📌 추가된 도시 개조 포인트 표 렌더링
+        html += "<h3>Step 2. 도시 개조 포인트를 활용한 트레이드오프 설계</h3>"
+        html += "<h4>[도시 개조 포인트 (학생 추가 포함)]</h4><table><tr><th>카테고리</th><th>코드</th><th>세부 개조 항목</th><th>비용</th></tr>"
+        for row in ans.get("step2_point_df", []): html += f"<tr><td>{row.get('카테고리','')}</td><td>{row.get('코드','')}</td><td>{row.get('세부 개조 항목','')}</td><td>{row.get('비용','')}</td></tr>"
+        html += "</table><br>"
+        
+        html += "<h4>[트레이드오프 설계표]</h4><table><tr><th>순번</th><th>선택 코드</th><th>버릴 공간</th><th>사용 포인트</th><th>공간 재설계 이유 및 기대효과</th></tr>"
         for row in ans.get("step2_df", []): html += f"<tr><td>{row.get('순번','')}</td><td>{row.get('선택 코드','')}</td><td>{row.get('버릴 공간','')}</td><td>{row.get('사용 포인트','')}</td><td>{row.get('공간 재설계 이유 및 기대효과','')}</td></tr>"
         html += "</table><h3>Step 3. N분 도시 공간 지도 스케치</h3>"
         if ans.get("img_before"): html += f"<h4>변경 전</h4><img src='data:image/png;base64,{ans['img_before']}' style='max-width:100%; border:1px solid #ccc;'/>"
@@ -321,7 +330,6 @@ def generate_activity_html(act_name, ans, u_name):
 def render_group_members(ans, disabled_flag):
     st.markdown("#### 👥 모둠 구성원 (학번/이름)")
     col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-    # 교사 테스트 시 st.session_state.user_info.get("id")는 "audskal" 등이므로 기본값 처리 조심
     default_id = st.session_state.user_info.get("id", "") if st.session_state.user_info.get("role") == "학생" else ""
     default_name = st.session_state.user_info.get("name", "") if st.session_state.user_info.get("role") == "학생" else ""
     m1_id = col_m1.text_input("모둠원1 학번", value=ans.get("m1_id", default_id), disabled=disabled_flag)
@@ -339,10 +347,11 @@ def render_activity1_3th(user_key, u_name, current_role, user_class):
     category = ACT_3_1
     ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
     is_active, status_msg = check_active(category, user_class)
-    # 📌 교사는 언제나 수정 가능하도록 제한 해제
     disabled_flag = (current_role == "학생" and not is_active)
     
-    if current_role == "관리자": st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
+    if current_role == "관리자": 
+        disabled_flag = False
+        st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
     st.markdown(f"### ♣ {category}")
     st.markdown("---")
     if current_role == "학생":
@@ -392,7 +401,9 @@ def render_activity2_3th(user_key, u_name, current_role, user_class):
     is_active, status_msg = check_active(category, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
     
-    if current_role == "관리자": st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
+    if current_role == "관리자": 
+        disabled_flag = False
+        st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
     st.markdown(f"### ♣ {category}")
     st.markdown("---")
     if current_role == "학생":
@@ -437,7 +448,9 @@ def render_activity3_3th(user_key, u_name, current_role, user_class):
     is_active, status_msg = check_active(category, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
     
-    if current_role == "관리자": st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
+    if current_role == "관리자": 
+        disabled_flag = False
+        st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
     st.markdown(f"### ♣ {category}")
     st.markdown("---")
     if current_role == "학생":
@@ -518,7 +531,9 @@ def render_activity1_2nd(user_key, u_name, current_role, user_class):
     is_active, status_msg = check_active(category, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
     
-    if current_role == "관리자": st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
+    if current_role == "관리자": 
+        disabled_flag = False
+        st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
     st.markdown(f"### ♣ {category}")
     st.markdown("---")
     if current_role == "학생":
@@ -600,7 +615,9 @@ def render_activity2_2nd(user_key, u_name, current_role, user_class):
     is_active, status_msg = check_active(category, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
     
-    if current_role == "관리자": st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
+    if current_role == "관리자": 
+        disabled_flag = False
+        st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
     st.markdown(f"### ♣ {category}")
     st.markdown("---")
     if current_role == "학생":
@@ -637,30 +654,33 @@ def render_activity2_2nd(user_key, u_name, current_role, user_class):
     st.info("두 개 이상의 상충되는 요구사항(예: 성능 대 비용, 유연성 대 단순성) 사이에서 최선의 선택을 하기 위해 장단점을 저울질하고 조율하는 과정. 완벽한 설계는 존재하지 않으며, 모든 설계는 무엇인가를 얻는 대신 다른 것을 포기하는 구조를 가질 수 밖에 없음")
     st.markdown("▶ **도시 개조 포인트**\n- 기본 100포인트 부여, 포인트를 활용하여 기존의 비효율적, 차량 중심 공간을 보행자를 위한 친환경 인프라로!!\n- 새롭게 추가하는 카테고리/코드/세부 개조 항목 관련한 포인트는 최소 10pt, 최대 20pt(10~20pt)\n- 포인트는 남김 없이 모두 사용해야 함\n- 최소한의 현실 가능성은 충족할 것 예) 지하철 개통, 공항 건설... ㅠ.ㅠ")
     
-    st.markdown("""
-    | 카테고리 | 코드 | 세부 개조 항목 | 비용 |
-    |---|---|---|---|
-    | **안전한 보행 환경** | A-1 | 여고생 안심 하교길 스마트 로드 | -15pt |
-    | | A-2 | 아파트 단지 간 담장 철거 및 공공 보행로 연결 | -20pt |
-    | | A-3 | 차로 축소 및 쾌적한 보행을 위한 녹지 공간 조성 | -20pt |
-    | | A-4 | 스마트 횡단보도 및 교통약자/학생 쉼터 | -10pt |
-    | | A-5 | | |
-    | | A-6 | | |
-    | **녹지 및 생태공간 구축** | B-1 | 아파트 상가/방치 공터 → 도심 소공원 조성 | -15pt |
-    | | B-2 | 도심 바람길 숲 및 수변 산책로 조성 | -15pt |
-    | | B-3 | 에코 펫파크(반려견 전용 공원 및 산책로) | -15pt |
-    | | B-4 | | |
-    | | B-5 | | |
-    | **문화와 교육을 위한 공간** | C-1 | 24시간 공공 스터디 & 커뮤니티 카페 | -15pt |
-    | | C-2 | 청소년 팝업 스튜디오 & 소공연장 | -15pt |
-    | | C-3 | 친환경 스마트 팜 | -10pt |
-    | | C-4 | | |
-    | | C-5 | | |
-    | **효율적인 교통과 모빌리티 구축** | D-1 | 공유 자전거 및 킥보드 전용 도로 | -15pt |
-    | | D-2 | 스마트 버스 쉘터(공기 청정, 냉난방 설비 구축) | -10pt |
-    | | D-3 | | |
-    | | D-4 | | |
-    """)
+    # 📌 도시 개조 포인트 입력 표 (학생 직접 편집 가능)
+    st.markdown("**▶ 도시 개조 포인트 (아이디어 추가 및 수정 가능)**")
+    default_point_table = [
+        {"카테고리": "안전한 보행 환경", "코드": "A-1", "세부 개조 항목": "여고생 안심 귀가 스마트 로드 (CCTV 연동)", "비용": "-15pt"},
+        {"카테고리": "안전한 보행 환경", "코드": "A-2", "세부 개조 항목": "아파트 단지 간 담장 철거 및 공공 보행로 연결", "비용": "-20pt"},
+        {"카테고리": "안전한 보행 환경", "코드": "A-3", "세부 개조 항목": "차로 축소 및 쾌적한 보행을 위한 녹지 공간 조성", "비용": "-20pt"},
+        {"카테고리": "안전한 보행 환경", "코드": "A-4", "세부 개조 항목": "스마트 횡단보도 및 교통약자/학생 쉼터", "비용": "-10pt"},
+        {"카테고리": "안전한 보행 환경", "코드": "A-5", "세부 개조 항목": "야간 자율학습 후 안전 귀가를 위한 셉테드(CPTED) 조명", "비용": "-10pt"},
+        {"카테고리": "안전한 보행 환경", "코드": "A-6", "세부 개조 항목": "", "비용": ""},
+        {"카테고리": "녹지 및 생태공간 구축", "코드": "B-1", "세부 개조 항목": "아파트 상가/방치 공터 → 도심 소공원 조성", "비용": "-15pt"},
+        {"카테고리": "녹지 및 생태공간 구축", "코드": "B-2", "세부 개조 항목": "도심 바람길 숲 및 수변 산책로 조성", "비용": "-15pt"},
+        {"카테고리": "녹지 및 생태공간 구축", "코드": "B-3", "세부 개조 항목": "에코 펫파크(반려견 전용 공원 및 산책로)", "비용": "-15pt"},
+        {"카테고리": "녹지 및 생태공간 구축", "코드": "B-4", "세부 개조 항목": "아파트 벽면 녹화 및 옥상 정원(학생 쉼터) 조성", "비용": "-15pt"},
+        {"카테고리": "녹지 및 생태공간 구축", "코드": "B-5", "세부 개조 항목": "", "비용": ""},
+        {"카테고리": "문화와 교육을 위한 공간", "코드": "C-1", "세부 개조 항목": "24시간 공공 스터디 & 커뮤니티 카페", "비용": "-15pt"},
+        {"카테고리": "문화와 교육을 위한 공간", "코드": "C-2", "세부 개조 항목": "청소년 팝업 스튜디오 & 소공연장 (여고생 동아리 특화)", "비용": "-15pt"},
+        {"카테고리": "문화와 교육을 위한 공간", "코드": "C-3", "세부 개조 항목": "친환경 스마트 팜", "비용": "-10pt"},
+        {"카테고리": "문화와 교육을 위한 공간", "코드": "C-4", "세부 개조 항목": "프리미엄 복합 문화 공간 (북카페, 피트니스 존 등)", "비용": "-20pt"},
+        {"카테고리": "문화와 교육을 위한 공간", "코드": "C-5", "세부 개조 항목": "", "비용": ""},
+        {"카테고리": "효율적인 교통과 모빌리티 구축", "코드": "D-1", "세부 개조 항목": "공유 자전거 및 킥보드 전용 도로", "비용": "-15pt"},
+        {"카테고리": "효율적인 교통과 모빌리티 구축", "코드": "D-2", "세부 개조 항목": "스마트 버스 쉘터(공기 청정, 온열 의자 구축)", "비용": "-10pt"},
+        {"카테고리": "효율적인 교통과 모빌리티 구축", "코드": "D-3", "세부 개조 항목": "등하교 혼잡 방지용 아파트 단지 앞 스마트 승하차 존", "비용": "-15pt"},
+        {"카테고리": "효율적인 교통과 모빌리티 구축", "코드": "D-4", "세부 개조 항목": "", "비용": ""}
+    ]
+    step2_point_df = pd.DataFrame(ans.get("step2_point_df", default_point_table))
+    disabled_cols = True if disabled_flag else ["카테고리", "코드"]
+    edited_step2_point_df = st.data_editor(step2_point_df, hide_index=True, use_container_width=True, disabled=disabled_cols)
 
     st.markdown("**도시 개조 트레이드오프 설계표**")
     default_step2 = [{"순번": str(i+1), "선택 코드": "", "버릴 공간": "", "사용 포인트": "", "공간 재설계 이유 및 기대효과": ""} for i in range(8)]
@@ -703,6 +723,7 @@ def render_activity2_2nd(user_key, u_name, current_role, user_class):
                 "m1_id": m1_id, "m1_name": m1_name, "m2_id": m2_id, "m2_name": m2_name, "m3_id": m3_id, "m3_name": m3_name, "m4_id": m4_id, "m4_name": m4_name,
                 "step1_1": step1_1, "step1_2_df": edited_step1_2_df.to_dict('records'),
                 "step1_3_1": step1_3_1, "step1_3_2": step1_3_2, "step1_3_3": step1_3_3,
+                "step2_point_df": edited_step2_point_df.to_dict('records'),
                 "step2_df": edited_step2_df.to_dict('records'),
                 "img_before": b64_before, "img_after": b64_after,
                 "step4_1": step4_1, "step4_2": step4_2, "step4_3": step4_3, "step4_4": step4_4
@@ -761,13 +782,11 @@ def render_class_overview(current_role, u_info, view_subj):
     st.markdown("---")
     app_config = load_json(CONFIG_FILE, {})
     
-    # 공지 블록 필터링 렌더링
     custom_blocks = [b for b in app_config.get("custom_blocks", []) if b.get("subject", "전체 공지") in ["전체 공지", view_subj]]
     for block in custom_blocks:
         with st.expander(block["title"], expanded=True):
             st.markdown(block["content"])
 
-    # 동적 링크 필터링 렌더링
     dynamic_links = [l for l in app_config.get("dynamic_links", []) if l.get("subject", "전체 공지") in ["전체 공지", view_subj]]
     if dynamic_links:
         grouped_links = {}
@@ -785,7 +804,6 @@ def render_class_overview(current_role, u_info, view_subj):
             col_idx += 1
         st.markdown("---")
 
-    # 일반 공지사항 표 필터링 렌더링
     notices = [n for n in app_config.get("notices", []) if n.get("subject", "전체 공지") in ["전체 공지", view_subj]]
     if notices:
         st.markdown("### 📢 알림 및 공지사항")
@@ -859,7 +877,6 @@ if st.session_state.logged_in:
     if u_info['role'] == "관리자": 
         sidebar_html = f"<div style='background-color:#e8f4f8; padding:10px; border-radius:5px; margin-bottom:15px; line-height:1.4;'><div style='font-size:15px; font-weight:bold; color:#0056b3; margin-bottom:3px;'>🟢 {u_info['name']} 님 로그인 중</div><div style='font-size:14px; color:#333; margin-bottom:2px;'>📘 과목: {u_info.get('subject', '전체')}</div><div style='font-size:14px; color:#333;'>🛡️ 권한: {u_info['role']}</div></div>"
         st.sidebar.markdown(sidebar_html, unsafe_allow_html=True)
-        # 📌 관리자 사이드바 미리보기 과목 선택 메뉴
         st.session_state.admin_view_subject = st.sidebar.selectbox("👀 관리 및 미리보기 과목", ["전체 공지"] + SUBJECTS)
     else: 
         sidebar_html = f"<div style='background-color:#e8f4f8; padding:10px; border-radius:5px; margin-bottom:15px; line-height:1.4;'><div style='font-size:15px; font-weight:bold; color:#0056b3; margin-bottom:3px;'>🟢 {u_info['name']} 님 로그인 중</div><div style='font-size:14px; color:#333; margin-bottom:2px;'>📘 과목: {u_info.get('subject', '전체')}</div><div style='font-size:14px; color:#333; margin-bottom:2px;'>🏫 소속: {u_info.get('class_group', '')}</div><div style='font-size:14px; color:#333;'>🛡️ 권한: {u_info['role']}</div></div>"
@@ -973,7 +990,6 @@ else:
 
                 admin_view_subj = st.session_state.get("admin_view_subject", "전체 공지")
                 
-                # 📌 교사용 미리보기 렌더링
                 st.subheader(f"🖥️ [{admin_view_subj}] 학생 화면 미리보기 및 활동지 테스트")
                 render_class_overview(current_role, u_info, admin_view_subj)
                 st.markdown("---")
@@ -1128,7 +1144,7 @@ else:
                     st.info("⏰ 기한 설정은 왼쪽 '관리 및 미리보기 과목'에서 개별 과목을 선택해야만 편집 가능합니다.")
 
                 st.markdown("---")
-                st.markdown("#### 👨‍🏫 교사용 특강/수업 자료 업로드")
+                st.subheader("👨‍🏫 교사용 특강/수업 자료 업로드")
                 with st.form("upload_mat"):
                     mat_title = st.text_input("자료 제목")
                     mat_link = st.text_input("외부 링크 URL (있는 경우)")
@@ -1252,7 +1268,6 @@ else:
                         save_json(USERS_FILE, fresh_users)
                         st.success("삭제 완료"); st.rerun()
 
-            # --- 📥 탭 4: 학생 제출 자료 조회 및 관리 ---
             with menu_tabs[3]:
                 col_t, col_b = st.columns([8, 2])
                 with col_t: st.subheader("📥 학생 학습 활동 및 제출 자료 실시간 조회")
@@ -1411,7 +1426,9 @@ else:
                                         st.write(f"- 문제점 1: {ans.get('step1_3_1','')}")
                                         st.write(f"- 문제점 2: {ans.get('step1_3_2','')}")
                                         st.write(f"- 문제점 3: {ans.get('step1_3_3','')}")
-                                        st.write("**트레이드오프 설계표**")
+                                        st.write("**[도시 개조 포인트 (학생 추가 포함)]**")
+                                        st.dataframe(pd.DataFrame(ans.get("step2_point_df", [])), use_container_width=True)
+                                        st.write("**[트레이드오프 설계표]**")
                                         st.dataframe(pd.DataFrame(ans.get("step2_df", [])), use_container_width=True)
                                         
                                         col_v1, col_v2 = st.columns(2)
@@ -1637,7 +1654,9 @@ else:
                                     st.write(f"- 문제점 1: {ans.get('step1_3_1','')}")
                                     st.write(f"- 문제점 2: {ans.get('step1_3_2','')}")
                                     st.write(f"- 문제점 3: {ans.get('step1_3_3','')}")
-                                    st.write("**트레이드오프 설계표**")
+                                    st.write("**[도시 개조 포인트 (학생 추가 포함)]**")
+                                    st.dataframe(pd.DataFrame(ans.get("step2_point_df", [])), use_container_width=True)
+                                    st.write("**[트레이드오프 설계표]**")
                                     st.dataframe(pd.DataFrame(ans.get("step2_df", [])), use_container_width=True)
                                     
                                     col_v1, col_v2 = st.columns(2)
@@ -1663,6 +1682,9 @@ else:
                                     csv_data.append(["문제점 1", ans.get("step1_3_1", "")])
                                     csv_data.append(["문제점 2", ans.get("step1_3_2", "")])
                                     csv_data.append(["문제점 3", ans.get("step1_3_3", "")])
+                                    csv_data.append(["[도시 개조 포인트 (학생 추가 포함)]", ""])
+                                    csv_data.append(["카테고리", "코드", "세부 개조 항목", "비용"])
+                                    for row in ans.get("step2_point_df", []): csv_data.append([row.get("카테고리", ""), row.get("코드", ""), row.get("세부 개조 항목", ""), row.get("비용", "")])
                                     for row in ans.get("step2_df", []): csv_data.append([f"트레이드오프 순번 {row.get('순번', '')}", f"코드: {row.get('선택 코드', '')} / 버릴공간: {row.get('버릴 공간', '')} / 포인트: {row.get('사용 포인트', '')} / 재설계: {row.get('공간 재설계 이유 및 기대효과', '')}"])
                                     if ans.get("img_before"): csv_data.append(["변경 전 스케치", "이미지 제출 완료 (HTML 포트폴리오에서 확인 가능)"])
                                     if ans.get("img_after"): csv_data.append(["변경 후 스케치", "이미지 제출 완료 (HTML 포트폴리오에서 확인 가능)"])
