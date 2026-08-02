@@ -159,7 +159,7 @@ def init_system():
             if k in current_config: del current_config[k]; needs_update = True
         if needs_update: save_json(CONFIG_FILE, current_config)
 
-# 📌 [신규 추가] 카테고리 병합(Rowspan) 처리용 HTML 생성 함수
+# 📌 카테고리 병합(Rowspan) 처리용 HTML 생성 함수
 def generate_points_html(df_records):
     if not df_records: return ""
     html = "<table style='width:100%; border-collapse:collapse; text-align:center;'><tr><th style='background-color:#ecf0f1; border:1px solid #bdc3c7; padding:10px;'>카테고리</th><th style='background-color:#ecf0f1; border:1px solid #bdc3c7; padding:10px;'>코드</th><th style='background-color:#ecf0f1; border:1px solid #bdc3c7; padding:10px;'>세부 개조 항목</th><th style='background-color:#ecf0f1; border:1px solid #bdc3c7; padding:10px;'>비용</th></tr>"
@@ -181,6 +181,31 @@ def generate_points_html(df_records):
         i += 1
     html += "</table><br>"
     return html
+
+# 📌 해결책 C: 모둠원 데이터 자동 연동 스캐너 함수
+def get_user_activity_data(user_key, u_id, u_subj, u_class, act_name, learning_data):
+    # 그룹 활동인 경우에만 전체 문서를 스캔하여 모둠원 포함 여부를 확인
+    if act_name in [ACT_2_1, ACT_2_2]:
+        u_id_str = str(u_id).strip()
+        if not u_id_str:
+            return user_key, learning_data.get(user_key, {}).get(act_name, {})
+            
+        # 1순위: 자신이 모둠장(1번)으로 작성한 데이터가 우선권
+        own_data = learning_data.get(user_key, {}).get(act_name, {})
+        if str(own_data.get("m1_id", "")).strip() == u_id_str:
+            return user_key, own_data
+            
+        # 2순위: 타인이 작성한 데이터의 모둠원 목록(m1~m4)에 내 학번이 있는지 스캔
+        for k, acts in learning_data.items():
+            # 같은 과목, 같은 반의 데이터만 스캔
+            if k.startswith(f"{u_subj}_{u_class}_"):
+                a_data = acts.get(act_name, {})
+                members = [str(a_data.get(f"m{i}_id", "")).strip() for i in range(1, 5)]
+                if u_id_str in members:
+                    return k, a_data  # 모둠장(소유자)의 user_key와 데이터를 반환
+                    
+    # 일반 활동이거나 그룹 정보가 없으면 본인의 데이터 반환
+    return user_key, learning_data.get(user_key, {}).get(act_name, {})
 
 # --- [공통 HTML 포트폴리오 생성기] ---
 def generate_html_content(act_name, ans):
@@ -311,7 +336,11 @@ def generate_html_content(act_name, ans):
         
     return html
 
-def generate_portfolio_html(student_answers, u_name, u_class, view_subj, config):
+def generate_portfolio_html(user_key, u_info, view_subj, config, learning_data):
+    u_id = u_info.get('id', '')
+    u_name = u_info.get('name', '학생')
+    u_class = u_info.get('class_group', '')
+    
     html = f"""<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>{u_name} 수행평가 포트폴리오</title>
     <style>
         body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; }}
@@ -328,7 +357,8 @@ def generate_portfolio_html(student_answers, u_name, u_class, view_subj, config)
     """
     acts_for_subj = config.get("subject_activities", {}).get(view_subj, [])
     for act in acts_for_subj:
-        ans = student_answers.get(act, {})
+        # 📌 포트폴리오 생성 시에도 모둠원 연동 데이터를 가져옵니다.
+        owner_key, ans = get_user_activity_data(user_key, u_id, view_subj, u_class, act, learning_data)
         if not ans: continue
         html += f"<h2>▶ {act}</h2>"
         if act in ACTIVITIES: html += generate_html_content(act, ans)
@@ -352,7 +382,7 @@ def render_group_members(ans, disabled_flag):
     col_m1, col_m2, col_m3, col_m4 = st.columns(4)
     default_id = st.session_state.user_info.get("id", "") if st.session_state.user_info.get("role") == "학생" else ""
     default_name = st.session_state.user_info.get("name", "") if st.session_state.user_info.get("role") == "학생" else ""
-    m1_id = col_m1.text_input("모둠원1 학번", value=ans.get("m1_id", default_id), disabled=disabled_flag)
+    m1_id = col_m1.text_input("모둠원1(모둠장) 학번", value=ans.get("m1_id", default_id), disabled=disabled_flag)
     m1_name = col_m1.text_input("모둠원1 이름", value=ans.get("m1_name", default_name), disabled=disabled_flag)
     m2_id = col_m2.text_input("모둠원2 학번", value=ans.get("m2_id", ""), disabled=disabled_flag)
     m2_name = col_m2.text_input("모둠원2 이름", value=ans.get("m2_name", ""), disabled=disabled_flag)
@@ -363,9 +393,16 @@ def render_group_members(ans, disabled_flag):
     st.markdown("---")
     return m1_id, m1_name, m2_id, m2_name, m3_id, m3_name, m4_id, m4_name
 
-def render_activity1_3th(user_key, u_name, current_role, user_class):
+def render_activity1_3th(user_key, u_info, current_role):
     category = ACT_3_1
-    ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
+    u_name = u_info.get("name", "")
+    u_id = u_info.get("id", "")
+    u_subj = u_info.get("subject", "전체")
+    user_class = u_info.get("class_group", "")
+    
+    learning_data = load_json(DATA_FILE, {})
+    owner_key, ans = get_user_activity_data(user_key, u_id, u_subj, user_class, category, learning_data)
+    
     is_active, status_msg = check_active(category, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
     
@@ -415,9 +452,16 @@ def render_activity1_3th(user_key, u_name, current_role, user_class):
         st.markdown("---"); html_data = generate_activity_html(category, ans, u_name)
         st.download_button("📥 내 작성 내용 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
 
-def render_activity2_3th(user_key, u_name, current_role, user_class):
+def render_activity2_3th(user_key, u_info, current_role):
     category = ACT_3_2
-    ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
+    u_name = u_info.get("name", "")
+    u_id = u_info.get("id", "")
+    u_subj = u_info.get("subject", "전체")
+    user_class = u_info.get("class_group", "")
+    
+    learning_data = load_json(DATA_FILE, {})
+    owner_key, ans = get_user_activity_data(user_key, u_id, u_subj, user_class, category, learning_data)
+    
     is_active, status_msg = check_active(category, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
     
@@ -462,9 +506,16 @@ def render_activity2_3th(user_key, u_name, current_role, user_class):
         st.markdown("---"); html_data = generate_activity_html(category, ans, u_name)
         st.download_button("📥 내 작성 내용 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
 
-def render_activity3_3th(user_key, u_name, current_role, user_class):
+def render_activity3_3th(user_key, u_info, current_role):
     category = ACT_3_3
-    ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
+    u_name = u_info.get("name", "")
+    u_id = u_info.get("id", "")
+    u_subj = u_info.get("subject", "전체")
+    user_class = u_info.get("class_group", "")
+    
+    learning_data = load_json(DATA_FILE, {})
+    owner_key, ans = get_user_activity_data(user_key, u_id, u_subj, user_class, category, learning_data)
+    
     is_active, status_msg = check_active(category, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
     
@@ -545,18 +596,36 @@ def render_activity3_3th(user_key, u_name, current_role, user_class):
         st.markdown("---"); html_data = generate_activity_html(category, ans, u_name)
         st.download_button("📥 내 작성 내용 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
 
-def render_activity1_2nd(user_key, u_name, current_role, user_class):
+def render_activity1_2nd(user_key, u_info, current_role):
     category = ACT_2_1
-    ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
+    u_name = u_info.get("name", "")
+    u_id = u_info.get("id", "")
+    u_subj = u_info.get("subject", "전체")
+    user_class = u_info.get("class_group", "")
+    
+    learning_data = load_json(DATA_FILE, {})
+    # 📌 현재 로그인한 학생이 모둠원으로 등록된 다른 문서가 있는지 스캔
+    owner_key, ans = get_user_activity_data(user_key, u_id, u_subj, user_class, category, learning_data)
+    
     is_active, status_msg = check_active(category, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
+    
+    # 📌 본인(모둠장)이 아닌 조회 전용 모둠원인 경우 입력창 비활성화
+    is_member_view = False
+    if current_role == "학생" and owner_key != user_key:
+        is_member_view = True
+        disabled_flag = True
     
     if current_role == "관리자": 
         disabled_flag = False
         st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
+        
     st.markdown(f"### ♣ {category}")
     st.markdown("---")
-    if current_role == "학생":
+    
+    if is_member_view:
+        st.info("💡 **[조회 전용]** 모둠장(대표)이 작성 및 저장한 화면을 연동하여 조회 중입니다. 수정/저장은 대표 학생만 가능합니다.")
+    elif current_role == "학생":
         if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
         else: st.success(status_msg, icon="✅")
 
@@ -629,18 +698,34 @@ def render_activity1_2nd(user_key, u_name, current_role, user_class):
         st.markdown("---"); html_data = generate_activity_html(category, ans, u_name)
         st.download_button("📥 내 작성 내용 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
 
-def render_activity2_2nd(user_key, u_name, current_role, user_class):
+def render_activity2_2nd(user_key, u_info, current_role):
     category = ACT_2_2
-    ans = load_json(DATA_FILE, {}).get(user_key, {}).get(category, {})
+    u_name = u_info.get("name", "")
+    u_id = u_info.get("id", "")
+    u_subj = u_info.get("subject", "전체")
+    user_class = u_info.get("class_group", "")
+    
+    learning_data = load_json(DATA_FILE, {})
+    owner_key, ans = get_user_activity_data(user_key, u_id, u_subj, user_class, category, learning_data)
+    
     is_active, status_msg = check_active(category, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
+    
+    is_member_view = False
+    if current_role == "학생" and owner_key != user_key:
+        is_member_view = True
+        disabled_flag = True
     
     if current_role == "관리자": 
         disabled_flag = False
         st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
+        
     st.markdown(f"### ♣ {category}")
     st.markdown("---")
-    if current_role == "학생":
+    
+    if is_member_view:
+        st.info("💡 **[조회 전용]** 모둠장(대표)이 작성 및 저장한 화면을 연동하여 조회 중입니다. 수정/저장은 대표 학생만 가능합니다.")
+    elif current_role == "학생":
         if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
         else: st.success(status_msg, icon="✅")
 
@@ -660,7 +745,6 @@ def render_activity2_2nd(user_key, u_name, current_role, user_class):
         {"구분": "이동 및 보행", "필수 서비스 항목": "보행자 전용 도로, 자전거 도로", "충분": False, "부족 or 없음": False}
     ]
     step1_2_df = pd.DataFrame(ans.get("step1_2_df", default_step1_2))
-    # 구분, 항목도 학생들이 직접 수정하고 표의 열을 늘릴 수 있도록 disabled 해제 + num_rows 추가
     edited_step1_2_df = st.data_editor(step1_2_df, hide_index=True, use_container_width=True, disabled=disabled_flag, num_rows="dynamic")
 
     st.markdown("**3. 선택한 지역의 핵심 문제점**")
@@ -675,8 +759,7 @@ def render_activity2_2nd(user_key, u_name, current_role, user_class):
     st.info("두 개 이상의 상충되는 요구사항(예: 성능 대 비용, 유연성 대 단순성) 사이에서 최선의 선택을 하기 위해 장단점을 저울질하고 조율하는 과정. 완벽한 설계는 존재하지 않으며, 모든 설계는 무엇인가를 얻는 대신 다른 것을 포기하는 구조를 가질 수 밖에 없음")
     st.markdown("▶ **도시 개조 포인트**\n- 기본 100포인트 부여, 포인트를 활용하여 기존의 비효율적, 차량 중심 공간을 보행자를 위한 친환경 인프라로!!\n- 새롭게 추가하는 카테고리/코드/세부 개조 항목 관련한 포인트는 최소 10pt, 최대 20pt(10~20pt)\n- 포인트는 남김 없이 모두 사용해야 함\n- 최소한의 현실 가능성은 충족할 것 예) 지하철 개통, 공항 건설... ㅠ.ㅠ")
     
-    # 📌 도시 개조 포인트 입력 표 (학생 아이디어 직접 입력 지원 및 반복 카테고리 공란 처리)
-    st.markdown("**▶ 도시 개조 포인트 (학생 아이디어 직접 추가 및 수정 가능)**")
+    st.markdown("**▶ 도시 개조 포인트 (카테고리별 전용 추가 - 각 표 하단의 ➕ 버튼을 눌러 해당 영역에 직접 행을 추가하세요)**")
     default_point_table = [
         {"카테고리": "안전한 보행 환경", "코드": "A-1", "세부 개조 항목": "여고생 안심 귀가 스마트 로드 (CCTV 연동)", "비용": "-15pt"},
         {"카테고리": "", "코드": "A-2", "세부 개조 항목": "아파트 단지 간 담장 철거 및 공공 보행로 연결", "비용": "-20pt"},
@@ -699,13 +782,44 @@ def render_activity2_2nd(user_key, u_name, current_role, user_class):
         {"카테고리": "", "코드": "D-3", "세부 개조 항목": "등하교 혼잡 방지용 아파트 단지 앞 스마트 승하차 존", "비용": "-15pt"},
         {"카테고리": "", "코드": "D-4", "세부 개조 항목": "", "비용": ""}
     ]
-    step2_point_df = pd.DataFrame(ans.get("step2_point_df", default_point_table))
-    edited_step2_point_df = st.data_editor(step2_point_df, hide_index=True, use_container_width=True, disabled=disabled_flag, num_rows="dynamic")
+
+    saved_points = ans.get("step2_point_df", default_point_table)
+    cat_names = ["안전한 보행 환경", "녹지 및 생태공간 구축", "문화와 교육을 위한 공간", "효율적인 교통과 모빌리티 구축"]
+    
+    categorized_data = {cat: [] for cat in cat_names}
+    current_cat = cat_names[0]
+    for row in saved_points:
+        cat_val = str(row.get("카테고리", "")).strip()
+        if cat_val in cat_names:
+            current_cat = cat_val
+        categorized_data[current_cat].append(row)
+        
+    edited_points_merged = []
+    for i, cat in enumerate(cat_names):
+        st.markdown(f"<h5 style='color:#2c3e50; margin-top:20px; margin-bottom:5px;'>🔹 {cat}</h5>", unsafe_allow_html=True)
+        df_cat = pd.DataFrame(categorized_data[cat])
+        edited_df_cat = st.data_editor(
+            df_cat, 
+            key=f"editor_cat_{i}", 
+            num_rows="dynamic", 
+            use_container_width=True, 
+            hide_index=True,
+            disabled=disabled_flag,
+            column_config={
+                "카테고리": None, 
+                "코드": st.column_config.TextColumn("코드", required=True, width="small"),
+                "세부 개조 항목": st.column_config.TextColumn("세부 개조 항목", width="large"),
+                "비용": st.column_config.TextColumn("비용", width="small")
+            }
+        )
+        cat_records = edited_df_cat.to_dict('records')
+        for j, record in enumerate(cat_records):
+            record["카테고리"] = cat if j == 0 else ""
+            edited_points_merged.append(record)
 
     st.markdown("**▶ 도시 개조 트레이드오프 설계표**")
     default_step2 = [{"순번": str(i+1), "선택 코드": "", "버릴 공간": "", "사용 포인트": "", "공간 재설계 이유 및 기대효과": ""} for i in range(8)]
     step2_df = pd.DataFrame(ans.get("step2_df", default_step2))
-    # 📌 행 추가/삭제 기능(num_rows="dynamic") 적용
     edited_step2_df = st.data_editor(step2_df, hide_index=True, use_container_width=True, disabled=disabled_flag, num_rows="dynamic")
 
     st.markdown("---")
@@ -744,7 +858,7 @@ def render_activity2_2nd(user_key, u_name, current_role, user_class):
                 "m1_id": m1_id, "m1_name": m1_name, "m2_id": m2_id, "m2_name": m2_name, "m3_id": m3_id, "m3_name": m3_name, "m4_id": m4_id, "m4_name": m4_name,
                 "step1_1": step1_1, "step1_2_df": edited_step1_2_df.to_dict('records'),
                 "step1_3_1": step1_3_1, "step1_3_2": step1_3_2, "step1_3_3": step1_3_3,
-                "step2_point_df": edited_step2_point_df.to_dict('records'),
+                "step2_point_df": edited_points_merged,
                 "step2_df": edited_step2_df.to_dict('records'),
                 "img_before": b64_before, "img_after": b64_after,
                 "step4_1": step4_1, "step4_2": step4_2, "step4_3": step4_3, "step4_4": step4_4
@@ -757,8 +871,15 @@ def render_activity2_2nd(user_key, u_name, current_role, user_class):
         st.markdown("---"); html_data = generate_activity_html(category, ans, u_name)
         st.download_button("📥 내 작성 내용 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
 
-def render_custom_activity(user_key, u_name, current_role, user_class, act_name, config):
-    ans = load_json(DATA_FILE, {}).get(user_key, {}).get(act_name, {})
+def render_custom_activity(user_key, u_info, current_role, act_name, config):
+    u_name = u_info.get("name", "")
+    u_id = u_info.get("id", "")
+    u_subj = u_info.get("subject", "전체")
+    user_class = u_info.get("class_group", "")
+    
+    learning_data = load_json(DATA_FILE, {})
+    owner_key, ans = get_user_activity_data(user_key, u_id, u_subj, user_class, act_name, learning_data)
+    
     is_active, status_msg = check_active(act_name, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
     
@@ -977,12 +1098,13 @@ else:
 
     if st.session_state.current_page != "main":
         act_name = st.session_state.current_page
-        if act_name == ACT_3_1: render_activity1_3th(current_user_key, u_info['name'], current_role, user_class_group)
-        elif act_name == ACT_3_2: render_activity2_3th(current_user_key, u_info['name'], current_role, user_class_group)
-        elif act_name == ACT_3_3: render_activity3_3th(current_user_key, u_info['name'], current_role, user_class_group)
-        elif act_name == ACT_2_1: render_activity1_2nd(current_user_key, u_info['name'], current_role, user_class_group)
-        elif act_name == ACT_2_2: render_activity2_2nd(current_user_key, u_info['name'], current_role, user_class_group)
-        else: render_custom_activity(current_user_key, u_info['name'], current_role, user_class_group, act_name, app_config)
+        # 📌 렌더링 함수 호출에 u_info 변수 직접 전달
+        if act_name == ACT_3_1: render_activity1_3th(current_user_key, u_info, current_role)
+        elif act_name == ACT_3_2: render_activity2_3th(current_user_key, u_info, current_role)
+        elif act_name == ACT_3_3: render_activity3_3th(current_user_key, u_info, current_role)
+        elif act_name == ACT_2_1: render_activity1_2nd(current_user_key, u_info, current_role)
+        elif act_name == ACT_2_2: render_activity2_2nd(current_user_key, u_info, current_role)
+        else: render_custom_activity(current_user_key, u_info, current_role, act_name, app_config)
             
         st.markdown("<br><br>", unsafe_allow_html=True)
         if st.button("⬅️ 메인 화면으로 돌아가기", use_container_width=True): change_page("main")
@@ -991,13 +1113,13 @@ else:
         if current_role == "학생":
             st.title("🏫 수업 및 활동 어시스트 프로그램")
             render_class_overview(current_role, u_info, u_info.get('subject', '전체'))
-            student_answers = learning_data.get(current_user_key, {})
-            if student_answers:
-                st.markdown("---")
-                st.subheader("📚 내 포트폴리오 전체 일괄 다운로드")
-                html_content = generate_portfolio_html(student_answers, u_info['name'], u_info['class_group'], u_info['subject'], app_config)
-                st.download_button(label=f"📥 {u_info['name']} 학생 전체 포트폴리오 다운로드 (웹문서)", data=html_content.encode('utf-8-sig'), file_name=f"{u_info['name']}_전체_포트폴리오.html", mime="text/html", type="primary")
-                st.caption("💡 다운로드한 파일을 인터넷 창으로 연 뒤 **[우클릭 ➔ 인쇄 ➔ PDF로 저장]** 하시면 제출용 파일이 완성됩니다.")
+            
+            # 학생 화면 포트폴리오 다운로드 버튼
+            st.markdown("---")
+            st.subheader("📚 내 포트폴리오 전체 일괄 다운로드")
+            html_content = generate_portfolio_html(current_user_key, u_info, u_info['subject'], app_config, learning_data)
+            st.download_button(label=f"📥 {u_info['name']} 학생 전체 포트폴리오 다운로드 (웹문서)", data=html_content.encode('utf-8-sig'), file_name=f"{u_info['name']}_전체_포트폴리오.html", mime="text/html", type="primary")
+            st.caption("💡 다운로드한 파일을 인터넷 창으로 연 뒤 **[우클릭 ➔ 인쇄 ➔ PDF로 저장]** 하시면 제출용 파일이 완성됩니다.")
 
         elif current_role == "관리자":
             st.title("🛠️ 관리자(교사) 대시보드")
@@ -1331,11 +1453,21 @@ else:
                         has_data = False
                         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
                             for s_uid in student_list:
-                                s_ans = learning_data.get(s_uid, {})
-                                if s_ans:
-                                    u_n = all_users[s_uid].get('name', '학생')
-                                    u_c = all_users[s_uid].get('class_group', '')
-                                    h_content = generate_portfolio_html(s_ans, u_n, u_c, view_subj, load_json(CONFIG_FILE, {}))
+                                # 📌 ZIP 다운로드 시에도 모둠 활동 연동 처리 반영
+                                u_info_iter = all_users[s_uid]
+                                acts_for_iter = load_json(CONFIG_FILE, {}).get("subject_activities", {}).get(view_subj, [])
+                                
+                                # 학생에게 데이터가 하나라도 있는지 체크 (모둠 데이터 포함)
+                                s_ans_dict = {}
+                                for act in acts_for_iter:
+                                    _, temp_ans = get_user_activity_data(s_uid, u_info_iter.get('id',''), view_subj, u_info_iter.get('class_group',''), act, learning_data)
+                                    if temp_ans: s_ans_dict[act] = temp_ans
+                                
+                                if s_ans_dict:
+                                    u_n = u_info_iter.get('name', '학생')
+                                    u_c = u_info_iter.get('class_group', '')
+                                    # s_uid 넘기면 generate_portfolio_html 내부에서 get_user_activity_data 처리하여 내용 채움
+                                    h_content = generate_portfolio_html(s_uid, u_info_iter, view_subj, load_json(CONFIG_FILE, {}), learning_data)
                                     file_n = f"{u_c}_{u_n}_포트폴리오.html"
                                     zip_file.writestr(file_n, h_content.encode('utf-8-sig'))
                                     has_data = True
@@ -1360,9 +1492,10 @@ else:
                             
                         selected_student = st.selectbox("학생 선택", student_list, format_func=format_student_dropdown)
                         if selected_student:
-                            student_answers = learning_data.get(selected_student, {})
-                            u_name = all_users[selected_student].get('name', '학생')
-                            u_class_selected = all_users[selected_student].get('class_group', '')
+                            u_info_sel = all_users[selected_student]
+                            u_name = u_info_sel.get('name', '학생')
+                            u_class_selected = u_info_sel.get('class_group', '')
+                            u_id_selected = u_info_sel.get('id', '')
                             
                             st.markdown(f"### 👀 <span style='color:#0056b3'>{u_name}</span> 학생의 실시간 활동 내역", unsafe_allow_html=True)
                             
@@ -1370,11 +1503,14 @@ else:
                             acts_for_subj = load_json(CONFIG_FILE, {}).get("subject_activities", {}).get(view_subj, [])
                             
                             for act in acts_for_subj:
-                                ans = student_answers.get(act, {})
+                                # 📌 개별 조회 시 모둠 활동 연동 처리 반영
+                                owner_key, ans = get_user_activity_data(selected_student, u_id_selected, view_subj, u_class_selected, act, learning_data)
                                 if ans:
                                     has_answer = True
                                     st.markdown(f"#### 📍 {act}")
-                                    
+                                    if act in [ACT_2_1, ACT_2_2] and owner_key != selected_student:
+                                        st.caption(f"💡 모둠장(대표)이 작성한 모둠 공통 제출물입니다.")
+                                        
                                     if act == ACT_3_1:
                                         st.write(f"- **영상의 제목:** {ans.get('a1_1','')} | **국가 혹은 지역:** {ans.get('a1_2','')}")
                                         st.info(f"**선택 이유:**\n{ans.get('a1_3','')}")
@@ -1482,7 +1618,7 @@ else:
                                 st.warning("아직 제출한 활동지 내역이 없는 학생입니다.")
                             
                             st.markdown("---")
-                            html_content = generate_portfolio_html(student_answers, u_name, u_class_selected, view_subj, load_json(CONFIG_FILE, {}))
+                            html_content = generate_portfolio_html(selected_student, u_info_sel, view_subj, load_json(CONFIG_FILE, {}), learning_data)
                             st.download_button(label=f"📄 {u_name} 학생 개별 포트폴리오 다운로드 (웹문서)", data=html_content.encode('utf-8-sig'), file_name=f"{u_name}_{view_subj}_포트폴리오.html", mime="text/html", type="primary")
 
                     elif view_mode == "📅 항목별(수행평가) 전체 현황 (엑셀 다운로드)":
@@ -1495,14 +1631,24 @@ else:
                             
                             csv_data = []
                             for s_uid in student_list:
-                                ans = learning_data.get(s_uid, {}).get(selected_view, {})
-                                u_info = all_users[s_uid]
-                                u_id = u_info.get('id', '')
-                                u_name = u_info.get('name', '')
-                                u_class = u_info.get('class_group', '')
+                                u_info_csv = all_users[s_uid]
+                                u_id = u_info_csv.get('id', '')
+                                u_name = u_info_csv.get('name', '')
+                                u_class = u_info_csv.get('class_group', '')
                                 
-                                st.markdown(f"#### 👤 [{u_info.get('subject', '')}] {u_class} - {u_name} ({u_id})")
-                                csv_data.append([f"■ [{u_info.get('subject', '')}] {u_class} - {u_name} ({u_id})", ""])
+                                # 📌 관리자 엑셀 다운로드 시에도 모둠원 연동 데이터를 가져옵니다.
+                                owner_key, ans = get_user_activity_data(s_uid, u_id, view_subj, u_class, selected_view, learning_data)
+                                
+                                st.markdown(f"#### 👤 [{u_info_csv.get('subject', '')}] {u_class} - {u_name} ({u_id})")
+                                csv_data.append([f"■ [{u_info_csv.get('subject', '')}] {u_class} - {u_name} ({u_id})", ""])
+                                
+                                if not ans:
+                                    st.caption("제출된 활동 내용이 없습니다.")
+                                    csv_data.append(["제출 여부", "미제출"])
+                                    csv_data.append(["==================================================", ""])
+                                    csv_data.append(["", ""])
+                                    st.markdown("---")
+                                    continue
                                 
                                 if selected_view == ACT_3_1:
                                     st.write(f"- **영상의 제목:** {ans.get('a1_1','')} | **국가 혹은 지역:** {ans.get('a1_2','')}")
