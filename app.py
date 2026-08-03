@@ -41,7 +41,7 @@ ACT_3_1 = "[3학년] 수행평가 1 - 영상으로 떠나는 여행"
 ACT_3_2 = "[3학년] 수행평가 2 - 나를 성장시킨 장소 지도 만들기"
 ACT_3_3 = "[3학년] 수행평가 3 - 나의 세계관에 대해 알아가는 '여행'"
 ACT_2_1 = "[2학년] 수행평가 1 - 도시 '밈' 해석을 통한 도시성과 생활양식 탐구"
-ACT_2_2 = "[2학년] 수행평가 2 - 내가 설계하는 N분 도시 with 파리의 15분 도시설계"
+ACT_2_2 = "[2학년] 수행평가 2 - 내가 설계하는 N분 도시 정체성 설계"
 
 ACTIVITIES = [ACT_3_1, ACT_3_2, ACT_3_3, ACT_2_1, ACT_2_2]
 
@@ -460,7 +460,7 @@ def render_activity1_3th(user_key, u_info, current_role):
             current_data[user_key][category] = new_ans
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons()
-            st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0; font-size:32px; font-weight:900; color:#2e7d32;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align:center; padding:30px; background-color:#e8f5e9; border-radius:8px; border:2px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 15px 0; font-size:26px; font-weight:900; color:#111;'>🎉 화면 저장이 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:700; color:#111;'>입력하신 내용이 데이터베이스에 안전하게 저장되었습니다.</p></div>", unsafe_allow_html=True)
 
 def render_activity2_3th(user_key, u_info, current_role):
     category = ACT_3_2
@@ -512,7 +512,7 @@ def render_activity2_3th(user_key, u_info, current_role):
             current_data[user_key][category] = new_ans
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons()
-            st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0; font-size:32px; font-weight:900; color:#2e7d32;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align:center; padding:30px; background-color:#e8f5e9; border-radius:8px; border:2px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 15px 0; font-size:26px; font-weight:900; color:#111;'>🎉 화면 저장이 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:700; color:#111;'>입력하신 내용이 데이터베이스에 안전하게 저장되었습니다.</p></div>", unsafe_allow_html=True)
 
 def render_activity3_3th(user_key, u_info, current_role):
     category = ACT_3_3
@@ -601,7 +601,7 @@ def render_activity3_3th(user_key, u_info, current_role):
             current_data[user_key][category] = new_ans
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons()
-            st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0; font-size:32px; font-weight:900; color:#2e7d32;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align:center; padding:30px; background-color:#e8f5e9; border-radius:8px; border:2px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 15px 0; font-size:26px; font-weight:900; color:#111;'>🎉 화면 저장이 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:700; color:#111;'>입력하신 내용이 데이터베이스에 안전하게 저장되었습니다.</p></div>", unsafe_allow_html=True)
 
 def render_activity1_2nd(user_key, u_info, current_role):
     category = ACT_2_1
@@ -697,7 +697,7 @@ def render_activity1_2nd(user_key, u_info, current_role):
             current_data[user_key][category] = new_ans
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons()
-            st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0; font-size:32px; font-weight:900; color:#2e7d32;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align:center; padding:30px; background-color:#e8f5e9; border-radius:8px; border:2px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 15px 0; font-size:26px; font-weight:900; color:#111;'>🎉 화면 저장이 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:700; color:#111;'>입력하신 내용이 데이터베이스에 안전하게 저장되었습니다.</p></div>", unsafe_allow_html=True)
 
 def render_activity2_2nd(user_key, u_info, current_role):
     category = ACT_2_2
@@ -909,7 +909,7 @@ def render_activity2_2nd(user_key, u_info, current_role):
             current_data[user_key][category] = new_ans
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons()
-            st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0; font-size:32px; font-weight:900; color:#2e7d32;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align:center; padding:30px; background-color:#e8f5e9; border-radius:8px; border:2px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 15px 0; font-size:26px; font-weight:900; color:#111;'>🎉 화면 저장이 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:700; color:#111;'>입력하신 내용이 데이터베이스에 안전하게 저장되었습니다.</p></div>", unsafe_allow_html=True)
 
 def render_custom_activity(user_key, u_info, current_role, act_name, config):
     u_name = u_info.get("name", "")
@@ -951,7 +951,7 @@ def render_custom_activity(user_key, u_info, current_role, act_name, config):
             current_data[user_key][act_name] = new_ans
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons()
-            st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0; font-size:32px; font-weight:900; color:#2e7d32;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align:center; padding:30px; background-color:#e8f5e9; border-radius:8px; border:2px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 15px 0; font-size:26px; font-weight:900; color:#111;'>🎉 화면 저장이 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:700; color:#111;'>입력하신 내용이 데이터베이스에 안전하게 저장되었습니다.</p></div>", unsafe_allow_html=True)
 
 def render_class_overview(current_role, u_info, view_subj):
     st.markdown(f"<h2>🎯 [{view_subj}] 수행평가 및 활동 모듈</h2>", unsafe_allow_html=True)
@@ -1019,7 +1019,7 @@ def render_class_overview(current_role, u_info, view_subj):
 
 st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", layout="wide")
 
-# 📌 해결책 반영: 폰트 크기, 진하기, 색상 위계 완벽 복구
+# 📌 해결책 반영: 폰트 크기, 진하기, 색상 위계 완벽 복구 및 버튼 텍스트 색상 수정
 st.markdown("""
 <style>
 /* 제목(Header) 계층 명확화 - 무조건 본문보다 크고 진하게 */
@@ -1218,7 +1218,7 @@ else:
             with menu_tabs[0]:
                 if st.session_state.get("admin_save_success", False):
                     st.balloons()
-                    st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 10px 0; font-size:32px; font-weight:900; color:#2e7d32;'>🎉 화면 저장이 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:bold; color:#2e7d32;'>변경하신 내용이 안전하게 저장되어 즉시 반영됩니다.</p></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='text-align:center; padding:30px; background-color:#e8f5e9; border-radius:8px; border:2px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 15px 0; font-size:26px; font-weight:900; color:#111;'>🎉 화면 저장이 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:700; color:#111;'>변경하신 내용이 시스템에 안전하게 저장되어 즉시 반영됩니다.</p></div>", unsafe_allow_html=True)
                     st.session_state.admin_save_success = False
 
                 admin_view_subj = st.session_state.get("admin_view_subject", "전체 공지")
@@ -2031,8 +2031,9 @@ else:
                             try:
                                 restored = json.load(up_data)
                                 save_json(DATA_FILE, restored)
-                                st.success("✅ 학습 데이터 복구 완료!"); st.rerun()
-                            except: st.error("❌ 올바른 json 파일이 아닙니다.")
+                                st.success("✅ 학습 데이터 복구 완료!")
+                            except Exception: 
+                                st.error("❌ 올바른 json 파일이 아닙니다.")
 
                     st.write("📂 [2] 회원 정보 데이터 복구")
                     up_users = st.file_uploader("users.json 업로드", type="json", key="up_users", label_visibility="collapsed")
@@ -2041,8 +2042,9 @@ else:
                             try:
                                 restored = json.load(up_users)
                                 save_json(USERS_FILE, restored)
-                                st.success("✅ 회원 정보 복구 완료!"); st.rerun()
-                            except: st.error("❌ 올바른 json 파일이 아닙니다.")
+                                st.success("✅ 회원 정보 복구 완료!")
+                            except Exception: 
+                                st.error("❌ 올바른 json 파일이 아닙니다.")
 
                     st.write("📂 [3] 시스템 설정 데이터 복구")
                     up_config = st.file_uploader("config.json 업로드", type="json", key="up_config", label_visibility="collapsed")
@@ -2051,5 +2053,6 @@ else:
                             try:
                                 restored = json.load(up_config)
                                 save_json(CONFIG_FILE, restored)
-                                st.success("✅ 시스템 설정 복구 완료!"); st.rerun()
-                            except: st.error("❌ 올바른 json 파일이 아닙니다.")
+                                st.success("✅ 시스템 설정 복구 완료!")
+                            except Exception: 
+                                st.error("❌ 올바른 json 파일이 아닙니다.")
