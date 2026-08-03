@@ -328,7 +328,7 @@ def generate_html_content(act_name, ans):
             if name_before.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
                 html += f"<img src='data:image/png;base64,{b64_before}' style='max-width:100%; border:1px solid #ccc;'/>"
             else:
-                html += "<p>(이미지 외의 파일이 등록되어 웹문서 포트폴리오 상에서는 미리보기를 제공하지 않습니다. 원본 파일을 다운로드하여 확인해 주세요.)</p>"
+                html += "<p>(이미지 외의 파일이 등록되어 웹문서 포트폴리오 상에서는 미리보기를 제공하지 않습니다. 원본 파일을 확인해 주세요.)</p>"
                 
         b64_after = ans.get("file_after_data", ans.get("img_after", ""))
         name_after = ans.get("file_after_name", "변경후_스케치.png" if ans.get("img_after") else "")
@@ -337,7 +337,7 @@ def generate_html_content(act_name, ans):
             if name_after.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
                 html += f"<img src='data:image/png;base64,{b64_after}' style='max-width:100%; border:1px solid #ccc;'/>"
             else:
-                html += "<p>(이미지 외의 파일이 등록되어 웹문서 포트폴리오 상에서는 미리보기를 제공하지 않습니다. 원본 파일을 다운로드하여 확인해 주세요.)</p>"
+                html += "<p>(이미지 외의 파일이 등록되어 웹문서 포트폴리오 상에서는 미리보기를 제공하지 않습니다. 원본 파일을 확인해 주세요.)</p>"
                 
         html += "<h3>Step 4. 3분 공청회 발표를 위한 준비</h3>"
         html += f"<p><b>1. 핵심 정책 슬로건:</b> {ans.get('step4_1','')}</p>"
@@ -950,7 +950,6 @@ def render_class_overview(current_role, u_info, view_subj):
     
     custom_blocks = [b for b in app_config.get("custom_blocks", []) if b.get("subject", "전체 공지") in ["전체 공지", view_subj]]
     for block in custom_blocks:
-        # 📌 해결책 반영: 공지사항 블록 제목 초록색 배경 및 글씨 크기/진하기 상향
         block_content_html = block["content"].replace('\n', '<br>')
         st.markdown(f"""
         <div style="border: 2px solid #4CAF50; border-radius: 8px; margin-bottom: 25px; background-color: #ffffff;">
@@ -1008,38 +1007,43 @@ def render_class_overview(current_role, u_info, view_subj):
                 if st.button(f"📄 {act}", use_container_width=True): change_page(act)
     else: st.info("아직 이 과목에 할당된 수행평가 목록이 없습니다.")
 
-st.set_page_config(page_title="GEO 수업 및 활동 어시스트 프로그램", layout="wide")
+st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", layout="wide")
 
-# 📌 해결책 반영: 전체 폰트 크기 및 굵기 대폭 상향 조정 CSS
 st.markdown("""
 <style>
-/* 전체 폰트 기본 설정 덮어쓰기 */
-html, body, [class*="st-"] { font-size: 18px !important; font-weight: 700 !important; color: #111 !important; }
+/* 제목 크기 및 진하기 계층 구조 확립 */
+h1, .stMarkdown h1 { font-size: 32px !important; font-weight: 900 !important; color: #111 !important; }
+h2, .stMarkdown h2 { font-size: 28px !important; font-weight: 900 !important; color: #111 !important; }
+h3, .stMarkdown h3 { font-size: 24px !important; font-weight: 800 !important; color: #111 !important; margin-bottom: 15px !important; }
+h4, .stMarkdown h4 { font-size: 20px !important; font-weight: 800 !important; color: #222 !important; margin-top: 15px !important; margin-bottom: 10px !important; }
+h5, .stMarkdown h5 { font-size: 18px !important; font-weight: 700 !important; color: #222 !important; }
 
-/* 마크다운 텍스트(일반 텍스트, 안내문 등) 대폭 강화 */
-.stMarkdown p, .stMarkdown span, .stMarkdown li { font-size: 18px !important; font-weight: 700 !important; color: #111 !important; line-height: 1.6 !important; }
+/* 본문 텍스트 (이전보다 크지만 너무 진하지 않게 500~600으로 조정) */
+.stMarkdown p, .stMarkdown span, .stMarkdown li { font-size: 17px !important; font-weight: 500 !important; color: #333 !important; line-height: 1.6 !important; }
 
-/* 사이드바 메뉴 폰트 강화 */
-[data-testid="stSidebar"] .stMarkdown p, [data-testid="stSidebar"] .stSelectbox label p, [data-testid="stSidebar"] .stTextInput label p, [data-testid="stSidebar"] .stRadio label p, [data-testid="stSidebar"] div[data-baseweb="radio"] div { font-size: 20px !important; font-weight: 900 !important; color: #111111 !important; }
-[data-testid="stSidebar"] input, [data-testid="stSidebar"] div[data-baseweb="select"] { font-size: 18px !important; font-weight: 800 !important; }
+/* 폼 입력창 라벨 (질문 내용 등) */
+label p { font-size: 17px !important; font-weight: 700 !important; color: #222 !important; }
+input, textarea, div[data-baseweb="select"] { font-size: 17px !important; font-weight: 500 !important; color: #111 !important; }
 
-/* 폼 입력창, 드롭다운 텍스트, 라벨 강화 */
-input, textarea, div[data-baseweb="select"] { font-size: 18px !important; font-weight: 800 !important; color: #000 !important; }
-label p { font-size: 19px !important; font-weight: 900 !important; color: #000 !important; }
+/* 사이드바 메뉴 폰트 */
+[data-testid="stSidebar"] .stMarkdown p { font-size: 18px !important; font-weight: 600 !important; color: #222 !important; }
 
-/* 메인 버튼 스타일링 강화 */
-[data-testid="stFormSubmitButton"] button, button[kind="primary"] { background-color: #FF4B4B !important; color: white !important; font-size: 22px !important; font-weight: 900 !important; padding: 12px !important; border-radius: 8px !important; border: none !important; min-height: 50px !important; width: 100% !important; }
-button[kind="primary"] p { font-size: 22px !important; font-weight: 900 !important; }
-button[kind="secondary"] { background-color: #0056b3 !important; color: white !important; font-size: 22px !important; font-weight: 900 !important; padding: 12px !important; border-radius: 8px !important; border: none !important; min-height: 50px !important; width: 100% !important; }
-button[kind="secondary"] p { color: white !important; font-size: 22px !important; font-weight: 900 !important; }
+/* 메인 버튼 스타일링 (로그아웃 버튼 등 흰색 글씨 명시적 강제) */
+[data-testid="stFormSubmitButton"] button, button[kind="primary"] { background-color: #FF4B4B !important; color: white !important; font-size: 20px !important; font-weight: 800 !important; padding: 12px !important; border-radius: 8px !important; border: none !important; min-height: 50px !important; width: 100% !important; }
+button[kind="primary"] p { color: white !important; font-size: 20px !important; font-weight: 800 !important; }
+button[kind="primary"] * { color: white !important; }
 
-/* 데이터 테이블 텍스트 굵고 크게 */
-[data-testid="stDataFrame"] { border: 2px solid #222 !important; border-radius: 5px; }
-table th { background-color: #e2e8f0 !important; font-size: 18px !important; font-weight: 900 !important; text-align:center !important; color: #000 !important; }
-table td { font-size: 17px !important; font-weight: 800 !important; color: #111 !important; }
+button[kind="secondary"] { background-color: #0056b3 !important; color: white !important; font-size: 20px !important; font-weight: 800 !important; padding: 12px !important; border-radius: 8px !important; border: none !important; min-height: 50px !important; width: 100% !important; }
+button[kind="secondary"] p { color: white !important; font-size: 20px !important; font-weight: 800 !important; }
+button[kind="secondary"] * { color: white !important; }
 
-/* 안내 메시지(st.info, st.success, st.warning, st.error) 내부 텍스트 크기 증가 */
-[data-testid="stAlert"] div[data-testid="stMarkdownContainer"] p { font-size: 19px !important; font-weight: 800 !important; }
+/* 데이터 테이블 */
+[data-testid="stDataFrame"] { border: 2px solid #aaa !important; border-radius: 5px; }
+table th { background-color: #e2e8f0 !important; font-size: 17px !important; font-weight: 800 !important; text-align:center !important; color: #111 !important; }
+table td { font-size: 16px !important; font-weight: 500 !important; color: #333 !important; }
+
+/* 안내 메시지 */
+[data-testid="stAlert"] div[data-testid="stMarkdownContainer"] p { font-size: 17px !important; font-weight: 600 !important; color: #222 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -1138,7 +1142,7 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("<div style='text-align: center; color: #222; font-size: 18px; font-weight: 900;'>Made by<br><span style='font-size: 24px; color: #000; font-weight: 900;'>신선여자고등학교 김명남</span></div>", unsafe_allow_html=True)
 
 if not st.session_state.logged_in:
-    st.title("🏫 GEO 수업 및 활동 어시스트 프로그램")
+    st.title("🏫 수업 및 활동 어시스트 프로그램")
     st.info("왼쪽 사이드바를 이용해 로그인해주세요.")
 else:
     current_role = st.session_state.user_info["role"]
@@ -1166,7 +1170,6 @@ else:
             st.title("🏫 수업 및 활동 어시스트 프로그램")
             render_class_overview(current_role, u_info, u_info.get('subject', '전체'))
             
-            # 📌 해결책 반영: 개별 활동 결과물 다운로드를 위쪽으로 배치
             st.markdown("---")
             st.subheader("📄 개별 활동 결과물 다운로드")
             st.caption("제출 완료한 활동지만 나타납니다.")
@@ -1182,7 +1185,6 @@ else:
             if not has_individual_dl:
                 st.info("아직 제출한 활동지가 없습니다.")
             
-            # 📌 전체 포트폴리오 다운로드를 아래쪽으로 이동
             st.markdown("---")
             st.subheader("📚 내 포트폴리오 일괄 다운로드")
             html_content_all = generate_portfolio_html(current_user_key, u_info, u_info['subject'], app_config, learning_data)
@@ -1700,7 +1702,6 @@ else:
                             if not has_answer:
                                 st.warning("해당 학생이 제출한 내역이 없거나 조건에 맞는 활동지가 없습니다.")
                             
-                            # 📌 전체 포트폴리오 다운로드는 하단에 배치
                             if has_answer and filter_act == "전체 활동지 보기":
                                 html_content = generate_portfolio_html(selected_student, u_info_sel, view_subj, load_json(CONFIG_FILE, {}), learning_data)
                                 st.download_button(label=f"📄 {u_name} 학생 전체 포트폴리오 일괄 다운로드 (웹문서)", data=html_content.encode('utf-8-sig'), file_name=f"{u_name}_{view_subj}_포트폴리오.html", mime="text/html", type="primary")
