@@ -319,9 +319,27 @@ def generate_html_content(act_name, ans):
         
         html += "<h4>[트레이드오프 설계표]</h4><table><tr><th>순번</th><th>선택 코드</th><th>버릴 공간</th><th>사용 포인트</th><th>공간 재설계 이유 및 기대효과</th></tr>"
         for row in ans.get("step2_df", []): html += f"<tr><td>{row.get('순번','')}</td><td>{row.get('선택 코드','')}</td><td>{row.get('버릴 공간','')}</td><td>{row.get('사용 포인트','')}</td><td>{row.get('공간 재설계 이유 및 기대효과','')}</td></tr>"
-        html += "</table><h3>Step 3. N분 도시 공간 지도 스케치</h3>"
-        if ans.get("img_before"): html += f"<h4>변경 전</h4><img src='data:image/png;base64,{ans['img_before']}' style='max-width:100%; border:1px solid #ccc;'/>"
-        if ans.get("img_after"): html += f"<h4>변경 후</h4><img src='data:image/png;base64,{ans['img_after']}' style='max-width:100%; border:1px solid #ccc;'/>"
+        
+        # 📌 문서 및 자료 연동 로직
+        html += "<h3>Step 3. N분 도시 공간 개조 자료</h3>"
+        b64_before = ans.get("file_before_data", ans.get("img_before", ""))
+        name_before = ans.get("file_before_name", "변경전_스케치.png" if ans.get("img_before") else "")
+        if b64_before:
+            html += f"<h4>변경 전 자료: {name_before}</h4>"
+            if name_before.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                html += f"<img src='data:image/png;base64,{b64_before}' style='max-width:100%; border:1px solid #ccc;'/>"
+            else:
+                html += "<p>(이미지 외의 파일이 등록되어 웹문서 포트폴리오 상에서는 미리보기를 제공하지 않습니다. 원본 파일을 확인해 주세요.)</p>"
+                
+        b64_after = ans.get("file_after_data", ans.get("img_after", ""))
+        name_after = ans.get("file_after_name", "변경후_스케치.png" if ans.get("img_after") else "")
+        if b64_after:
+            html += f"<h4>변경 후 자료: {name_after}</h4>"
+            if name_after.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                html += f"<img src='data:image/png;base64,{b64_after}' style='max-width:100%; border:1px solid #ccc;'/>"
+            else:
+                html += "<p>(이미지 외의 파일이 등록되어 웹문서 포트폴리오 상에서는 미리보기를 제공하지 않습니다. 원본 파일을 확인해 주세요.)</p>"
+                
         html += "<h3>Step 4. 3분 공청회 발표를 위한 준비</h3>"
         html += f"<p><b>1. 핵심 정책 슬로건:</b> {ans.get('step4_1','')}</p>"
         html += f"<p><b>2. 심각한 공간 문제:</b> {ans.get('step4_2','')}</p>"
@@ -440,10 +458,6 @@ def render_activity1_3th(user_key, u_info, current_role):
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons()
             st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; color:#2e7d32; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 10px 0;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
-            
-    if ans:
-        st.markdown("---"); html_data = generate_activity_html(category, ans, u_name)
-        st.download_button("📥 내 작성 내용 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
 
 def render_activity2_3th(user_key, u_info, current_role):
     category = ACT_3_2
@@ -494,10 +508,6 @@ def render_activity2_3th(user_key, u_info, current_role):
             current_data[user_key][category] = new_ans
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons(); st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; color:#2e7d32; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 10px 0;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
-            
-    if ans:
-        st.markdown("---"); html_data = generate_activity_html(category, ans, u_name)
-        st.download_button("📥 내 작성 내용 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
 
 def render_activity3_3th(user_key, u_info, current_role):
     category = ACT_3_3
@@ -584,10 +594,6 @@ def render_activity3_3th(user_key, u_info, current_role):
             current_data[user_key][category] = new_ans
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons(); st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; color:#2e7d32; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 10px 0;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
-            
-    if ans:
-        st.markdown("---"); html_data = generate_activity_html(category, ans, u_name)
-        st.download_button("📥 내 작성 내용 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
 
 def render_activity1_2nd(user_key, u_info, current_role):
     category = ACT_2_1
@@ -684,10 +690,6 @@ def render_activity1_2nd(user_key, u_info, current_role):
             current_data[user_key][category] = new_ans
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons(); st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; color:#2e7d32; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 10px 0;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
-            
-    if ans:
-        st.markdown("---"); html_data = generate_activity_html(category, ans, u_name)
-        st.download_button("📥 내 작성 내용 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
 
 def render_activity2_2nd(user_key, u_info, current_role):
     category = ACT_2_2
@@ -813,24 +815,68 @@ def render_activity2_2nd(user_key, u_info, current_role):
     step2_df = pd.DataFrame(ans.get("step2_df", default_step2))
     edited_step2_df = st.data_editor(step2_df, hide_index=True, use_container_width=True, disabled=disabled_flag, num_rows="dynamic")
 
+    # 📌 해결책 반영: 모든 형식의 파일 업로드 허용 및 삭제 기능 추가
     st.markdown("---")
-    st.markdown("#### Step 3. N분 도시 공간 지도 스케치 (이미지 업로드)")
-    st.info("💡 변경 전과 변경 후의 지도 스케치(변경 인프라 및 보행선 관련 내용 표시) 사진을 각각 업로드하세요.")
+    st.markdown("#### Step 3. N분 도시 공간 개조 자료 스케치/기획안 업로드")
+    st.info("💡 변경 전과 변경 후의 자료(스케치 사진, PDF, PPT 등 모든 형식 가능)를 각각 업로드하세요. 새로운 파일을 첨부 후 하단 '저장하기'를 누르면 기존 파일에 덮어씌워집니다.")
     
     col_img1, col_img2 = st.columns(2)
+    
+    # --- 변경 전 파일 업로드 ---
     with col_img1:
-        st.markdown("**[변경 전 지도 스케치]**")
-        img_before = st.file_uploader("변경 전 스케치 파일 선택", type=["png", "jpg", "jpeg"], key="up_before", disabled=disabled_flag)
-        b64_before = ans.get("img_before", "")
-        if img_before and not disabled_flag: b64_before = base64.b64encode(img_before.getvalue()).decode("utf-8")
-        if b64_before: st.image(base64.b64decode(b64_before), caption="변경 전 스케치", use_container_width=True)
+        st.markdown("**[변경 전 자료]**")
+        b64_before = ans.get("file_before_data", ans.get("img_before", ""))
+        name_before = ans.get("file_before_name", "변경전_스케치.png" if ans.get("img_before") else "")
+        
+        if b64_before:
+            st.success(f"📎 등록된 파일: {name_before}")
+            if name_before.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                st.image(base64.b64decode(b64_before), caption="변경 전 자료", use_container_width=True)
+            else:
+                st.info("이미지 외의 파일이 정상적으로 등록되어 있습니다.")
+                
+            if not disabled_flag:
+                if st.button("🗑️ 변경 전 저장된 자료 삭제", key="del_saved_before"):
+                    current_data = load_json(DATA_FILE, {}) 
+                    if user_key in current_data and category in current_data[user_key]:
+                        current_data[user_key][category]["img_before"] = ""
+                        current_data[user_key][category]["file_before_data"] = ""
+                        current_data[user_key][category]["file_before_name"] = ""
+                        save_json(DATA_FILE, current_data)
+                    st.rerun()
 
+        file_before = st.file_uploader("새로운 변경 전 파일 선택", key="up_before", disabled=disabled_flag)
+        if file_before and not disabled_flag:
+            b64_before = base64.b64encode(file_before.getvalue()).decode("utf-8")
+            name_before = file_before.name
+
+    # --- 변경 후 파일 업로드 ---
     with col_img2:
-        st.markdown("**[변경 후 지도 스케치]**")
-        img_after = st.file_uploader("변경 후 스케치 파일 선택", type=["png", "jpg", "jpeg"], key="up_after", disabled=disabled_flag)
-        b64_after = ans.get("img_after", "")
-        if img_after and not disabled_flag: b64_after = base64.b64encode(img_after.getvalue()).decode("utf-8")
-        if b64_after: st.image(base64.b64decode(b64_after), caption="변경 후 스케치", use_container_width=True)
+        st.markdown("**[변경 후 자료]**")
+        b64_after = ans.get("file_after_data", ans.get("img_after", ""))
+        name_after = ans.get("file_after_name", "변경후_스케치.png" if ans.get("img_after") else "")
+        
+        if b64_after:
+            st.success(f"📎 등록된 파일: {name_after}")
+            if name_after.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                st.image(base64.b64decode(b64_after), caption="변경 후 자료", use_container_width=True)
+            else:
+                st.info("이미지 외의 파일이 정상적으로 등록되어 있습니다.")
+                
+            if not disabled_flag:
+                if st.button("🗑️ 변경 후 저장된 자료 삭제", key="del_saved_after"):
+                    current_data = load_json(DATA_FILE, {}) 
+                    if user_key in current_data and category in current_data[user_key]:
+                        current_data[user_key][category]["img_after"] = ""
+                        current_data[user_key][category]["file_after_data"] = ""
+                        current_data[user_key][category]["file_after_name"] = ""
+                        save_json(DATA_FILE, current_data)
+                    st.rerun()
+
+        file_after = st.file_uploader("새로운 변경 후 파일 선택", key="up_after", disabled=disabled_flag)
+        if file_after and not disabled_flag:
+            b64_after = base64.b64encode(file_after.getvalue()).decode("utf-8")
+            name_after = file_after.name
 
     st.markdown("---")
     st.markdown("#### Step 4. 3분 공청회 발표를 위한 준비")
@@ -851,16 +897,14 @@ def render_activity2_2nd(user_key, u_info, current_role):
                 "step1_3_1": step1_3_1, "step1_3_2": step1_3_2, "step1_3_3": step1_3_3,
                 "step2_point_df": edited_points_merged,
                 "step2_df": edited_step2_df.to_dict('records'),
+                "file_before_data": b64_before, "file_before_name": name_before,
+                "file_after_data": b64_after, "file_after_name": name_after,
                 "img_before": b64_before, "img_after": b64_after,
                 "step4_1": step4_1, "step4_2": step4_2, "step4_3": step4_3, "step4_4": step4_4
             }
             current_data[user_key][category] = new_ans
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons(); st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; color:#2e7d32; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 10px 0;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
-            
-    if ans:
-        st.markdown("---"); html_data = generate_activity_html(category, ans, u_name)
-        st.download_button("📥 내 작성 내용 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{category}.html", mime="text/html")
 
 def render_custom_activity(user_key, u_info, current_role, act_name, config):
     u_name = u_info.get("name", "")
@@ -902,13 +946,6 @@ def render_custom_activity(user_key, u_info, current_role, act_name, config):
             current_data[user_key][act_name] = new_ans
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons(); st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; color:#2e7d32; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 10px 0;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
-
-    if ans:
-        st.markdown("---")
-        html_data = f"<!DOCTYPE html><html lang='ko'><head><meta charset='UTF-8'><title>{u_name}</title><style>body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; }} h2 {{ color: #2c3e50; border-left: 5px solid #3498db; padding-left: 10px; }} h3 {{ color: #2980b9; }} .content-box {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #e9ecef; white-space: pre-wrap; margin-bottom: 20px; }}</style></head><body><div style='text-align: right; margin-bottom: 20px;'><b>이름:</b> {u_name}</div><h2>▶ {act_name}</h2>"
-        for q in custom_form: html_data += f"<h3>{q['label']}</h3><div class='content-box'>{ans.get(q['id'],'')}</div>"
-        html_data += "</body></html>"
-        st.download_button("📥 내 작성 내용 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{act_name}.html", mime="text/html")
 
 def render_class_overview(current_role, u_info, view_subj):
     st.subheader(f"🎯 [{view_subj}] 수행평가 및 활동 모듈")
@@ -965,7 +1002,7 @@ def render_class_overview(current_role, u_info, view_subj):
                 if st.button(f"📄 {act}", use_container_width=True): change_page(act)
     else: st.info("아직 이 과목에 할당된 수행평가 목록이 없습니다.")
 
-st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", layout="wide")
+st.set_page_config(page_title="GEO 어시스트 프로그램", layout="wide")
 st.markdown("""
 <style>
 [data-testid="stSidebar"] .stMarkdown p, [data-testid="stSidebar"] .stSelectbox label p, [data-testid="stSidebar"] .stTextInput label p, [data-testid="stSidebar"] .stRadio label p, [data-testid="stSidebar"] div[data-baseweb="radio"] div { font-size: 20px !important; font-weight: 900 !important; color: #111111 !important; }
@@ -1104,14 +1141,12 @@ else:
             st.title("🏫 수업 및 활동 어시스트 프로그램")
             render_class_overview(current_role, u_info, u_info.get('subject', '전체'))
             
-            # 학생 화면 포트폴리오 다운로드 영역
             st.markdown("---")
             st.subheader("📚 내 포트폴리오 일괄 다운로드")
             html_content_all = generate_portfolio_html(current_user_key, u_info, u_info['subject'], app_config, learning_data)
             st.download_button(label=f"📦 {u_info['name']} 학생 전체 포트폴리오 일괄 다운로드 (웹문서)", data=html_content_all.encode('utf-8-sig'), file_name=f"{u_info['name']}_전체_포트폴리오.html", mime="text/html", type="primary")
             st.caption("💡 다운로드한 파일을 인터넷 창으로 연 뒤 **[우클릭 ➔ 인쇄 ➔ PDF로 저장]** 하시면 제출용 파일이 완성됩니다.")
             
-            # 📌 해결책 반영: 학생 메인화면 하단 개별 활동 결과물 다운로드 추가
             st.markdown("---")
             st.subheader("📄 개별 활동 결과물 다운로드")
             st.caption("제출 완료한 활동지만 나타납니다.")
@@ -1504,14 +1539,12 @@ else:
                             
                             acts_for_subj = load_json(CONFIG_FILE, {}).get("subject_activities", {}).get(view_subj, [])
                             
-                            # 📌 해결책 반영: 교사용 화면 활동지 개별 필터링 기능
                             filter_act = st.selectbox("👀 화면에서 조회할 활동지 필터링", ["전체 활동지 보기"] + acts_for_subj)
                             st.markdown("---")
                             
                             has_answer = False
                             
                             for act in acts_for_subj:
-                                # 필터링 조건: 전체보기가 아니면서, 선택한 활동지가 아니면 건너뜀
                                 if filter_act != "전체 활동지 보기" and act != filter_act:
                                     continue
                                     
@@ -1602,17 +1635,28 @@ else:
                                         st.write("**[트레이드오프 설계표]**")
                                         st.dataframe(pd.DataFrame(ans.get("step2_df", [])), use_container_width=True)
                                         
+                                        # 📌 원본 파일 다운로드 처리
                                         col_v1, col_v2 = st.columns(2)
-                                        if ans.get("img_before"):
+                                        
+                                        b64_b = ans.get("file_before_data", ans.get("img_before", ""))
+                                        name_b = ans.get("file_before_name", f"{u_name}_변경전_자료.png" if ans.get("img_before") else "")
+                                        if b64_b:
                                             with col_v1:
-                                                img_bytes = base64.b64decode(ans["img_before"])
-                                                st.image(img_bytes, caption="변경 전 스케치", use_container_width=True)
-                                                st.download_button("📥 변경 전 스케치 원본 다운로드", img_bytes, file_name=f"{u_name}_변경전_스케치.png", mime="image/png")
-                                        if ans.get("img_after"):
+                                                st.markdown(f"**[변경 전 자료: {name_b}]**")
+                                                file_bytes = base64.b64decode(b64_b)
+                                                if name_b.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                                                    st.image(file_bytes, caption="변경 전 자료", use_container_width=True)
+                                                st.download_button("📥 변경 전 자료 원본 다운로드", file_bytes, file_name=name_b, key=f"dl_bef_{selected_student}_{act}")
+                                                
+                                        b64_a = ans.get("file_after_data", ans.get("img_after", ""))
+                                        name_a = ans.get("file_after_name", f"{u_name}_변경후_자료.png" if ans.get("img_after") else "")
+                                        if b64_a:
                                             with col_v2:
-                                                img_bytes = base64.b64decode(ans["img_after"])
-                                                st.image(img_bytes, caption="변경 후 스케치", use_container_width=True)
-                                                st.download_button("📥 변경 후 스케치 원본 다운로드", img_bytes, file_name=f"{u_name}_변경후_스케치.png", mime="image/png")
+                                                st.markdown(f"**[변경 후 자료: {name_a}]**")
+                                                file_bytes = base64.b64decode(b64_a)
+                                                if name_a.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                                                    st.image(file_bytes, caption="변경 후 자료", use_container_width=True)
+                                                st.download_button("📥 변경 후 자료 원본 다운로드", file_bytes, file_name=name_a, key=f"dl_aft_{selected_student}_{act}")
                                                 
                                         st.write(f"- 1. 슬로건: {ans.get('step4_1','')}")
                                         st.write(f"- 2. 공간 문제: {ans.get('step4_2','')}")
@@ -1625,7 +1669,6 @@ else:
                                             st.write(f"**{q['label']}**")
                                             st.info(ans.get(q['id'], ""))
                                     
-                                    # 📌 해결책 반영: 교사용 화면 개별 활동 다운로드 추가
                                     st.write("")
                                     act_html = generate_activity_html(act, ans, u_name)
                                     st.download_button(label=f"📥 [{act}] 개별 결과물 다운로드 (웹문서)", data=act_html.encode('utf-8-sig'), file_name=f"{u_name}_{act}.html", mime="text/html", key=f"teach_dl_{selected_student}_{act}")
@@ -1634,7 +1677,6 @@ else:
                             if not has_answer:
                                 st.warning("해당 학생이 제출한 내역이 없거나 조건에 맞는 활동지가 없습니다.")
                             
-                            # 📌 전체 포트폴리오 다운로드는 '전체 활동지 보기'일 때 하단에 고정 표시
                             if has_answer and filter_act == "전체 활동지 보기":
                                 html_content = generate_portfolio_html(selected_student, u_info_sel, view_subj, load_json(CONFIG_FILE, {}), learning_data)
                                 st.download_button(label=f"📄 {u_name} 학생 전체 포트폴리오 일괄 다운로드 (웹문서)", data=html_content.encode('utf-8-sig'), file_name=f"{u_name}_{view_subj}_포트폴리오.html", mime="text/html", type="primary")
@@ -1849,16 +1891,23 @@ else:
                                     st.dataframe(pd.DataFrame(ans.get("step2_df", [])), use_container_width=True)
                                     
                                     col_v1, col_v2 = st.columns(2)
-                                    if ans.get("img_before"):
+                                    b64_b = ans.get("file_before_data", ans.get("img_before", ""))
+                                    name_b = ans.get("file_before_name", f"{u_name}_변경전_스케치.png" if ans.get("img_before") else "")
+                                    if b64_b:
                                         with col_v1:
-                                            img_bytes = base64.b64decode(ans["img_before"])
-                                            st.image(img_bytes, caption="변경 전 스케치", use_container_width=True)
-                                            st.download_button("📥 변경 전 스케치 원본 다운로드", img_bytes, file_name=f"{u_name}_변경전_스케치.png", mime="image/png")
-                                    if ans.get("img_after"):
+                                            file_bytes = base64.b64decode(b64_b)
+                                            if name_b.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                                                st.image(file_bytes, caption="변경 전 스케치", use_container_width=True)
+                                            st.download_button("📥 변경 전 자료 원본 다운로드", file_bytes, file_name=name_b, key=f"dl_csv_bef_{s_uid}")
+                                            
+                                    b64_a = ans.get("file_after_data", ans.get("img_after", ""))
+                                    name_a = ans.get("file_after_name", f"{u_name}_변경후_스케치.png" if ans.get("img_after") else "")
+                                    if b64_a:
                                         with col_v2:
-                                            img_bytes = base64.b64decode(ans["img_after"])
-                                            st.image(img_bytes, caption="변경 후 스케치", use_container_width=True)
-                                            st.download_button("📥 변경 후 스케치 원본 다운로드", img_bytes, file_name=f"{u_name}_변경후_스케치.png", mime="image/png")
+                                            file_bytes = base64.b64decode(b64_a)
+                                            if name_a.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                                                st.image(file_bytes, caption="변경 후 스케치", use_container_width=True)
+                                            st.download_button("📥 변경 후 자료 원본 다운로드", file_bytes, file_name=name_a, key=f"dl_csv_aft_{s_uid}")
                                             
                                     st.write(f"- 1. 슬로건: {ans.get('step4_1','')}")
                                     st.write(f"- 2. 공간 문제: {ans.get('step4_2','')}")
@@ -1875,8 +1924,10 @@ else:
                                     csv_data.append(["카테고리", "코드", "세부 개조 항목", "비용"])
                                     for row in ans.get("step2_point_df", []): csv_data.append([row.get("카테고리", ""), row.get("코드", ""), row.get("세부 개조 항목", ""), row.get("비용", "")])
                                     for row in ans.get("step2_df", []): csv_data.append([f"트레이드오프 순번 {row.get('순번', '')}", f"코드: {row.get('선택 코드', '')} / 버릴공간: {row.get('버릴 공간', '')} / 포인트: {row.get('사용 포인트', '')} / 재설계: {row.get('공간 재설계 이유 및 기대효과', '')}"])
-                                    if ans.get("img_before"): csv_data.append(["변경 전 스케치", "이미지 제출 완료 (HTML 포트폴리오에서 확인 가능)"])
-                                    if ans.get("img_after"): csv_data.append(["변경 후 스케치", "이미지 제출 완료 (HTML 포트폴리오에서 확인 가능)"])
+                                    
+                                    if b64_b: csv_data.append(["변경 전 자료", f"제출 완료 ({name_b})"])
+                                    if b64_a: csv_data.append(["변경 후 자료", f"제출 완료 ({name_a})"])
+                                    
                                     csv_data.append(["1. 슬로건", ans.get("step4_1", "")])
                                     csv_data.append(["2. 공간 문제", ans.get("step4_2", "")])
                                     csv_data.append(["3. 버리고 채운 것", ans.get("step4_3", "")])
