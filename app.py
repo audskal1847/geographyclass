@@ -1113,7 +1113,7 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("<div style='text-align: center; color: #222; font-size: 18px; font-weight: 900;'>Made by<br><span style='font-size: 24px; color: #000; font-weight: 900;'>신선여자고등학교 김명남</span></div>", unsafe_allow_html=True)
 
 if not st.session_state.logged_in:
-    st.title("🏫 수업 및 활동 어시스트 프로그램")
+    st.title("🏫 GEO 어시스트 프로그램")
     st.info("왼쪽 사이드바를 이용해 로그인해주세요.")
 else:
     current_role = st.session_state.user_info["role"]
