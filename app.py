@@ -419,16 +419,19 @@ def render_activity1_3th(user_key, u_info, current_role):
     if current_role == "관리자": 
         disabled_flag = False
         st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
+        
     st.markdown(f"## ♣ {category}")
-    st.markdown("---")
+    
     if current_role == "학생":
         if disabled_flag: st.error(status_msg, icon="🚫")
         else: st.success(status_msg, icon="✅")
     
+    st.markdown("### 1. 자신이 선택한 영상에 대한 첫번째 질문")
     a1_1 = st.text_input("1. 영상의 제목", value=ans.get("a1_1", ""), disabled=disabled_flag)
     a1_2 = st.text_input("2. 영상에 등장하는 국가 혹은 지역", value=ans.get("a1_2", ""), disabled=disabled_flag)
     a1_3 = st.text_area("3. 해당 영상을 선택하게 된 이유", value=ans.get("a1_3", ""), disabled=disabled_flag)
     st.markdown("---")
+    st.markdown("### 2. 자신이 선택한 영상에 대한 두 번째 질문")
     a2_1 = st.text_area("1. 첫 느낌", value=ans.get("a2_1", ""), disabled=disabled_flag)
     a2_2_1 = st.text_input("▶ 인상적이었던 장소 혹은 공간:", value=ans.get("a2_2_1", ""), disabled=disabled_flag)
     a2_2_2 = st.text_area("▶ 이유:", value=ans.get("a2_2_2", ""), disabled=disabled_flag)
@@ -436,6 +439,7 @@ def render_activity1_3th(user_key, u_info, current_role):
     a2_3_2 = st.text_area("▶ 추천하는 이유:", value=ans.get("a2_3_2", ""), disabled=disabled_flag)
     a2_4 = st.text_area("4. 영상에 대한 나만의 감상평", value=ans.get("a2_4", ""), disabled=disabled_flag)
     st.markdown("---")
+    st.markdown("### 5. 만일 내가 영상 속 지역을 배경으로 영상을 찍는다면?")
     a3_1 = st.text_input("1) 영상의 제목:", value=ans.get("a3_1", ""), disabled=disabled_flag)
     a3_2 = st.text_input("2) 영상의 주요 컨셉 혹은 느낌:", value=ans.get("a3_2", ""), disabled=disabled_flag)
     a3_3 = st.text_input("3) 누구와 함께 가고 싶은가?:", value=ans.get("a3_3", ""), disabled=disabled_flag)
@@ -456,7 +460,7 @@ def render_activity1_3th(user_key, u_info, current_role):
             current_data[user_key][category] = new_ans
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons()
-            st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; color:#2e7d32; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h3 style='margin:0 0 10px 0;'>🎉 화면 저장이 완료되었습니다!</h3></div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0; font-size:32px; font-weight:900; color:#2e7d32;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
 
 def render_activity2_3th(user_key, u_info, current_role):
     category = ACT_3_2
@@ -474,8 +478,9 @@ def render_activity2_3th(user_key, u_info, current_role):
     if current_role == "관리자": 
         disabled_flag = False
         st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
+        
     st.markdown(f"## ♣ {category}")
-    st.markdown("---")
+    
     if current_role == "학생":
         if disabled_flag: st.error(status_msg, icon="🚫")
         else: st.success(status_msg, icon="✅")
@@ -486,7 +491,7 @@ def render_activity2_3th(user_key, u_info, current_role):
     q2_2 = st.text_input("2-2) 자신이 성격 형성에 있어 영향을 준 장소(공간)이/가 있는가?", value=ans.get("q2_2", ""), disabled=disabled_flag)
     q2_3 = st.text_area("2-3) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", value=ans.get("q2_3", ""), disabled=disabled_flag)
     q3_1 = st.text_input("3-1) 자신이 생각하기에 자신의 장점은?", value=ans.get("q3_1", ""), disabled=disabled_flag)
-    q3_2 = st.text_input("3-2) 자신이 장점 형성에 있어 영향을 준 장소(공간)이/가 있는가?", value=ans.get("q3_2", ""), disabled=disabled_flag)
+    q3_2 = st.text_input("3-2) 자신의 장점 형성에 있어 영향을 준 장소(공간)이/가 있는가?", value=ans.get("q3_2", ""), disabled=disabled_flag)
     q3_3 = st.text_area("3-3) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", value=ans.get("q3_3", ""), disabled=disabled_flag)
     q4_1 = st.text_input("4-1) 내가 성장함에 있어 영향을 준 장소(공간)이/가 있는가?", value=ans.get("q4_1", ""), disabled=disabled_flag)
     q4_2 = st.text_area("4-2) 그런 장소(공간)이/가 있다면 어떤 면에서 영향을 준 것 같은가?", value=ans.get("q4_2", ""), disabled=disabled_flag)
@@ -506,7 +511,8 @@ def render_activity2_3th(user_key, u_info, current_role):
             new_ans = {"q1_1": q1_1, "q1_2": q1_2, "q2_1": q2_1, "q2_2": q2_2, "q2_3": q2_3, "q3_1": q3_1, "q3_2": q3_2, "q3_3": q3_3, "q4_1": q4_1, "q4_2": q4_2, "q5_1": q5_1, "q5_2": q5_2, "q6_1": q6_1, "q6_2": q6_2, "q7_1": q7_1, "q7_2": q7_2, "q8_1": q8_1, "q8_2": q8_2}
             current_data[user_key][category] = new_ans
             save_json(DATA_FILE, current_data); ans = new_ans
-            st.balloons(); st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; color:#2e7d32; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h3 style='margin:0 0 10px 0;'>🎉 화면 저장이 완료되었습니다!</h3></div>", unsafe_allow_html=True)
+            st.balloons()
+            st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0; font-size:32px; font-weight:900; color:#2e7d32;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
 
 def render_activity3_3th(user_key, u_info, current_role):
     category = ACT_3_3
@@ -524,13 +530,15 @@ def render_activity3_3th(user_key, u_info, current_role):
     if current_role == "관리자": 
         disabled_flag = False
         st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
+        
     st.markdown(f"## ♣ {category}")
-    st.markdown("---")
+    
     if current_role == "학생":
         if disabled_flag: st.error(status_msg, icon="🚫")
         else: st.success(status_msg, icon="✅")
 
     st.markdown("### 1. 세계 인식 수준에 대한 확인")
+    
     continents = ["아시아", "유럽", "북아메리카", "남아메리카", "아프리카", "오세아니아"]
     levels = ["선택", "매우높음", "높음", "보통", "낮음", "매우낮음"]
     s1_dis = True if disabled_flag else ["대륙"]
@@ -592,7 +600,8 @@ def render_activity3_3th(user_key, u_info, current_role):
             }
             current_data[user_key][category] = new_ans
             save_json(DATA_FILE, current_data); ans = new_ans
-            st.balloons(); st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; color:#2e7d32; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h3 style='margin:0 0 10px 0;'>🎉 화면 저장이 완료되었습니다!</h3></div>", unsafe_allow_html=True)
+            st.balloons()
+            st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0; font-size:32px; font-weight:900; color:#2e7d32;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
 
 def render_activity1_2nd(user_key, u_info, current_role):
     category = ACT_2_1
@@ -617,7 +626,6 @@ def render_activity1_2nd(user_key, u_info, current_role):
         st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
         
     st.markdown(f"## ♣ {category}")
-    st.markdown("---")
     
     if is_member_view:
         st.info("💡 **[조회 전용]** 모둠장(대표)이 작성 및 저장한 화면을 연동하여 조회 중입니다. 수정/저장은 대표 학생만 가능합니다.")
@@ -688,7 +696,8 @@ def render_activity1_2nd(user_key, u_info, current_role):
             }
             current_data[user_key][category] = new_ans
             save_json(DATA_FILE, current_data); ans = new_ans
-            st.balloons(); st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; color:#2e7d32; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h3 style='margin:0 0 10px 0;'>🎉 화면 저장이 완료되었습니다!</h3></div>", unsafe_allow_html=True)
+            st.balloons()
+            st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0; font-size:32px; font-weight:900; color:#2e7d32;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
 
 def render_activity2_2nd(user_key, u_info, current_role):
     category = ACT_2_2
@@ -713,7 +722,6 @@ def render_activity2_2nd(user_key, u_info, current_role):
         st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
         
     st.markdown(f"## ♣ {category}")
-    st.markdown("---")
     
     if is_member_view:
         st.info("💡 **[조회 전용]** 모둠장(대표)이 작성 및 저장한 화면을 연동하여 조회 중입니다. 수정/저장은 대표 학생만 가능합니다.")
@@ -900,7 +908,8 @@ def render_activity2_2nd(user_key, u_info, current_role):
             }
             current_data[user_key][category] = new_ans
             save_json(DATA_FILE, current_data); ans = new_ans
-            st.balloons(); st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; color:#2e7d32; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h3 style='margin:0 0 10px 0;'>🎉 화면 저장이 완료되었습니다!</h3></div>", unsafe_allow_html=True)
+            st.balloons()
+            st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0; font-size:32px; font-weight:900; color:#2e7d32;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
 
 def render_custom_activity(user_key, u_info, current_role, act_name, config):
     u_name = u_info.get("name", "")
@@ -941,14 +950,8 @@ def render_custom_activity(user_key, u_info, current_role, act_name, config):
             if user_key not in current_data: current_data[user_key] = {}
             current_data[user_key][act_name] = new_ans
             save_json(DATA_FILE, current_data); ans = new_ans
-            st.balloons(); st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; color:#2e7d32; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h3 style='margin:0 0 10px 0;'>🎉 화면 저장이 완료되었습니다!</h3></div>", unsafe_allow_html=True)
-
-    if ans:
-        st.markdown("---")
-        html_data = f"<!DOCTYPE html><html lang='ko'><head><meta charset='UTF-8'><title>{u_name}</title><style>body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; }} h2 {{ color: #2c3e50; border-left: 5px solid #3498db; padding-left: 10px; }} h3 {{ color: #2980b9; }} .content-box {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #e9ecef; white-space: pre-wrap; margin-bottom: 20px; }}</style></head><body><div style='text-align: right; margin-bottom: 20px;'><b>이름:</b> {u_name}</div><h2>▶ {act_name}</h2>"
-        for q in custom_form: html_data += f"<h3>{q['label']}</h3><div class='content-box'>{ans.get(q['id'],'')}</div>"
-        html_data += "</body></html>"
-        st.download_button("📥 내 작성 내용 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{act_name}.html", mime="text/html")
+            st.balloons()
+            st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0; font-size:32px; font-weight:900; color:#2e7d32;'>🎉 화면 저장이 완료되었습니다!</h2></div>", unsafe_allow_html=True)
 
 def render_class_overview(current_role, u_info, view_subj):
     st.markdown(f"<h2>🎯 [{view_subj}] 수행평가 및 활동 모듈</h2>", unsafe_allow_html=True)
@@ -1019,40 +1022,48 @@ st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", lay
 # 📌 해결책 반영: 폰트 크기, 진하기, 색상 위계 완벽 복구
 st.markdown("""
 <style>
-/* 제목 크기 및 진하기 계층 구조 확립 */
-h1, .stMarkdown h1 { font-size: 32px !important; font-weight: 900 !important; color: #111 !important; }
-h2, .stMarkdown h2 { font-size: 28px !important; font-weight: 900 !important; color: #111 !important; margin-bottom: 20px !important; }
-h3, .stMarkdown h3 { font-size: 24px !important; font-weight: 800 !important; color: #111 !important; margin-top: 25px !important; margin-bottom: 15px !important; }
-h4, .stMarkdown h4 { font-size: 20px !important; font-weight: 700 !important; color: #222 !important; margin-top: 15px !important; margin-bottom: 10px !important; }
-h5, .stMarkdown h5 { font-size: 18px !important; font-weight: 700 !important; color: #333 !important; }
+/* 제목(Header) 계층 명확화 - 무조건 본문보다 크고 진하게 */
+.stMarkdown h1 { font-size: 34px !important; font-weight: 900 !important; color: #000000 !important; margin-bottom: 20px !important; }
+.stMarkdown h2 { font-size: 28px !important; font-weight: 900 !important; color: #000000 !important; margin-top: 10px !important; margin-bottom: 15px !important; padding-bottom: 8px !important; border-bottom: 2px solid #dddddd !important; }
+.stMarkdown h3 { font-size: 22px !important; font-weight: 800 !important; color: #111111 !important; margin-top: 25px !important; margin-bottom: 10px !important; }
+.stMarkdown h4 { font-size: 18px !important; font-weight: 700 !important; color: #222222 !important; margin-top: 20px !important; margin-bottom: 10px !important; }
+.stMarkdown h5 { font-size: 18px !important; font-weight: 700 !important; color: #333333 !important; }
 
-/* 본문 텍스트 (크기는 키우되, 굵기와 색상은 연하게 하여 가독성 확보) */
-.stMarkdown p, .stMarkdown span, .stMarkdown li { font-size: 17px !important; font-weight: 400 !important; color: #444444 !important; line-height: 1.7 !important; }
+/* 본문 텍스트 - 크기는 키우되 굵기와 색상을 부드럽게 조정하여 혼란 방지 */
+.stMarkdown p, .stMarkdown span, .stMarkdown li { 
+    font-size: 16px !important; 
+    font-weight: 500 !important; 
+    color: #333333 !important; 
+    line-height: 1.6 !important; 
+}
 
-/* 폼 입력창 라벨 */
-label p { font-size: 17px !important; font-weight: 600 !important; color: #333 !important; }
-input, textarea, div[data-baseweb="select"] { font-size: 17px !important; font-weight: 400 !important; color: #111 !important; }
+/* 볼드체(강조)는 까맣고 진하게 */
+.stMarkdown strong, .stMarkdown b { 
+    font-weight: 700 !important; 
+    color: #000000 !important; 
+}
 
-/* 강조(Bold) 텍스트는 명확히 구분 */
-.stMarkdown strong, .stMarkdown b { font-weight: 700 !important; color: #111 !important; }
+/* 폼 입력창 라벨 (질문 내용) */
+label p { font-size: 16px !important; font-weight: 700 !important; color: #111111 !important; }
+input, textarea, div[data-baseweb="select"] { font-size: 16px !important; font-weight: 400 !important; color: #222222 !important; }
 
-/* 사이드바 메뉴 폰트 */
-[data-testid="stSidebar"] .stMarkdown p { font-size: 17px !important; font-weight: 500 !important; color: #333 !important; }
+/* 사이드바 */
+[data-testid="stSidebar"] .stMarkdown p { font-size: 16px !important; font-weight: 600 !important; color: #222222 !important; }
 
 /* 메인 버튼 스타일링 (명시적 흰색 글씨 고정) */
-[data-testid="stFormSubmitButton"] button, button[kind="primary"] { background-color: #FF4B4B !important; color: #ffffff !important; font-size: 20px !important; font-weight: 800 !important; padding: 12px !important; border-radius: 8px !important; border: none !important; min-height: 50px !important; width: 100% !important; }
-button[kind="primary"] p, button[kind="primary"] * { color: #ffffff !important; font-size: 20px !important; font-weight: 800 !important; }
+[data-testid="stFormSubmitButton"] button, button[kind="primary"] { background-color: #FF4B4B !important; border: none !important; border-radius: 8px !important; min-height: 50px !important; width: 100% !important; padding: 12px !important; }
+[data-testid="stFormSubmitButton"] button *, button[kind="primary"] * { color: #ffffff !important; font-size: 18px !important; font-weight: 800 !important; }
 
-button[kind="secondary"] { background-color: #0056b3 !important; color: #ffffff !important; font-size: 20px !important; font-weight: 800 !important; padding: 12px !important; border-radius: 8px !important; border: none !important; min-height: 50px !important; width: 100% !important; }
-button[kind="secondary"] p, button[kind="secondary"] * { color: #ffffff !important; font-size: 20px !important; font-weight: 800 !important; }
+button[kind="secondary"] { background-color: #0056b3 !important; border: none !important; border-radius: 8px !important; min-height: 50px !important; width: 100% !important; padding: 12px !important; }
+button[kind="secondary"] * { color: #ffffff !important; font-size: 18px !important; font-weight: 800 !important; }
 
 /* 데이터 테이블 */
-[data-testid="stDataFrame"] { border: 2px solid #aaa !important; border-radius: 5px; }
-table th { background-color: #e2e8f0 !important; font-size: 17px !important; font-weight: 800 !important; text-align:center !important; color: #111 !important; }
-table td { font-size: 16px !important; font-weight: 500 !important; color: #333 !important; }
+[data-testid="stDataFrame"] { border: 2px solid #ccc !important; border-radius: 5px; }
+table th { background-color: #f1f3f5 !important; font-size: 15px !important; font-weight: 800 !important; text-align:center !important; color: #111 !important; }
+table td { font-size: 15px !important; font-weight: 500 !important; color: #333 !important; }
 
 /* 안내 메시지 */
-[data-testid="stAlert"] div[data-testid="stMarkdownContainer"] p { font-size: 17px !important; font-weight: 600 !important; color: #222 !important; }
+[data-testid="stAlert"] div[data-testid="stMarkdownContainer"] p { font-size: 16px !important; font-weight: 600 !important; color: #111 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -1207,7 +1218,7 @@ else:
             with menu_tabs[0]:
                 if st.session_state.get("admin_save_success", False):
                     st.balloons()
-                    st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; color:#2e7d32; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h3 style='margin:0 0 10px 0; color:#000;'>🎉 화면 저장이 완료되었습니다!</h3><p style='margin:0; font-size:18px; font-weight:bold;'>변경하신 내용이 안전하게 저장되어 즉시 반영됩니다.</p></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='text-align:center; padding:25px; background-color:#e8f5e9; border-radius:15px; border:3px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 10px 0; font-size:32px; font-weight:900; color:#2e7d32;'>🎉 화면 저장이 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:bold; color:#2e7d32;'>변경하신 내용이 안전하게 저장되어 즉시 반영됩니다.</p></div>", unsafe_allow_html=True)
                     st.session_state.admin_save_success = False
 
                 admin_view_subj = st.session_state.get("admin_view_subject", "전체 공지")
@@ -1366,7 +1377,7 @@ else:
                     st.info("⏰ 기한 설정은 왼쪽 '관리 및 미리보기 과목'에서 개별 과목을 선택해야만 편집 가능합니다.")
 
                 st.markdown("---")
-                st.markdown("<h3>👨‍🏫 교사용 특강/수업 자료 업로드</h3>", unsafe_allow_html=True)
+                st.markdown("#### 👨‍🏫 교사용 특강/수업 자료 업로드")
                 with st.form("upload_mat"):
                     mat_title = st.text_input("자료 제목")
                     mat_link = st.text_input("외부 링크 URL (있는 경우)")
@@ -1992,7 +2003,7 @@ else:
 
             # --- 💾 탭 5: 데이터 백업 및 복구 ---
             with menu_tabs[4]:
-                st.markdown("<h3 style='font-size: 24px; font-weight: 800; margin-top:20px;'>💾 시스템 데이터베이스(DB) 개별 백업 및 복구</h3>", unsafe_allow_html=True)
+                st.markdown("### 💾 시스템 데이터베이스(DB) 개별 백업 및 복구")
                 st.error("🚨 **[주의]** 데이터 복구(업로드) 시 기존 데이터는 모두 지워지고 업로드한 파일로 완전히 덮어씌워집니다. 과거 자료 복원을 원하실 때만 신중하게 작업해 주세요!")
 
                 col_bk1, col_bk2 = st.columns(2)
