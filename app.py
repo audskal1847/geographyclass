@@ -420,7 +420,7 @@ def render_activity1_3th(user_key, u_info, current_role):
         disabled_flag = False
         st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
         
-    st.markdown(f"<h2 style='font-size: 32px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='font-size: 28px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
     
     if current_role == "학생":
         if disabled_flag: st.error(status_msg, icon="🚫")
@@ -479,7 +479,7 @@ def render_activity2_3th(user_key, u_info, current_role):
         disabled_flag = False
         st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
         
-    st.markdown(f"<h2 style='font-size: 32px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='font-size: 28px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
     
     if current_role == "학생":
         if disabled_flag: st.error(status_msg, icon="🚫")
@@ -531,7 +531,7 @@ def render_activity3_3th(user_key, u_info, current_role):
         disabled_flag = False
         st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
         
-    st.markdown(f"<h2 style='font-size: 32px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='font-size: 28px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
     
     if current_role == "학생":
         if disabled_flag: st.error(status_msg, icon="🚫")
@@ -625,7 +625,7 @@ def render_activity1_2nd(user_key, u_info, current_role):
         disabled_flag = False
         st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
         
-    st.markdown(f"<h2 style='font-size: 32px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='font-size: 28px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
     
     if is_member_view:
         st.info("💡 **[조회 전용]** 모둠장(대표)이 작성 및 저장한 화면을 연동하여 조회 중입니다. 수정/저장은 대표 학생만 가능합니다.")
@@ -721,7 +721,7 @@ def render_activity2_2nd(user_key, u_info, current_role):
         disabled_flag = False
         st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
         
-    st.markdown(f"<h2 style='font-size: 32px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='font-size: 28px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
     
     if is_member_view:
         st.info("💡 **[조회 전용]** 모둠장(대표)이 작성 및 저장한 화면을 연동하여 조회 중입니다. 수정/저장은 대표 학생만 가능합니다.")
@@ -796,7 +796,7 @@ def render_activity2_2nd(user_key, u_info, current_role):
         
     edited_points_merged = []
     for i, cat in enumerate(cat_names):
-        st.markdown(f"<h5 style='color:#2c3e50; margin-top:20px; margin-bottom:5px; font-size:20px !important; font-weight:800;'>🔹 {cat}</h5>", unsafe_allow_html=True)
+        st.markdown(f"##### 🔹 {cat}")
         df_cat = pd.DataFrame(categorized_data[cat])
         edited_df_cat = st.data_editor(
             df_cat, 
@@ -927,7 +927,7 @@ def render_custom_activity(user_key, u_info, current_role, act_name, config):
         disabled_flag = False
         st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
 
-    st.markdown(f"<h2 style='font-size: 32px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {act_name}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='font-size: 28px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {act_name}</h2>", unsafe_allow_html=True)
     st.markdown("---")
     if current_role == "학생":
         if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
@@ -1045,7 +1045,7 @@ st.markdown("""
 
 /* 폼 입력창 라벨 (질문 내용) */
 label p { font-size: 16px !important; font-weight: 700 !important; color: #111111 !important; }
-input, textarea, div[data-baseweb="select"] { font-size: 16px !important; font-weight: 500 !important; color: #222222 !important; }
+input, textarea, div[data-baseweb="select"] { font-size: 16px !important; font-weight: 400 !important; color: #222222 !important; }
 
 /* 사이드바 */
 [data-testid="stSidebar"] .stMarkdown p { font-size: 16px !important; font-weight: 600 !important; color: #222222 !important; }
@@ -1059,7 +1059,7 @@ button[kind="secondary"] p, button[kind="secondary"] div { color: #ffffff !impor
 
 /* 데이터 테이블 */
 [data-testid="stDataFrame"] { border: 2px solid #ccc !important; border-radius: 5px; }
-table th { background-color: #f1f3f5 !important; font-size: 16px !important; font-weight: 800 !important; text-align:center !important; color: #111 !important; }
+table th { background-color: #f1f3f5 !important; font-size: 15px !important; font-weight: 800 !important; text-align:center !important; color: #111 !important; }
 table td { font-size: 15px !important; font-weight: 500 !important; color: #333 !important; }
 
 /* 안내 메시지 */
@@ -1114,6 +1114,7 @@ else:
         st.sidebar.subheader("📝 회원가입")
         reg_subject = st.sidebar.selectbox("과목", SUBJECTS)
         reg_class = st.sidebar.selectbox("반", CLASSES_MAP[reg_subject])
+        # 📌 폼 적용으로 엔터키 제출 활성화
         with st.sidebar.form("register_form"):
             reg_id = st.text_input("학번 입력")
             reg_name = st.text_input("이름 입력")
@@ -1134,6 +1135,7 @@ else:
         if login_type == "학생":
             login_subject = st.sidebar.selectbox("과목", SUBJECTS)
             login_class = st.sidebar.selectbox("반", CLASSES_MAP[login_subject])
+            # 📌 폼 적용으로 엔터키 제출 활성화
             with st.sidebar.form("student_login_form"):
                 input_id = st.text_input("학번")
                 input_pw = st.text_input("비밀번호", type="password")
@@ -1149,6 +1151,7 @@ else:
                         else: st.warning("⏳ 선생님의 가입 승인을 대기 중입니다.")
                     else: st.error("❌ 과목, 반, 학번 또는 비밀번호가 틀렸습니다.")
         else:
+            # 📌 폼 적용으로 엔터키 제출 활성화
             with st.sidebar.form("admin_login_form"):
                 input_id = st.text_input("관리자 ID")
                 input_pw = st.text_input("비밀번호", type="password")
@@ -1380,7 +1383,7 @@ else:
                     st.info("⏰ 기한 설정은 왼쪽 '관리 및 미리보기 과목'에서 개별 과목을 선택해야만 편집 가능합니다.")
 
                 st.markdown("---")
-                st.markdown("<h3 style='font-size: 24px; font-weight: 800; margin-top:20px;'>👨‍🏫 교사용 특강/수업 자료 업로드</h3>", unsafe_allow_html=True)
+                st.markdown("#### 👨‍🏫 교사용 특강/수업 자료 업로드")
                 with st.form("upload_mat"):
                     mat_title = st.text_input("자료 제목")
                     mat_link = st.text_input("외부 링크 URL (있는 경우)")
@@ -1602,7 +1605,7 @@ else:
                                     
                                 has_any_act = True
                                 
-                                # 📌 교사용 화면 학생 조회 폼 복구
+                                # 📌 교사용 화면 학생 조회 폼 복구 (입력/수정 가능)
                                 if act == ACT_3_1: render_activity1_3th(selected_student, u_info_sel, current_role)
                                 elif act == ACT_3_2: render_activity2_3th(selected_student, u_info_sel, current_role)
                                 elif act == ACT_3_3: render_activity3_3th(selected_student, u_info_sel, current_role)
@@ -1620,7 +1623,6 @@ else:
                             if not has_any_act:
                                 st.warning("조건에 맞는 활동지가 없습니다.")
                             
-                            # 📌 전체 포트폴리오 다운로드는 '전체 활동지 보기'일 때 하단에 고정 표시
                             if filter_act == "전체 활동지 보기":
                                 html_content = generate_portfolio_html(selected_student, u_info_sel, view_subj, load_json(CONFIG_FILE, {}), learning_data)
                                 st.download_button(label=f"📄 {u_name} 학생 전체 포트폴리오 일괄 다운로드 (웹문서)", data=html_content.encode('utf-8-sig'), file_name=f"{u_name}_{view_subj}_포트폴리오.html", mime="text/html", type="primary")
