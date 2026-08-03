@@ -36,14 +36,15 @@ ADMIN_ACCOUNTS = {
     "audskal": {"pw": "1847", "name": "김명남(관리자)"}
 }
 
-# 📌 학년별 하드코딩 기본 활동지 5종
+# 📌 학년별 하드코딩 기본 활동지
 ACT_3_1 = "[3학년] 수행평가 1 - 영상으로 떠나는 여행"
 ACT_3_2 = "[3학년] 수행평가 2 - 나를 성장시킨 장소 지도 만들기"
 ACT_3_3 = "[3학년] 수행평가 3 - 나의 세계관에 대해 알아가는 '여행'"
 ACT_2_1 = "[2학년] 수행평가 1 - 도시 '밈' 해석을 통한 도시성과 생활양식 탐구"
 ACT_2_2 = "[2학년] 수행평가 2 - 내가 설계하는 N분 도시 with 파리의 15분 도시설계"
+ACT_2_3 = "[2학년] 수행평가 3 - 빛으로 우리 지역을 말하다 - 내가 만드는 미디어 파사드"
 
-ACTIVITIES = [ACT_3_1, ACT_3_2, ACT_3_3, ACT_2_1, ACT_2_2]
+ACTIVITIES = [ACT_3_1, ACT_3_2, ACT_3_3, ACT_2_1, ACT_2_2, ACT_2_3]
 
 # 10분 단위 드롭다운 옵션 생성
 TIME_OPTIONS = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(24) for m in range(0, 60, 10)]
@@ -150,6 +151,13 @@ def init_system():
                 "3학년 여행지리": [ACT_3_1, ACT_3_2, ACT_3_3],
                 "2학년 도시의 미래 탐구": [ACT_2_1, ACT_2_2]
             }
+            needs_update = True
+            
+        # 📌 2학년 신규 활동지 자동 등록 로직
+        if ACT_2_3 not in current_config["subject_activities"].get("2학년 도시의 미래 탐구", []):
+            if "2학년 도시의 미래 탐구" not in current_config["subject_activities"]:
+                current_config["subject_activities"]["2학년 도시의 미래 탐구"] = []
+            current_config["subject_activities"]["2학년 도시의 미래 탐구"].append(ACT_2_3)
             needs_update = True
         
         if "custom_forms" not in current_config: current_config["custom_forms"] = {}; needs_update = True
@@ -344,6 +352,56 @@ def generate_html_content(act_name, ans):
         html += f"<p><b>2. 심각한 공간 문제:</b> {ans.get('step4_2','')}</p>"
         html += f"<p><b>3. 버리고 채운 것과 이유:</b> {ans.get('step4_3','')}</p>"
         html += f"<p><b>4. 일상의 변화:</b> {ans.get('step4_4','')}</p>"
+
+    # 📌 신규 2학년 3번째 수행평가 (미디어 파사드) HTML 생성
+    elif act_name == ACT_2_3:
+        html += "<h3>Step 1. 우리 지역 정체성 자원 발굴 및 팩트 체크</h3>"
+        html += "<table><tr><th>구분</th><th>내가 찾은 정체성 키워드 혹은 문장</th><th>근거가 되는 사실·통계·사건</th><th>출처(기관명/자료명/연도)</th></tr>"
+        for row in ans.get("step1_df", []): 
+            html += f"<tr><td>{row.get('구분','')}</td><td>{row.get('내가 찾은 정체성 키워드 혹은 문장','')}</td><td>{row.get('근거가 되는 사실·통계·사건','')}</td><td>{row.get('출처','')}</td></tr>"
+        html += "</table>"
+        html += f"<p><b>▶ 내가 최종 선택한 핵심 키워드 혹은 문장:</b> {ans.get('step1_keyword','')}</p>"
+        html += f"<p><b>▶ 내 작품이 전할 단 하나의 메시지:</b> {ans.get('step1_message','')}</p>"
+
+        html += "<h3>Step 2. 캔버스 선정</h3>"
+        html += "<table><tr><th>후보(건물명)</th><th>벽면 조건</th><th>관람 조건</th><th>접근성</th><th>예상 제약</th><th>지역 정체성 연관성</th><th>적합도</th></tr>"
+        for row in ans.get("step2_df", []): 
+            html += f"<tr><td>{row.get('건물명','')}</td><td>{row.get('벽면 조건','')}</td><td>{row.get('관람 조건','')}</td><td>{row.get('접근성','')}</td><td>{row.get('예상 제약','')}</td><td>{row.get('정체성 연관성','')}</td><td>{row.get('적합도(별점)','')}</td></tr>"
+        html += "</table>"
+        html += f"<p><b>▶ 최종 선정 건물:</b> {ans.get('step2_final_building','')}</p>"
+        html += f"<p><b>▶ 선정 이유:</b> {ans.get('step2_reason','')}</p>"
+
+        html += "<h3>Step 3. 주어진 조건 진단 및 대응 설계</h3>"
+        html += "<table><tr><th>조건 영역</th><th>현장의 실제 조건</th><th>작품에 미치는 영향</th><th>나의 대응 방안</th></tr>"
+        for row in ans.get("step3_df", []): 
+            html += f"<tr><td>{row.get('조건 영역','')}</td><td>{row.get('현장의 실제 조건','')}</td><td>{row.get('작품에 미치는 영향','')}</td><td>{row.get('나의 대응 방안','')}</td></tr>"
+        html += "</table>"
+
+        html += "<h3>Step 4. 작품 스토리보드 4컷</h3>"
+        for i in range(1, 5):
+            html += f"<h4>컷 {i}</h4>"
+            html += f"<p><b>장면 설명:</b> {ans.get(f'cut_{i}_desc','')}</p>"
+            b64_file = ans.get(f"cut_{i}_file_data", "")
+            file_name = ans.get(f"cut_{i}_file_name", "")
+            if b64_file:
+                html += f"<p>첨부된 파일: {file_name}</p>"
+                if file_name.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                    html += f"<img src='data:image/png;base64,{b64_file}' style='max-width:100%; border:1px solid #ccc;'/>"
+        
+        html += "<h3>Step 5. 작품 설명 카드 작성 및 갤러리 워크</h3>"
+        html += f"<p><b>작품 제목:</b> {ans.get('step5_title','')}</p>"
+        html += f"<p><b>전시 장소:</b> {ans.get('step5_place','')}</p>"
+        html += f"<p><b>작품 개요:</b> {ans.get('step5_summary','')}</p>"
+        html += f"<p><b>지역 정체성 반영:</b> {ans.get('step5_identity','')}</p>"
+        html += f"<p><b>현장 조건 반영:</b> {ans.get('step5_condition','')}</p>"
+        html += f"<p><b>우리 지역에 남길 변화:</b> {ans.get('step5_change','')}</p>"
+
+        html += "<h3>Step 6. 제출 전 자기 점검 및 활용 기록</h3>"
+        html += "<h4>생성형 AI 활용 기록</h4><table><tr><th>사용한 도구명</th><th>입력한 프롬프트</th><th>AI 결과물을 내가 수정·판단한 내용</th></tr>"
+        for row in ans.get("step6_ai_df", []): 
+            html += f"<tr><td>{row.get('사용한 도구명','')}</td><td>{row.get('입력한 프롬프트','')}</td><td>{row.get('AI 결과물을 내가 수정·판단한 내용','')}</td></tr>"
+        html += "</table>"
+        html += f"<p><b>▶ 활동 성찰:</b> {ans.get('step6_reflection','')}</p>"
         
     return html
 
@@ -387,7 +445,6 @@ def generate_activity_html(act_name, ans, u_name):
     return html
 
 # --- [3] 활동지 렌더링 함수들 ---
-# 📌 고유 Key 생성을 위해 category 매개변수를 추가
 def render_group_members(ans, disabled_flag, category=""):
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 20px; margin-bottom: 15px;'>👥 모둠 구성원 (학번/이름)</h3>", unsafe_allow_html=True)
     col_m1, col_m2, col_m3, col_m4 = st.columns(4)
@@ -634,7 +691,6 @@ def render_activity1_2nd(user_key, u_info, current_role):
         if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
         else: st.success(status_msg, icon="✅")
 
-    # 📌 고유 Category 넘기기
     m1_id, m1_name, m2_id, m2_name, m3_id, m3_name, m4_id, m4_name = render_group_members(ans, disabled_flag, category)
 
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 1. 우리 지역에 대한 '밈' 수집 및 지리 정보 팩트 체크 일지</h3>", unsafe_allow_html=True)
@@ -702,7 +758,6 @@ def render_activity1_2nd(user_key, u_info, current_role):
             st.markdown("<div style='text-align:center; padding:30px; background-color:#e8f5e9; border-radius:8px; border:2px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 15px 0; font-size:26px; font-weight:900; color:#111;'>🎉 화면 저장이 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:700; color:#111;'>입력하신 내용이 데이터베이스에 안전하게 저장되었습니다.</p></div>", unsafe_allow_html=True)
 
 def render_activity2_2nd(user_key, u_info, current_role):
-    # 📌 이름 임의 변경 문제 원상복구 (with 파리의 15분 도시설계)
     category = ACT_2_2
     u_name = u_info.get("name", "")
     u_id = u_info.get("id", "")
@@ -732,7 +787,6 @@ def render_activity2_2nd(user_key, u_info, current_role):
         if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
         else: st.success(status_msg, icon="✅")
 
-    # 📌 고유 Category 넘기기
     m1_id, m1_name, m2_id, m2_name, m3_id, m3_name, m4_id, m4_name = render_group_members(ans, disabled_flag, category)
 
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 1. 우리 동네 현황 진단</h3>", unsafe_allow_html=True)
@@ -914,6 +968,169 @@ def render_activity2_2nd(user_key, u_info, current_role):
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons()
             st.markdown("<div style='text-align:center; padding:30px; background-color:#e8f5e9; border-radius:8px; border:2px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 15px 0; font-size:26px; font-weight:900; color:#111;'>🎉 화면 저장이 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:700; color:#111;'>입력하신 내용이 데이터베이스에 안전하게 저장되었습니다.</p></div>", unsafe_allow_html=True)
+
+# 📌 2학년 신규 수행평가 (미디어 파사드) 렌더링 함수
+def render_activity3_2nd(user_key, u_info, current_role):
+    category = ACT_2_3
+    u_name = u_info.get("name", "")
+    u_id = u_info.get("id", "")
+    u_subj = u_info.get("subject", "전체")
+    user_class = u_info.get("class_group", "")
+    
+    learning_data = load_json(DATA_FILE, {})
+    # 개인 과제이므로 get_user_activity_data에서 스캔 로직을 타지 않도록 처리
+    # (위 함수에서 ACT_2_1, ACT_2_2만 모둠 검사하므로 바로 본인 데이터 반환됨)
+    owner_key, ans = get_user_activity_data(user_key, u_id, u_subj, user_class, category, learning_data)
+    
+    is_active, status_msg = check_active(category, user_class)
+    disabled_flag = (current_role == "학생" and not is_active)
+    
+    if current_role == "관리자": 
+        disabled_flag = False
+        st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
+
+    st.markdown(f"<h2 style='font-size: 28px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
+    
+    if current_role == "학생":
+        if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
+        else: st.success(status_msg, icon="✅")
+
+    st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 1. 우리 지역 정체성 자원 발굴 및 팩트 체크</h3>", unsafe_allow_html=True)
+    st.markdown("▶ **교과서 13쪽 / 20쪽 내용 中**\n: 미디어 파사드 디자이너는 건물의 형태와 주변 환경을 고려하여 특정 주제나 전달하고자 하는 메시지에 맞춘 디자인을 구상하고, 건축물 외벽에 프로젝션·LED 스크린·조명 등 다양한 기술을 활용하여 작품을 구현합니다.")
+    st.info("▶ 추천 검색어: '울산광역시 통계포털', 'KOSIS 지역별 고용조사', '국가문화유산포털', '카카오맵/네이버맵 지적편집도'")
+    
+    default_step1 = [
+        {"구분": "1. 자연·생태", "내가 찾은 정체성 키워드 혹은 문장": "", "근거가 되는 사실·통계·사건": "", "출처": ""},
+        {"구분": "2. 산업·경제", "내가 찾은 정체성 키워드 혹은 문장": "", "근거가 되는 사실·통계·사건": "", "출처": ""},
+        {"구분": "3. 역사·문화", "내가 찾은 정체성 키워드 혹은 문장": "", "근거가 되는 사실·통계·사건": "", "출처": ""}
+    ]
+    step1_df = pd.DataFrame(ans.get("step1_df", default_step1))
+    st.markdown("**(표의 아래쪽을 클릭하면 자유롭게 행을 추가할 수 있습니다.)**")
+    edited_step1_df = st.data_editor(step1_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"step1_df_{category}")
+    
+    step1_keyword = st.text_input("▶ 내가 최종 선택한 핵심 키워드 혹은 문장", value=ans.get("step1_keyword", ""), disabled=disabled_flag, key=f"step1_kw_{category}")
+    step1_message = st.text_area("▶ 내 작품이 전할 단 하나의 메시지 (한 문장으로 쓸 것)", value=ans.get("step1_message", ""), disabled=disabled_flag, key=f"step1_msg_{category}")
+
+    st.markdown("---")
+    st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 2. 캔버스 선정 — 어떤 건축물에 어떤 형태의 빛을 입힐 것인가?</h3>", unsafe_allow_html=True)
+    st.info("▶ 우리 지역의 실제 건축물·구조물 3곳을 후보로 조사하고 비교한 뒤 최종 1곳을 선정합니다.")
+    
+    # 📌 별점 드롭다운 적용을 위해 후보군을 가로(행)로 배치하여 표 구성
+    stars = ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"]
+    default_step2 = [
+        {"건물명": "후보 1: ", "벽면 조건": "", "관람 조건": "", "접근성": "", "예상 제약": "", "정체성 연관성": "", "적합도(별점)": "⭐⭐⭐"},
+        {"건물명": "후보 2: ", "벽면 조건": "", "관람 조건": "", "접근성": "", "예상 제약": "", "정체성 연관성": "", "적합도(별점)": "⭐⭐⭐"},
+        {"건물명": "후보 3: ", "벽면 조건": "", "관람 조건": "", "접근성": "", "예상 제약": "", "정체성 연관성": "", "적합도(별점)": "⭐⭐⭐"}
+    ]
+    step2_df = pd.DataFrame(ans.get("step2_df", default_step2))
+    edited_step2_df = st.data_editor(step2_df, column_config={"적합도(별점)": st.column_config.SelectboxColumn("적합도(별점)", options=stars, required=True)}, use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"step2_df_{category}")
+
+    step2_final_building = st.text_input("▶ 최종 선정 건물", value=ans.get("step2_final_building", ""), disabled=disabled_flag, key=f"step2_final_{category}")
+    step2_reason = st.text_area("▶ 이유 (Step 1의 정체성 키워드 혹은 문장과 연결하여 서술할 것)", value=ans.get("step2_reason", ""), disabled=disabled_flag, key=f"step2_rsn_{category}")
+
+    st.markdown("---")
+    st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 3. 주어진 조건 진단 및 대응 설계</h3>", unsafe_allow_html=True)
+    st.info("▶ 조건 영역의 제약을 어떻게 작품의 조형 요소로 뒤집어 활용할지 나의 대응 방안을 작성하세요.")
+    
+    default_step3 = [
+        {"조건 영역": "1. 물리적 조건 (형태·재질)", "현장의 실제 조건": "", "작품에 미치는 영향": "", "나의 대응 방안": ""},
+        {"조건 영역": "2. 빛·환경 조건 (주변 조명)", "현장의 실제 조건": "", "작품에 미치는 영향": "", "나의 대응 방안": ""},
+        {"조건 영역": "3. 시간·계절 조건", "현장의 실제 조건": "", "작품에 미치는 영향": "", "나의 대응 방안": ""},
+        {"조건 영역": "4. 주민·이웃 조건 (소음 등)", "현장의 실제 조건": "", "작품에 미치는 영향": "", "나의 대응 방안": ""},
+        {"조건 영역": "5. 행정·비용 조건", "현장의 실제 조건": "", "작품에 미치는 영향": "", "나의 대응 방안": ""},
+        {"조건 영역": "6. 접근·안전 조건", "현장의 실제 조건": "", "작품에 미치는 영향": "", "나의 대응 방안": ""}
+    ]
+    step3_df = pd.DataFrame(ans.get("step3_df", default_step3))
+    edited_step3_df = st.data_editor(step3_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"step3_df_{category}")
+
+    st.markdown("---")
+    st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 4. 작품 스토리보드 4컷</h3>", unsafe_allow_html=True)
+    st.info("▶ Step 1의 메시지를 Step 2의 벽면 위에 어떻게 펼칠지 4컷으로 구성하고 캡처/사진(이미지, PPT, PDF 무관)을 업로드하세요.")
+    
+    cut_titles = ["1. 도입", "2. 전개", "3. 절정", "4. 마무리"]
+    new_cuts = {}
+    
+    for i in range(1, 5):
+        st.markdown(f"**[ {cut_titles[i-1]} ]**")
+        col_c1, col_c2 = st.columns([1, 1])
+        with col_c1:
+            st.markdown("화면 구성 (스케치 파일 업로드)")
+            b64_file = ans.get(f"cut_{i}_file_data", "")
+            file_name = ans.get(f"cut_{i}_file_name", "")
+            
+            if b64_file:
+                st.success(f"📎 등록된 파일: {file_name}")
+                if file_name.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                    st.image(base64.b64decode(b64_file), use_container_width=True)
+                else:
+                    st.info("이미지 외의 파일이 정상적으로 등록되어 있습니다.")
+                    
+                if not disabled_flag:
+                    if st.button(f"🗑️ 컷 {i} 자료 삭제", key=f"del_cut_{i}_{category}"):
+                        current_data = load_json(DATA_FILE, {}) 
+                        if user_key in current_data and category in current_data[user_key]:
+                            current_data[user_key][category][f"cut_{i}_file_data"] = ""
+                            current_data[user_key][category][f"cut_{i}_file_name"] = ""
+                            save_json(DATA_FILE, current_data)
+                        st.rerun()
+
+            # 다양한 파일 형태 업로드 허용
+            file_cut = st.file_uploader(f"컷 {i} 스케치 첨부", key=f"up_cut_{i}_{category}", disabled=disabled_flag, label_visibility="collapsed")
+            if file_cut and not disabled_flag:
+                b64_file = base64.b64encode(file_cut.getvalue()).decode("utf-8")
+                file_name = file_cut.name
+            
+            new_cuts[f"cut_{i}_file_data"] = b64_file
+            new_cuts[f"cut_{i}_file_name"] = file_name
+            
+        with col_c2:
+            st.markdown("장면 설명 · 사용 기술 · 소요 시간")
+            new_cuts[f"cut_{i}_desc"] = st.text_area(f"컷 {i} 설명", value=ans.get(f"cut_{i}_desc", ""), height=150, disabled=disabled_flag, label_visibility="collapsed", key=f"desc_cut_{i}_{category}")
+        st.write("")
+
+    st.markdown("---")
+    st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 5. 작품 설명 카드 작성 및 갤러리 워크</h3>", unsafe_allow_html=True)
+    step5_title = st.text_input("▶ 작품 제목 (부제 포함)", value=ans.get("step5_title", ""), disabled=disabled_flag, key=f"step5_title_{category}")
+    step5_place = st.text_input("▶ 전시 장소 (건물명/투사 벽면/권장 관람 위치)", value=ans.get("step5_place", ""), disabled=disabled_flag, key=f"step5_place_{category}")
+    step5_summary = st.text_area("▶ 작품 개요 (3문장 이내)", value=ans.get("step5_summary", ""), disabled=disabled_flag, key=f"step5_sum_{category}")
+    step5_identity = st.text_area("▶ 이 작품이 지역의 어떤 정체성을 담았는가 (근거 자료 인용)", value=ans.get("step5_identity", ""), disabled=disabled_flag, key=f"step5_id_{category}")
+    step5_condition = st.text_area("▶ 현장 조건을 어떻게 작품에 반영했는가", value=ans.get("step5_condition", ""), disabled=disabled_flag, key=f"step5_cond_{category}")
+    step5_change = st.text_area("▶ 이 작품이 우리 지역에 남길 변화 (관람객/주민/상권 측면)", value=ans.get("step5_change", ""), disabled=disabled_flag, key=f"step5_chg_{category}")
+
+    st.markdown("---")
+    st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 6. 제출 전 자기 점검 및 활용 기록</h3>", unsafe_allow_html=True)
+    
+    st.markdown("#### 생성형 AI 활용 기록 (자유 행 추가)")
+    default_ai = [{"사용한 도구명": "", "입력한 프롬프트": "", "AI 결과물을 내가 수정·판단한 내용": ""}]
+    step6_ai_df = pd.DataFrame(ans.get("step6_ai_df", default_ai))
+    edited_step6_ai_df = st.data_editor(step6_ai_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"step6_ai_{category}")
+    
+    step6_reflection = st.text_area("▶ 활동 성찰 (도시와 나의 진로에 대해 새로 알게 된 점)", value=ans.get("step6_reflection", ""), height=150, disabled=disabled_flag, key=f"step6_ref_{category}")
+
+    if not disabled_flag:
+        if st.button("저장하기", type="primary", key=f"save_{category}"):
+            current_data = load_json(DATA_FILE, {}) 
+            if user_key not in current_data: current_data[user_key] = {}
+            new_ans = {
+                "step1_df": edited_step1_df.to_dict('records'),
+                "step1_keyword": step1_keyword,
+                "step1_message": step1_message,
+                "step2_df": edited_step2_df.to_dict('records'),
+                "step2_final_building": step2_final_building,
+                "step2_reason": step2_reason,
+                "step3_df": edited_step3_df.to_dict('records'),
+                "step5_title": step5_title, "step5_place": step5_place,
+                "step5_summary": step5_summary, "step5_identity": step5_identity,
+                "step5_condition": step5_condition, "step5_change": step5_change,
+                "step6_ai_df": edited_step6_ai_df.to_dict('records'),
+                "step6_reflection": step6_reflection
+            }
+            new_ans.update(new_cuts) # 4컷 데이터 병합
+            current_data[user_key][category] = new_ans
+            save_json(DATA_FILE, current_data); ans = new_ans
+            st.balloons()
+            st.markdown("<div style='text-align:center; padding:30px; background-color:#e8f5e9; border-radius:8px; border:2px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 15px 0; font-size:26px; font-weight:900; color:#111;'>🎉 화면 저장이 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:700; color:#111;'>입력하신 내용이 데이터베이스에 안전하게 저장되었습니다.</p></div>", unsafe_allow_html=True)
+
 
 def render_custom_activity(user_key, u_info, current_role, act_name, config):
     u_name = u_info.get("name", "")
@@ -1194,6 +1411,7 @@ else:
         elif act_name == ACT_3_3: render_activity3_3th(current_user_key, u_info, current_role)
         elif act_name == ACT_2_1: render_activity1_2nd(current_user_key, u_info, current_role)
         elif act_name == ACT_2_2: render_activity2_2nd(current_user_key, u_info, current_role)
+        elif act_name == ACT_2_3: render_activity3_2nd(current_user_key, u_info, current_role) # 📌 신규 활동지 렌더러 연동
         else: render_custom_activity(current_user_key, u_info, current_role, act_name, app_config)
             
         st.markdown("<br><br>", unsafe_allow_html=True)
@@ -1613,12 +1831,13 @@ else:
                                     
                                 has_any_act = True
                                 
-                                # 📌 교사용 화면 학생 조회 폼 (입력/수정 가능)
+                                # 📌 교사용 화면 학생 조회 폼
                                 if act == ACT_3_1: render_activity1_3th(selected_student, u_info_sel, current_role)
                                 elif act == ACT_3_2: render_activity2_3th(selected_student, u_info_sel, current_role)
                                 elif act == ACT_3_3: render_activity3_3th(selected_student, u_info_sel, current_role)
                                 elif act == ACT_2_1: render_activity1_2nd(selected_student, u_info_sel, current_role)
                                 elif act == ACT_2_2: render_activity2_2nd(selected_student, u_info_sel, current_role)
+                                elif act == ACT_2_3: render_activity3_2nd(selected_student, u_info_sel, current_role) # 📌 신규 활동지 연동
                                 else: render_custom_activity(selected_student, u_info_sel, current_role, act, app_config)
                                 
                                 owner_key, ans = get_user_activity_data(selected_student, u_id_selected, view_subj, u_class_selected, act, learning_data)
@@ -1888,6 +2107,75 @@ else:
                                     csv_data.append(["2. 공간 문제", ans.get("step4_2", "")])
                                     csv_data.append(["3. 버리고 채운 것", ans.get("step4_3", "")])
                                     csv_data.append(["4. 일상 변화", ans.get("step4_4", "")])
+
+                                # 📌 신규 2학년 3번째 수행평가 (미디어 파사드) 엑셀 생성
+                                elif selected_view == ACT_2_3:
+                                    st.markdown("### Step 1. 우리 지역 정체성 자원 발굴 및 팩트 체크")
+                                    st.dataframe(pd.DataFrame(ans.get("step1_df", [])), use_container_width=True)
+                                    st.write(f"- 최종 선택 키워드: {ans.get('step1_keyword','')}")
+                                    st.write(f"- 단 하나의 메시지: {ans.get('step1_message','')}")
+                                    
+                                    st.markdown("### Step 2. 캔버스 선정")
+                                    st.dataframe(pd.DataFrame(ans.get("step2_df", [])), use_container_width=True)
+                                    st.write(f"- 최종 선정 건물: {ans.get('step2_final_building','')}")
+                                    st.write(f"- 이유: {ans.get('step2_reason','')}")
+                                    
+                                    st.markdown("### Step 3. 주어진 조건 진단 및 대응 설계")
+                                    st.dataframe(pd.DataFrame(ans.get("step3_df", [])), use_container_width=True)
+                                    
+                                    st.markdown("### Step 4. 작품 스토리보드 4컷")
+                                    for i in range(1, 5):
+                                        st.write(f"**[컷 {i}]** 설명: {ans.get(f'cut_{i}_desc','')}")
+                                        b64_f = ans.get(f"cut_{i}_file_data", "")
+                                        name_f = ans.get(f"cut_{i}_file_name", "")
+                                        if b64_f:
+                                            st.write(f"📎 첨부파일: {name_f}")
+                                            if name_f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                                                st.image(base64.b64decode(b64_f), use_container_width=True)
+                                            st.download_button(f"📥 컷 {i} 원본 다운로드", base64.b64decode(b64_f), file_name=name_f, key=f"dl_c{i}_{s_uid}")
+                                    
+                                    st.markdown("### Step 5. 작품 설명 카드 작성 및 갤러리 워크")
+                                    st.write(f"- 제목: {ans.get('step5_title','')}")
+                                    st.write(f"- 장소: {ans.get('step5_place','')}")
+                                    st.write(f"- 개요: {ans.get('step5_summary','')}")
+                                    st.write(f"- 정체성 반영: {ans.get('step5_identity','')}")
+                                    st.write(f"- 조건 반영: {ans.get('step5_condition','')}")
+                                    st.write(f"- 남길 변화: {ans.get('step5_change','')}")
+                                    
+                                    st.markdown("### Step 6. 제출 전 자기 점검 및 활용 기록")
+                                    st.dataframe(pd.DataFrame(ans.get("step6_ai_df", [])), use_container_width=True)
+                                    st.write(f"- 활동 성찰: {ans.get('step6_reflection','')}")
+                                    
+                                    csv_data.append(["[Step 1. 우리 지역 정체성 자원 발굴 및 팩트 체크]", ""])
+                                    for row in ans.get("step1_df", []): csv_data.append([row.get("구분", ""), f"키워드: {row.get('내가 찾은 정체성 키워드 혹은 문장', '')} / 근거: {row.get('근거가 되는 사실·통계·사건', '')} / 출처: {row.get('출처', '')}"])
+                                    csv_data.append(["최종 선택 키워드", ans.get("step1_keyword", "")])
+                                    csv_data.append(["단 하나의 메시지", ans.get("step1_message", "")])
+                                    
+                                    csv_data.append(["[Step 2. 캔버스 선정]", ""])
+                                    for row in ans.get("step2_df", []): csv_data.append([row.get("건물명", ""), f"벽면: {row.get('벽면 조건', '')} / 관람: {row.get('관람 조건', '')} / 접근성: {row.get('접근성', '')} / 제약: {row.get('예상 제약', '')} / 연관성: {row.get('정체성 연관성', '')} / 적합도: {row.get('적합도(별점)', '')}"])
+                                    csv_data.append(["최종 선정 건물", ans.get("step2_final_building", "")])
+                                    csv_data.append(["선정 이유", ans.get("step2_reason", "")])
+                                    
+                                    csv_data.append(["[Step 3. 주어진 조건 진단 및 대응 설계]", ""])
+                                    for row in ans.get("step3_df", []): csv_data.append([row.get("조건 영역", ""), f"실제조건: {row.get('현장의 실제 조건', '')} / 미치는 영향: {row.get('작품에 미치는 영향', '')} / 대응 방안: {row.get('나의 대응 방안', '')}"])
+                                    
+                                    csv_data.append(["[Step 4. 작품 스토리보드 4컷]", ""])
+                                    for i in range(1, 5):
+                                        c_desc = ans.get(f'cut_{i}_desc', '')
+                                        c_name = ans.get(f'cut_{i}_file_name', '')
+                                        csv_data.append([f"컷 {i}", f"설명: {c_desc} / 파일: {c_name if c_name else '첨부없음'}"])
+                                        
+                                    csv_data.append(["[Step 5. 작품 설명 카드]", ""])
+                                    csv_data.append(["제목", ans.get("step5_title", "")])
+                                    csv_data.append(["장소", ans.get("step5_place", "")])
+                                    csv_data.append(["개요", ans.get("step5_summary", "")])
+                                    csv_data.append(["정체성 반영", ans.get("step5_identity", "")])
+                                    csv_data.append(["조건 반영", ans.get("step5_condition", "")])
+                                    csv_data.append(["남길 변화", ans.get("step5_change", "")])
+                                    
+                                    csv_data.append(["[Step 6. 생성형 AI 활용 및 성찰]", ""])
+                                    for row in ans.get("step6_ai_df", []): csv_data.append([row.get("사용한 도구명", ""), f"프롬프트: {row.get('입력한 프롬프트', '')} / 수정내용: {row.get('AI 결과물을 내가 수정·판단한 내용', '')}"])
+                                    csv_data.append(["활동 성찰", ans.get("step6_reflection", "")])
 
                                 else:
                                     c_form = load_json(CONFIG_FILE, {}).get("custom_forms", {}).get(selected_view, [])
