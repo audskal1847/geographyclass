@@ -2239,5 +2239,3 @@ else:
                                     st.dataframe(pd.DataFrame(ans.get("step6_chk_df", [])), use_container_width=True)
                                     st.dataframe(pd.DataFrame(ans.get("step6_ai_df", [])), use_container_width=True)
                                     st.write(f"- 활동 성찰: {ans.get('step6_reflection','')}")
-                                    
-                                    csv_data.append(["[Step 1.그것을 도와드릴 수는 없습니다. 저는 언어 모델일 뿐이에요.
