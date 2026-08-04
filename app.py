@@ -352,6 +352,7 @@ def generate_html_content(act_name, ans):
         html += f"<p><b>3. 버리고 채운 것과 이유:</b> {ans.get('step4_3','')}</p>"
         html += f"<p><b>4. 일상의 변화:</b> {ans.get('step4_4','')}</p>"
 
+    # 📌 신규 2학년 3번째 수행평가 (미디어 파사드) HTML 생성 완벽 일치화
     elif act_name == ACT_2_3:
         html += f"<h4>👥 모둠 구성원</h4><ul><li>1: {ans.get('m1_id','')} {ans.get('m1_name','')}</li><li>2: {ans.get('m2_id','')} {ans.get('m2_name','')}</li><li>3: {ans.get('m3_id','')} {ans.get('m3_name','')}</li><li>4: {ans.get('m4_id','')} {ans.get('m4_name','')}</li></ul>"
         
@@ -392,7 +393,7 @@ def generate_html_content(act_name, ans):
         html += "<h3>Step 3. 주어진 조건 진단 및 대응 설계</h3>"
         html += "<table><tr><th>조건 영역</th><th>현장의 실제 조건</th><th>작품에 미치는 영향</th><th>나의 대응 방안</th></tr>"
         for row in ans.get("step3_df", []): 
-            html += f"<tr><td>{row.get('조건 영역','')}</td><td>{row.get('현장의 실제 조건','')}</td><td>{row.get('작품에 미치는 영향','')}</td><td>{row.get('나의 대응 방안','')}</td></tr>"
+            html += f"<tr><td>{row.get('조건 영역','')}</td><td>{row.get('현장의 실제 조건 (확인한 사실)','')}</td><td>{row.get('작품에 미치는 영향','')}</td><td>{row.get('나의 대응 방안','')}</td></tr>"
         html += "</table>"
 
         html += "<h3>Step 4. 작품 스토리보드 4컷</h3>"
@@ -415,6 +416,10 @@ def generate_html_content(act_name, ans):
         html += f"<p><b>우리 지역에 남길 변화:</b> {ans.get('step5_change','')}</p>"
 
         html += "<h3>Step 6. 제출 전 자기 점검 및 활용 기록</h3>"
+        html += "<h4>점검 항목 체크리스트</h4><table><tr><th>No</th><th>점검 항목</th><th>확인 여부</th></tr>"
+        for row in ans.get("step6_chk_df", []): 
+            html += f"<tr><td>{row.get('No','')}</td><td>{row.get('점검 항목','')}</td><td>{'✅' if row.get('확인') else '❌'}</td></tr>"
+        html += "</table>"
         html += "<h4>생성형 AI 활용 기록</h4><table><tr><th>사용한 도구명</th><th>입력한 프롬프트</th><th>AI 결과물을 내가 수정·판단한 내용</th></tr>"
         for row in ans.get("step6_ai_df", []): 
             html += f"<tr><td>{row.get('사용한 도구명','')}</td><td>{row.get('입력한 프롬프트','')}</td><td>{row.get('AI 결과물을 내가 수정·판단한 내용','')}</td></tr>"
@@ -496,7 +501,7 @@ def render_activity1_3th(user_key, u_info, current_role):
         disabled_flag = False
         st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
         
-    st.markdown(f"<h2 style='font-size: 32px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='font-size: 28px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
     
     if current_role == "학생":
         if disabled_flag: st.error(status_msg, icon="🚫")
@@ -555,7 +560,7 @@ def render_activity2_3th(user_key, u_info, current_role):
         disabled_flag = False
         st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
         
-    st.markdown(f"<h2 style='font-size: 32px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='font-size: 28px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
     
     if current_role == "학생":
         if disabled_flag: st.error(status_msg, icon="🚫")
@@ -607,7 +612,7 @@ def render_activity3_3th(user_key, u_info, current_role):
         disabled_flag = False
         st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
         
-    st.markdown(f"<h2 style='font-size: 32px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='font-size: 28px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
     
     if current_role == "학생":
         if disabled_flag: st.error(status_msg, icon="🚫")
@@ -701,7 +706,7 @@ def render_activity1_2nd(user_key, u_info, current_role):
         disabled_flag = False
         st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
         
-    st.markdown(f"<h2 style='font-size: 32px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='font-size: 28px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
     
     if is_member_view:
         st.info("💡 **[조회 전용]** 모둠장(대표)이 작성 및 저장한 화면을 연동하여 조회 중입니다. 수정/저장은 대표 학생만 가능합니다.")
@@ -797,7 +802,7 @@ def render_activity2_2nd(user_key, u_info, current_role):
         disabled_flag = False
         st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
         
-    st.markdown(f"<h2 style='font-size: 32px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='font-size: 28px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
     
     if is_member_view:
         st.info("💡 **[조회 전용]** 모둠장(대표)이 작성 및 저장한 화면을 연동하여 조회 중입니다. 수정/저장은 대표 학생만 가능합니다.")
@@ -1000,32 +1005,41 @@ def render_activity3_2nd(user_key, u_info, current_role):
     is_active, status_msg = check_active(category, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
     
+    is_member_view = False
+    if current_role == "학생" and owner_key != user_key:
+        is_member_view = True
+        disabled_flag = True
+    
     if current_role == "관리자": 
         disabled_flag = False
         st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
 
-    st.markdown(f"<h2 style='font-size: 32px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='font-size: 28px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
     
-    if current_role == "학생":
+    if is_member_view:
+        st.info("💡 **[조회 전용]** 모둠장(대표)이 작성 및 저장한 화면을 연동하여 조회 중입니다. 수정/저장은 대표 학생만 가능합니다.")
+    elif current_role == "학생":
         if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
         else: st.success(status_msg, icon="✅")
 
-    # 📌 들어가기 표 추가 (PDF 원본 싱크로)
+    # 📌 모둠 구성원
+    m1_id, m1_name, m2_id, m2_name, m3_id, m3_name, m4_id, m4_name = render_group_members(ans, disabled_flag, category)
+
     st.markdown("""
     <div style="border: 2px solid #ccc; padding: 15px; border-radius: 8px; margin-bottom: 20px; background-color: #ffffff;">
-        <h4 style="margin-top: 0; color: #2980b9;">들어가기 — 교과서 20쪽 「진로 탐색: 빛으로 작품을 만드는 미디어 파사드 디자이너」</h4>
+        <h4 style="margin-top: 0; color: #2980b9; font-size: 20px; font-weight: 800;">들어가기 — 교과서 20쪽 「진로 탐색: 빛으로 작품을 만드는 미디어 파사드 디자이너」</h4>
         <table style="width: 100%; border-collapse: collapse;">
             <tr>
                 <th style="border: 1px solid #ccc; padding: 8px; background-color: #f8f9fa; width: 20%; font-size:16px;">어떤 일을 하나요?</th>
-                <td style="border: 1px solid #ccc; padding: 8px; font-size:16px;">· 건물의 형태와 주변 환경을 고려하여 특정 주제나 전달하고자 하는 메시지에 맞춘 디자인을 구상한다.<br>· 건축물의 외벽에 프로젝션, LED 스크린, 조명 등 다양한 기술을 활용하여 작품을 구현한다.<br>· 도시 환경에서 새로운 예술적 표현을 창조하고, 공공 공간을 더욱 매력적으로 변화시키는 역할을 한다.</td>
+                <td style="border: 1px solid #ccc; padding: 8px; font-size:16px; font-weight: 500;">· 건물의 형태와 주변 환경을 고려하여 특정 주제나 전달하고자 하는 메시지에 맞춘 디자인을 구상한다.<br>· 건축물의 외벽에 프로젝션, LED 스크린, 조명 등 다양한 기술을 활용하여 작품을 구현한다.<br>· 도시 환경에서 새로운 예술적 표현을 창조하고, 공공 공간을 더욱 매력적으로 변화시키는 역할을 한다.</td>
             </tr>
             <tr>
                 <th style="border: 1px solid #ccc; padding: 8px; background-color: #f8f9fa; font-size:16px;">무엇을 잘해야 하나요?</th>
-                <td style="border: 1px solid #ccc; padding: 8px; font-size:16px;">· 건축물의 외관을 예술적으로 재해석하고, 특정 주제나 메시지를 효과적으로 전달할 수 있는 능력<br>· 건축가, 기술자 등 다양한 분야의 전문가들과 협업할 수 있는 능력</td>
+                <td style="border: 1px solid #ccc; padding: 8px; font-size:16px; font-weight: 500;">· 건축물의 외관을 예술적으로 재해석하고, 특정 주제나 메시지를 효과적으로 전달할 수 있는 능력<br>· 건축가, 기술자 등 다양한 분야의 전문가들과 협업할 수 있는 능력</td>
             </tr>
             <tr>
                 <th style="border: 1px solid #ccc; padding: 8px; background-color: #f8f9fa; font-size:16px;">이 활동의 핵심 질문</th>
-                <td style="border: 1px solid #ccc; padding: 8px; font-size:16px; font-weight: bold; color:#111;">"내가 미디어 파사드 디자이너라면, 우리 지역을 홍보하기 위해 어떤 작품을 만들 수 있을까?"<br><span style="font-weight: normal; color:#444;">→ 예쁜 영상을 만드는 활동이 아니다. 우리 지역의 정체성을 근거 있게 찾아내고, 실제 건물이 놓인 조건 안에서 실현 가능한 작품을 설계하는 활동이다.</span></td>
+                <td style="border: 1px solid #ccc; padding: 8px; font-size:16px; font-weight: bold; color:#111;">"내가 미디어 파사드 디자이너라면, 우리 지역을 홍보하기 위해 어떤 작품을 만들 수 있을까?"<br><span style="font-weight: 500; color:#444;">→ 예쁜 영상을 만드는 활동이 아니다. 우리 지역의 정체성을 근거 있게 찾아내고, 실제 건물이 놓인 조건 안에서 실현 가능한 작품을 설계하는 활동이다.</span></td>
             </tr>
         </table>
     </div>
@@ -1047,7 +1061,6 @@ def render_activity3_2nd(user_key, u_info, current_role):
     """)
     st.info("💡 **(예시) 자연·생태** | 죽음의 강에서 되살아난 태화강 | 수질이 생태 등급으로 회복, 철새 서식지로 지정 | 울산시 환경 관련 통계 / 20OO")
     
-    # 📌 동적 행 추가 설정
     default_step1 = [
         {"구분": "1. 자연·생태", "내가 찾은 정체성 키워드 혹은 문장": "", "근거가 되는 사실·통계·사건": "", "출처(기관명/자료명/연도)": ""},
         {"구분": "2. 산업·경제", "내가 찾은 정체성 키워드 혹은 문장": "", "근거가 되는 사실·통계·사건": "", "출처(기관명/자료명/연도)": ""},
@@ -1068,7 +1081,6 @@ def render_activity3_2nd(user_key, u_info, current_role):
     (현장 답사가 어려운 경우 지도 앱의 로드뷰·위성사진으로 대체하되, 캡처 화면을 반드시 첨부할 것)
     """)
     
-    # 📌 별점 드롭다운 적용 표
     stars = ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"]
     default_step2 = [
         {"건물명": "후보 1: ", "벽면 조건": "", "관람 조건": "", "접근성": "", "예상 제약": "", "정체성 연관성": "", "적합도(별점)": "⭐⭐⭐"},
@@ -1091,7 +1103,6 @@ def render_activity3_2nd(user_key, u_info, current_role):
     """)
     st.info("💡 **(예시) 물리적 조건** | 외벽의 40%가 창문이라 영상이 끊겨 보인다 | 인물이나 글자를 크게 넣으면 형태가 깨진다 | 창틀 격자를 공장 창문으로 역이용해, 격자 사이로 빛이 번지는 산업 도시 이미지를 연출한다")
     
-    # 📌 동적 행 추가 설정
     default_step3 = [
         {"조건 영역": "1. 물리적 조건 (형태·재질·구조물)", "현장의 실제 조건 (확인한 사실)": "", "작품에 미치는 영향": "", "나의 대응 방안": ""},
         {"조건 영역": "2. 빛·환경 조건 (주변 조명·간판·빛공해)", "현장의 실제 조건 (확인한 사실)": "", "작품에 미치는 영향": "", "나의 대응 방안": ""},
@@ -1164,7 +1175,6 @@ def render_activity3_2nd(user_key, u_info, current_role):
     st.markdown("---")
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 6. 제출 전 자기 점검 및 활용 기록</h3>", unsafe_allow_html=True)
     
-    # 📌 점검 체크리스트 (표)
     checklist_items = [
         "Step 1의 정체성 키워드 3개 모두에 출처를 적었다.",
         "후보 건축물 3곳을 실제로 답사하거나 로드뷰로 확인했다.",
@@ -1202,6 +1212,7 @@ def render_activity3_2nd(user_key, u_info, current_role):
             current_data = load_json(DATA_FILE, {}) 
             if user_key not in current_data: current_data[user_key] = {}
             new_ans = {
+                "m1_id": m1_id, "m1_name": m1_name, "m2_id": m2_id, "m2_name": m2_name, "m3_id": m3_id, "m3_name": m3_name, "m4_id": m4_id, "m4_name": m4_name,
                 "step1_df": edited_step1_df.to_dict('records'),
                 "step1_keyword": step1_keyword,
                 "step1_message": step1_message,
@@ -1216,7 +1227,7 @@ def render_activity3_2nd(user_key, u_info, current_role):
                 "step6_ai_df": edited_step6_ai_df.to_dict('records'),
                 "step6_reflection": step6_reflection
             }
-            new_ans.update(new_cuts) # 4컷 첨부파일 데이터 병합
+            new_ans.update(new_cuts)
             current_data[user_key][category] = new_ans
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons()
@@ -1338,7 +1349,6 @@ def render_class_overview(current_role, u_info, view_subj):
 
 st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", layout="wide")
 
-# 📌 해결책 반영: 폰트 위계 보존 & 사이드바 폼 테두리 제거 CSS
 st.markdown("""
 <style>
 /* 제목(Header) 계층 명확화 */
@@ -1364,7 +1374,7 @@ input, textarea, div[data-baseweb="select"] { font-size: 16px !important; font-w
 /* 사이드바 */
 [data-testid="stSidebar"] .stMarkdown p { font-size: 16px !important; font-weight: 600 !important; color: #222222 !important; }
 
-/* 📌 사이드바 내부 폼(Form) 테두리 제거 */
+/* 사이드바 내부 폼(Form) 테두리 제거 */
 [data-testid="stSidebar"] [data-testid="stForm"] {
     border: none !important;
     padding: 0 !important;
@@ -1702,7 +1712,7 @@ else:
                     st.info("⏰ 기한 설정은 왼쪽 '관리 및 미리보기 과목'에서 개별 과목을 선택해야만 편집 가능합니다.")
 
                 st.markdown("---")
-                st.markdown("<h3 style='font-size: 24px; font-weight: 800; margin-top:20px;'>👨‍🏫 교사용 특강/수업 자료 업로드</h3>", unsafe_allow_html=True)
+                st.markdown("#### 👨‍🏫 교사용 특강/수업 자료 업로드")
                 with st.form("upload_mat"):
                     mat_title = st.text_input("자료 제목")
                     mat_link = st.text_input("외부 링크 URL (있는 경우)")
@@ -2200,8 +2210,7 @@ else:
                                     csv_data.append(["2. 공간 문제", ans.get("step4_2", "")])
                                     csv_data.append(["3. 버리고 채운 것", ans.get("step4_3", "")])
                                     csv_data.append(["4. 일상 변화", ans.get("step4_4", "")])
-                                
-                                # 📌 신규 2학년 3번째 수행평가 엑셀 데이터 연동
+
                                 elif selected_view == ACT_2_3:
                                     st.markdown("### Step 1. 우리 지역 정체성 자원 발굴 및 팩트 체크")
                                     st.dataframe(pd.DataFrame(ans.get("step1_df", [])), use_container_width=True)
@@ -2239,3 +2248,108 @@ else:
                                     st.dataframe(pd.DataFrame(ans.get("step6_chk_df", [])), use_container_width=True)
                                     st.dataframe(pd.DataFrame(ans.get("step6_ai_df", [])), use_container_width=True)
                                     st.write(f"- 활동 성찰: {ans.get('step6_reflection','')}")
+                                    
+                                    csv_data.append(["[Step 1. 우리 지역 정체성 자원 발굴 및 팩트 체크]", ""])
+                                    for row in ans.get("step1_df", []): csv_data.append([row.get("구분", ""), f"키워드: {row.get('내가 찾은 정체성 키워드 혹은 문장', '')} / 근거: {row.get('근거가 되는 사실·통계·사건', '')} / 출처: {row.get('출처(기관명/자료명/연도)', '')}"])
+                                    csv_data.append(["최종 선택 키워드", ans.get("step1_keyword", "")])
+                                    csv_data.append(["단 하나의 메시지", ans.get("step1_message", "")])
+                                    
+                                    csv_data.append(["[Step 2. 캔버스 선정]", ""])
+                                    for row in ans.get("step2_df", []): csv_data.append([row.get("건물명", ""), f"벽면: {row.get('벽면 조건', '')} / 관람: {row.get('관람 조건', '')} / 접근성: {row.get('접근성', '')} / 제약: {row.get('예상 제약', '')} / 연관성: {row.get('정체성 연관성', '')} / 적합도: {row.get('적합도(별점)', '')}"])
+                                    csv_data.append(["최종 선정 건물", ans.get("step2_final_building", "")])
+                                    csv_data.append(["선정 이유", ans.get("step2_reason", "")])
+                                    
+                                    csv_data.append(["[Step 3. 주어진 조건 진단 및 대응 설계]", ""])
+                                    for row in ans.get("step3_df", []): csv_data.append([row.get("조건 영역", ""), f"실제조건: {row.get('현장의 실제 조건 (확인한 사실)', '')} / 미치는 영향: {row.get('작품에 미치는 영향', '')} / 대응 방안: {row.get('나의 대응 방안', '')}"])
+                                    
+                                    csv_data.append(["[Step 4. 작품 스토리보드 4컷]", ""])
+                                    for i in range(1, 5):
+                                        c_desc = ans.get(f'cut_{i}_desc', '')
+                                        c_name = ans.get(f'cut_{i}_file_name', '')
+                                        csv_data.append([f"컷 {i}", f"설명: {c_desc} / 파일: {c_name if c_name else '첨부없음'}"])
+                                        
+                                    csv_data.append(["[Step 5. 작품 설명 카드]", ""])
+                                    csv_data.append(["제목", ans.get("step5_title", "")])
+                                    csv_data.append(["장소", ans.get("step5_place", "")])
+                                    csv_data.append(["개요", ans.get("step5_summary", "")])
+                                    csv_data.append(["정체성 반영", ans.get("step5_identity", "")])
+                                    csv_data.append(["조건 반영", ans.get("step5_condition", "")])
+                                    csv_data.append(["남길 변화", ans.get("step5_change", "")])
+                                    
+                                    csv_data.append(["[Step 6. 생성형 AI 활용 및 성찰]", ""])
+                                    for row in ans.get("step6_chk_df", []): csv_data.append([row.get("점검 항목", ""), "확인됨" if row.get("확인") else "미확인"])
+                                    for row in ans.get("step6_ai_df", []): csv_data.append([row.get("사용한 도구명", ""), f"프롬프트: {row.get('입력한 프롬프트', '')} / 수정내용: {row.get('AI 결과물을 내가 수정·판단한 내용', '')}"])
+                                    csv_data.append(["활동 성찰", ans.get("step6_reflection", "")])
+
+                                else:
+                                    c_form = load_json(CONFIG_FILE, {}).get("custom_forms", {}).get(selected_view, [])
+                                    for q in c_form:
+                                        st.write(f"**{q['label']}**")
+                                        st.info(ans.get(q['id'], ""))
+                                        csv_data.append([q["label"], ans.get(q["id"], "")])
+                                
+                                csv_data.append(["==================================================", ""])
+                                csv_data.append(["", ""])
+                                st.markdown("---")
+                            
+                            if csv_data:
+                                df_csv = pd.DataFrame(csv_data)
+                                st.download_button(f"📊 {selected_view[:6]} 엑셀 세로 양식 다운로드", data=df_csv.to_csv(index=False, header=False).encode('utf-8-sig'), file_name=f"{view_subj}_{view_class}_{selected_view[:6]}.csv", mime='text/csv', type="primary")
+                            else:
+                                st.info("해당 수행평가에 제출된 데이터가 없습니다.")
+
+           # --- 💾 탭 5: 데이터 백업 및 복구 ---
+            with menu_tabs[4]:
+                st.markdown("<h3 style='font-size: 24px; font-weight: 800; margin-top:20px;'>💾 시스템 데이터베이스(DB) 백업 및 복구</h3>", unsafe_allow_html=True)
+                st.error("🚨 **[주의]** 데이터 복구(업로드) 시 기존 데이터는 모두 지워지고 업로드한 파일로 완전히 덮어씌워집니다. 과거 자료 복원을 원하실 때만 신중하게 작업해 주세요!")
+
+                col_bk1, col_bk2 = st.columns(2)
+                with col_bk1:
+                    st.markdown("#### 1️⃣ 현재 시스템 DB 다운로드 (백업)")
+                    st.info("💡 코드 업데이트 전, 만약의 사태에 대비하여 반드시 아래 파일들을 다운로드하여 개인 PC에 안전하게 보관하세요.")
+
+                    str_data = json.dumps(load_json(DATA_FILE, {}), ensure_ascii=False, indent=2)
+                    st.download_button("📥 1. 학생 학습 데이터 백업 (learning_data.json)", data=str_data.encode('utf-8-sig'), file_name=f"learning_data_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.json", use_container_width=True)
+
+                    str_users = json.dumps(load_json(USERS_FILE, {}), ensure_ascii=False, indent=2)
+                    st.download_button("📥 2. 회원 정보 데이터 백업 (users.json)", data=str_users.encode('utf-8-sig'), file_name=f"users_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.json", use_container_width=True)
+
+                    str_config = json.dumps(load_json(CONFIG_FILE, {}), ensure_ascii=False, indent=2)
+                    st.download_button("📥 3. 시스템 설정 데이터 백업 (config.json)", data=str_config.encode('utf-8-sig'), file_name=f"config_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.json", use_container_width=True)
+
+                with col_bk2:
+                    st.markdown("#### 2️⃣ 과거 시스템 DB 불러오기 (복구)")
+                    st.info("💡 보관해둔 개별 json 파일을 아래에 각각 업로드하면 해당 영역만 100% 복구됩니다.")
+
+                    st.write("📂 [1] 학생 학습 데이터 복구")
+                    up_data = st.file_uploader("learning_data.json 업로드", type="json", key="up_data", label_visibility="collapsed")
+                    if st.button("학생 학습 데이터 복구 실행", use_container_width=True):
+                        if up_data:
+                            try:
+                                restored = json.load(up_data)
+                                save_json(DATA_FILE, restored)
+                                st.success("✅ 학습 데이터 복구 완료!")
+                            except Exception: 
+                                st.error("❌ 올바른 json 파일이 아닙니다.")
+
+                    st.write("📂 [2] 회원 정보 데이터 복구")
+                    up_users = st.file_uploader("users.json 업로드", type="json", key="up_users", label_visibility="collapsed")
+                    if st.button("회원 정보 복구 실행", use_container_width=True):
+                        if up_users:
+                            try:
+                                restored = json.load(up_users)
+                                save_json(USERS_FILE, restored)
+                                st.success("✅ 회원 정보 복구 완료!")
+                            except Exception: 
+                                st.error("❌ 올바른 json 파일이 아닙니다.")
+
+                    st.write("📂 [3] 시스템 설정 데이터 복구")
+                    up_config = st.file_uploader("config.json 업로드", type="json", key="up_config", label_visibility="collapsed")
+                    if st.button("시스템 설정 복구 실행", use_container_width=True):
+                        if up_config:
+                            try:
+                                restored = json.load(up_config)
+                                save_json(CONFIG_FILE, restored)
+                                st.success("✅ 시스템 설정 복구 완료!")
+                            except Exception: 
+                                st.error("❌ 올바른 json 파일이 아닙니다.")
