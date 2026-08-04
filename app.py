@@ -189,9 +189,9 @@ def generate_points_html(df_records):
     html += "</table><br>"
     return html
 
-# 📌 모둠원 데이터 자동 연동 스캐너 함수
+# 📌 모둠원 데이터 자동 연동 스캐너 함수 (개별인 ACT_2_3 제외)
 def get_user_activity_data(user_key, u_id, u_subj, u_class, act_name, learning_data):
-    if act_name in [ACT_2_1, ACT_2_2, ACT_2_3]:
+    if act_name in [ACT_2_1, ACT_2_2]:
         u_id_str = str(u_id).strip()
         if not u_id_str:
             return user_key, learning_data.get(user_key, {}).get(act_name, {})
@@ -352,9 +352,9 @@ def generate_html_content(act_name, ans):
         html += f"<p><b>3. 버리고 채운 것과 이유:</b> {ans.get('step4_3','')}</p>"
         html += f"<p><b>4. 일상의 변화:</b> {ans.get('step4_4','')}</p>"
 
-    # 📌 신규 2학년 3번째 수행평가 (미디어 파사드) HTML 생성 완벽 일치화
+    # 📌 신규 2학년 3번째 수행평가 (미디어 파사드) HTML 생성 (개별)
     elif act_name == ACT_2_3:
-        html += f"<h4>👥 모둠 구성원</h4><ul><li>1: {ans.get('m1_id','')} {ans.get('m1_name','')}</li><li>2: {ans.get('m2_id','')} {ans.get('m2_name','')}</li><li>3: {ans.get('m3_id','')} {ans.get('m3_name','')}</li><li>4: {ans.get('m4_id','')} {ans.get('m4_name','')}</li></ul>"
+        html += f"<h4>👤 개별 정보</h4><ul><li>학번: {ans.get('ind_id','')}</li><li>이름: {ans.get('ind_name','')}</li><li>희망 진로 혹은 계열: {ans.get('ind_career','')}</li></ul>"
         
         html += """<div style="border: 2px solid #ccc; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
             <h4 style="margin-top: 0; color: #2980b9;">들어가기 — 교과서 20쪽 「진로 탐색: 빛으로 작품을 만드는 미디어 파사드 디자이너」</h4>
@@ -992,6 +992,7 @@ def render_activity2_2nd(user_key, u_info, current_role):
             st.balloons()
             st.markdown("<div style='text-align:center; padding:30px; background-color:#e8f5e9; border-radius:8px; border:2px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 15px 0; font-size:26px; font-weight:900; color:#111;'>🎉 화면 저장이 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:700; color:#111;'>입력하신 내용이 데이터베이스에 안전하게 저장되었습니다.</p></div>", unsafe_allow_html=True)
 
+# 📌 2학년 신규 수행평가 (미디어 파사드 - 개별형 완벽 적용)
 def render_activity3_2nd(user_key, u_info, current_role):
     category = ACT_2_3
     u_name = u_info.get("name", "")
@@ -1005,25 +1006,26 @@ def render_activity3_2nd(user_key, u_info, current_role):
     is_active, status_msg = check_active(category, user_class)
     disabled_flag = (current_role == "학생" and not is_active)
     
-    is_member_view = False
-    if current_role == "학생" and owner_key != user_key:
-        is_member_view = True
-        disabled_flag = True
-    
     if current_role == "관리자": 
         disabled_flag = False
         st.info("💡 교사/관리자 모드입니다. 이곳에서 작성한 내용은 학생 데이터와 분리되어 관리자 계정에만 안전하게 테스트 저장됩니다.")
 
     st.markdown(f"<h2 style='font-size: 28px; font-weight: 900; color: #000; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ {category}</h2>", unsafe_allow_html=True)
     
-    if is_member_view:
-        st.info("💡 **[조회 전용]** 모둠장(대표)이 작성 및 저장한 화면을 연동하여 조회 중입니다. 수정/저장은 대표 학생만 가능합니다.")
-    elif current_role == "학생":
+    if current_role == "학생":
         if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
         else: st.success(status_msg, icon="✅")
 
-    # 📌 모둠 구성원
-    m1_id, m1_name, m2_id, m2_name, m3_id, m3_name, m4_id, m4_name = render_group_members(ans, disabled_flag, category)
+    # 📌 개별 정보 입력 (모둠 삭제, 개별 정보로 대체)
+    st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 20px; margin-bottom: 15px;'>👤 개별 정보 입력</h3>", unsafe_allow_html=True)
+    col_i1, col_i2, col_i3 = st.columns(3)
+    default_id = st.session_state.user_info.get("id", "") if st.session_state.user_info.get("role") == "학생" else ""
+    default_name = st.session_state.user_info.get("name", "") if st.session_state.user_info.get("role") == "학생" else ""
+    
+    ind_id = col_i1.text_input("학번", value=ans.get("ind_id", default_id), disabled=True if current_role == "학생" else disabled_flag, key=f"ind_id_{category}")
+    ind_name = col_i2.text_input("이름", value=ans.get("ind_name", default_name), disabled=True if current_role == "학생" else disabled_flag, key=f"ind_name_{category}")
+    ind_career = col_i3.text_input("희망 진로 혹은 계열", value=ans.get("ind_career", ""), disabled=disabled_flag, key=f"ind_career_{category}")
+    st.markdown("---")
 
     st.markdown("""
     <div style="border: 2px solid #ccc; padding: 15px; border-radius: 8px; margin-bottom: 20px; background-color: #ffffff;">
@@ -1212,7 +1214,7 @@ def render_activity3_2nd(user_key, u_info, current_role):
             current_data = load_json(DATA_FILE, {}) 
             if user_key not in current_data: current_data[user_key] = {}
             new_ans = {
-                "m1_id": m1_id, "m1_name": m1_name, "m2_id": m2_id, "m2_name": m2_name, "m3_id": m3_id, "m3_name": m3_name, "m4_id": m4_id, "m4_name": m4_name,
+                "ind_id": ind_id, "ind_name": ind_name, "ind_career": ind_career,
                 "step1_df": edited_step1_df.to_dict('records'),
                 "step1_keyword": step1_keyword,
                 "step1_message": step1_message,
@@ -1934,7 +1936,7 @@ else:
                                     
                                 has_any_act = True
                                 
-                                # 📌 교사용 화면에서 학생의 활동지를 조회하며 바로 입력/수정할 수 있도록 기능 복구
+                                # 📌 교사용 화면 학생 조회 폼
                                 if act == ACT_3_1: render_activity1_3th(selected_student, u_info_sel, current_role)
                                 elif act == ACT_3_2: render_activity2_3th(selected_student, u_info_sel, current_role)
                                 elif act == ACT_3_3: render_activity3_3th(selected_student, u_info_sel, current_role)
@@ -2210,8 +2212,14 @@ else:
                                     csv_data.append(["2. 공간 문제", ans.get("step4_2", "")])
                                     csv_data.append(["3. 버리고 채운 것", ans.get("step4_3", "")])
                                     csv_data.append(["4. 일상 변화", ans.get("step4_4", "")])
-
+                                
+                                # 📌 신규 2학년 3번째 수행평가 (미디어 파사드) 개별형 엑셀 연동
                                 elif selected_view == ACT_2_3:
+                                    st.markdown("### 👤 개별 정보")
+                                    st.write(f"- 학번: {ans.get('ind_id','')}")
+                                    st.write(f"- 이름: {ans.get('ind_name','')}")
+                                    st.write(f"- 희망 진로 혹은 계열: {ans.get('ind_career','')}")
+                                    
                                     st.markdown("### Step 1. 우리 지역 정체성 자원 발굴 및 팩트 체크")
                                     st.dataframe(pd.DataFrame(ans.get("step1_df", [])), use_container_width=True)
                                     st.write(f"- 최종 선택 키워드: {ans.get('step1_keyword','')}")
@@ -2248,6 +2256,9 @@ else:
                                     st.dataframe(pd.DataFrame(ans.get("step6_chk_df", [])), use_container_width=True)
                                     st.dataframe(pd.DataFrame(ans.get("step6_ai_df", [])), use_container_width=True)
                                     st.write(f"- 활동 성찰: {ans.get('step6_reflection','')}")
+                                    
+                                    csv_data.append(["개별 정보", f"학번: {ans.get('ind_id', '')} / 이름: {ans.get('ind_name', '')}"])
+                                    csv_data.append(["희망 진로 혹은 계열", ans.get("ind_career", "")])
                                     
                                     csv_data.append(["[Step 1. 우리 지역 정체성 자원 발굴 및 팩트 체크]", ""])
                                     for row in ans.get("step1_df", []): csv_data.append([row.get("구분", ""), f"키워드: {row.get('내가 찾은 정체성 키워드 혹은 문장', '')} / 근거: {row.get('근거가 되는 사실·통계·사건', '')} / 출처: {row.get('출처(기관명/자료명/연도)', '')}"])
@@ -2298,7 +2309,7 @@ else:
                             else:
                                 st.info("해당 수행평가에 제출된 데이터가 없습니다.")
 
-           # --- 💾 탭 5: 데이터 백업 및 복구 ---
+            # --- 💾 탭 5: 데이터 백업 및 복구 ---
             with menu_tabs[4]:
                 st.markdown("<h3 style='font-size: 24px; font-weight: 800; margin-top:20px;'>💾 시스템 데이터베이스(DB) 백업 및 복구</h3>", unsafe_allow_html=True)
                 st.error("🚨 **[주의]** 데이터 복구(업로드) 시 기존 데이터는 모두 지워지고 업로드한 파일로 완전히 덮어씌워집니다. 과거 자료 복원을 원하실 때만 신중하게 작업해 주세요!")
