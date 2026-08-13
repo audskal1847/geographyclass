@@ -2063,7 +2063,8 @@ else:
                 
                 options_edit = ["선택"] + list(filtered_for_edit.keys())
                 default_idx_edit = 1 if (search_edit.strip() and len(filtered_for_edit) > 0) else 0
-                edit_target = st.selectbox("정보를 수정할 학생을 선택하세요", options_edit, index=default_idx_edit, format_func=lambda x: "선택" if x=="선택" else f"[{filtered_for_edit[x].get('subject')}/{filtered_for_edit[x].get('class_group')}] {filtered_for_edit[x].get('name')} ({filtered_for_edit[x].get('id')})", key="sel_edit")
+                
+                edit_target = st.selectbox("정보를 수정할 학생을 선택하세요", options_edit, index=default_idx_edit, format_func=lambda x: "선택" if x=="선택" else f"[{filtered_for_edit[x].get('subject')}/{filtered_for_edit[x].get('class_group')}] {filtered_for_edit[x].get('name')} ({filtered_for_edit[x].get('id')})", key=f"sel_edit_{search_edit}")
                 
                 if edit_target != "선택":
                     target_info = filtered_for_edit[edit_target]
@@ -2111,7 +2112,7 @@ else:
                     options_del = ["선택"] + list(filtered_for_del.keys())
                     default_idx_del = 1 if (search_del.strip() and len(filtered_for_del) > 0) else 0
                     
-                    del_target = st.selectbox("삭제할 회원을 선택하세요", options_del, index=default_idx_del, format_func=lambda x: "선택" if x=="선택" else f"[{filtered_for_del[x].get('subject')}/{filtered_for_del[x].get('class_group')}] {filtered_for_del[x].get('name')} ({filtered_for_del[x].get('id')})", key="sel_del")
+                    del_target = st.selectbox("삭제할 회원을 선택하세요", options_del, index=default_idx_del, format_func=lambda x: "선택" if x=="선택" else f"[{filtered_for_del[x].get('subject')}/{filtered_for_del[x].get('class_group')}] {filtered_for_del[x].get('name')} ({filtered_for_del[x].get('id')})", key=f"sel_del_{search_del}")
                     if del_target != "선택" and st.button("⚠️ 강제 탈퇴(삭제) 실행", type="primary"):
                         fresh_users = load_json(USERS_FILE, {})
                         if del_target in fresh_users: del fresh_users[del_target]
@@ -2126,7 +2127,7 @@ else:
                     options_pw = ["선택"] + list(filtered_for_pw.keys())
                     default_idx_pw = 1 if (search_pw.strip() and len(filtered_for_pw) > 0) else 0
                     
-                    pw_target = st.selectbox("비밀번호를 변경할 회원을 선택하세요", options_pw, index=default_idx_pw, format_func=lambda x: "선택" if x=="선택" else f"[{filtered_for_pw[x].get('subject')}/{filtered_for_pw[x].get('class_group')}] {filtered_for_pw[x].get('name')} ({filtered_for_pw[x].get('id')})", key="sel_pw")
+                    pw_target = st.selectbox("비밀번호를 변경할 회원을 선택하세요", options_pw, index=default_idx_pw, format_func=lambda x: "선택" if x=="선택" else f"[{filtered_for_pw[x].get('subject')}/{filtered_for_pw[x].get('class_group')}] {filtered_for_pw[x].get('name')} ({filtered_for_pw[x].get('id')})", key=f"sel_pw_{search_pw}")
                     new_pw = st.text_input("새로운 비밀번호 입력", key="new_pw_input")
                     if pw_target != "선택" and st.button("비밀번호 변경 실행", type="primary"):
                         if new_pw:
@@ -2226,7 +2227,7 @@ else:
                         options_student = ["선택"] + filtered_student_list
                         default_idx_student = 1 if (search_student_tab4.strip() and len(filtered_student_list) > 0) else 0
 
-                        selected_student = st.selectbox("학생 선택", options_student, index=default_idx_student, format_func=lambda x: "선택" if x=="선택" else format_student_dropdown(x))
+                        selected_student = st.selectbox("학생 선택", options_student, index=default_idx_student, format_func=lambda x: "선택" if x=="선택" else format_student_dropdown(x), key=f"sel_stu_tab4_{search_student_tab4}")
                         
                         if selected_student != "선택":
                             u_info_sel = all_users[selected_student]
