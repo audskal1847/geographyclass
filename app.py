@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import json
 import os
 import base64
@@ -55,7 +56,7 @@ def get_time_index(t_str):
     if t_str in TIME_OPTIONS: return TIME_OPTIONS.index(t_str)
     return 0
 
-# --- [토큰 및 페이지 제어 함수] ---
+# --- [토큰 및 페이지 제어 함수 (뒤로 가기 로그아웃 방지 기능 포함)] ---
 def encode_token(user_key): return base64.b64encode(user_key.encode('utf-8')).decode('utf-8')
 def decode_token(token):
     try: return base64.b64decode(token.encode('utf-8')).decode('utf-8')
@@ -64,6 +65,8 @@ def decode_token(token):
 def change_page(page_name):
     st.session_state.current_page = page_name
     st.query_params["current_page"] = page_name
+    if st.session_state.get("logged_in") and st.session_state.get("user_info"):
+        st.query_params["session_token"] = encode_token(st.session_state.user_info["user_key"])
     st.rerun()
 
 # --- [📌 반별 수행평가 타이머 및 마감 제어 로직] ---
@@ -189,7 +192,7 @@ def generate_points_html(df_records):
     html += "</table><br>"
     return html
 
-#📌 모둠원 데이터 자동 연동 스캐너 함수 (개별인 ACT_2_3 제외)
+#📌 모둠원 데이터 자동 연동 스캐너 함수
 def get_user_activity_data(user_key, u_id, u_subj, u_class, act_name, learning_data):
     if act_name in [ACT_2_1, ACT_2_2]:
         u_id_str = str(u_id).strip()
@@ -208,6 +211,7 @@ def get_user_activity_data(user_key, u_id, u_subj, u_class, act_name, learning_d
                     return k, a_data
                     
     return user_key, learning_data.get(user_key, {}).get(act_name, {})
+
 # --- [엑셀(CSV) 변환을 위한 데이터 추출 공통 함수] ---
 def get_act_csv_rows(selected_view, ans, config=None):
     csv_data = []
@@ -363,6 +367,7 @@ def get_act_csv_rows(selected_view, ans, config=None):
         for q in c_form:
             csv_data.append([q["label"], ans.get(q["id"], "")])
     return csv_data
+
 # --- [공통 HTML 포트폴리오 생성기] ---
 def generate_html_content(act_name, ans):
     html = ""
@@ -1323,7 +1328,7 @@ def render_activity3_2nd(user_key, u_info, current_role):
     step5_title = st.text_input("▶ 작품 제목 (관람객의 눈길을 끌 수 있도록. 부제를 붙여도 좋다.)", value=ans.get("step5_title", ""), disabled=disabled_flag, key=f"step5_title_{category}")
     step5_place = st.text_input("▶ 전시 장소 (건물명 / 투사 벽면 / 권장 관람 위치)", value=ans.get("step5_place", ""), disabled=disabled_flag, key=f"step5_place_{category}")
     step5_summary = st.text_area("▶ 작품 개요 (3문장 이내)", value=ans.get("step5_summary", ""), disabled=disabled_flag, key=f"step5_sum_{category}")
-    step5_identity = st.text_area("▶ 이 작품이 지역의 어떤 정체성을 담았는가 (Step 1의 근거 자료를 인용하여 쓸 단 것)", value=ans.get("step5_identity", ""), disabled=disabled_flag, key=f"step5_id_{category}")
+    step5_identity = st.text_area("▶ 이 작품이 지역의 어떤 정체성을 담았는가 (Step 1의 근거 자료를 인용하여 쓸 것)", value=ans.get("step5_identity", ""), disabled=disabled_flag, key=f"step5_id_{category}")
     step5_condition = st.text_area("▶ 현장 조건을 어떻게 작품에 반영했는가 (Step 3 에서 가장 잘 해결한 조건 1가지를 골라 쓸 것)", value=ans.get("step5_condition", ""), disabled=disabled_flag, key=f"step5_cond_{category}")
     step5_change = st.text_area("▶ 이 작품이 우리 지역에 남길 변화 (관람객/주민/상권 세 측면에서 각각 한 줄씩)", value=ans.get("step5_change", ""), disabled=disabled_flag, key=f"step5_chg_{category}")
 
@@ -1387,6 +1392,7 @@ def render_activity3_2nd(user_key, u_info, current_role):
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons()
             st.markdown("<div style='text-align:center; padding:30px; background-color:#e8f5e9; border-radius:8px; border:2px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 15px 0; font-size:26px; font-weight:900; color:#111;'>🎉 화면 저장이 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:700; color:#111;'>입력하신 내용이 데이터베이스에 안전하게 저장되었습니다.</p></div>", unsafe_allow_html=True)
+
 
 def render_custom_activity(user_key, u_info, current_role, act_name, config):
     u_name = u_info.get("name", "")
@@ -1501,6 +1507,53 @@ def render_class_overview(current_role, u_info, view_subj):
                 if st.button(f"📄 {act}", use_container_width=True, key=f"btn_go_{act}"): change_page(act)
     else: st.info("아직 이 과목에 할당된 수행평가 목록이 없습니다.")
 
+# --- [자동 저장 및 Keep-Alive 기능 주입] ---
+def inject_custom_scripts():
+    components.html("""
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const parentDoc = window.parent.document;
+        
+        function initAutoSave() {
+            const elements = parentDoc.querySelectorAll('input[type="text"], textarea');
+            elements.forEach(el => {
+                const ariaLabel = el.getAttribute('aria-label') || '';
+                const key = 'autosave_' + window.parent.location.pathname + '_' + ariaLabel;
+                
+                if (!el.dataset.autosaveAttached && ariaLabel !== '') {
+                    el.dataset.autosaveAttached = "true";
+                    
+                    el.addEventListener('input', () => {
+                        window.localStorage.setItem(key, el.value);
+                    });
+                    
+                    el.addEventListener('focus', () => {
+                        const savedVal = window.localStorage.getItem(key);
+                        if (savedVal && el.value === "") {
+                            let setter = Object.getOwnPropertyDescriptor(window.parent.HTMLInputElement.prototype, "value")?.set;
+                            if(el.tagName === 'TEXTAREA') {
+                                setter = Object.getOwnPropertyDescriptor(window.parent.HTMLTextAreaElement.prototype, "value")?.set;
+                            }
+                            if(setter) {
+                                setter.call(el, savedVal);
+                                el.dispatchEvent(new Event('input', { bubbles: true }));
+                            } else {
+                                el.value = savedVal; 
+                            }
+                        }
+                    });
+                }
+            });
+        }
+        setInterval(initAutoSave, 1500);
+
+        setInterval(() => {
+            fetch(window.parent.location.href, { cache: "no-store" });
+        }, 180000); 
+    });
+    </script>
+    """, height=0, width=0)
+
 st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", layout="wide")
 
 st.markdown("""
@@ -1554,6 +1607,7 @@ table td { font-size: 15px !important; font-weight: 500 !important; color: #333 
 
 init_system()
 
+# 뒤로가기 방지용 세션 토큰 체커 및 저장
 if "logged_in" not in st.session_state: 
     st.session_state.logged_in = False
     st.session_state.user_info = None
@@ -1570,6 +1624,9 @@ if "session_token" in st.query_params and not st.session_state.logged_in:
             st.session_state.logged_in = True
             st.session_state.user_info = users[user_key]
             st.session_state.user_info["user_key"] = user_key
+
+if st.session_state.logged_in and st.session_state.user_info:
+    st.query_params["session_token"] = encode_token(st.session_state.user_info["user_key"])
 
 if "current_page" in st.query_params: st.session_state.current_page = st.query_params["current_page"]
 elif "current_page" not in st.session_state: st.session_state.current_page = "main"
@@ -1648,6 +1705,9 @@ else:
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("<div style='text-align: center; color: #222; font-size: 18px; font-weight: 900;'>Made by<br><span style='font-size: 24px; color: #000; font-weight: 900;'>신선여자고등학교 김명남</span></div>", unsafe_allow_html=True)
+
+# 실시간 오토 세이브 및 세션 유지 기능 삽입
+inject_custom_scripts()
 
 # --- 🔍 학생 검색 필터 헬퍼 함수 ---
 def filter_students(user_dict, search_term, approved_only=True):
@@ -2001,7 +2061,9 @@ else:
                 search_edit = st.text_input("🔍 수정할 학생 검색 (이름, 과목, 반, 학번 입력)", key="search_edit")
                 filtered_for_edit = filter_students(all_users, search_edit, approved_only=False)
                 
-                edit_target = st.selectbox("정보를 수정할 학생을 선택하세요", ["선택"] + list(filtered_for_edit.keys()), format_func=lambda x: "선택" if x=="선택" else f"[{filtered_for_edit[x].get('subject')}/{filtered_for_edit[x].get('class_group')}] {filtered_for_edit[x].get('name')} ({filtered_for_edit[x].get('id')})", key="sel_edit")
+                options_edit = ["선택"] + list(filtered_for_edit.keys())
+                default_idx_edit = 1 if (search_edit.strip() and len(filtered_for_edit) > 0) else 0
+                edit_target = st.selectbox("정보를 수정할 학생을 선택하세요", options_edit, index=default_idx_edit, format_func=lambda x: "선택" if x=="선택" else f"[{filtered_for_edit[x].get('subject')}/{filtered_for_edit[x].get('class_group')}] {filtered_for_edit[x].get('name')} ({filtered_for_edit[x].get('id')})", key="sel_edit")
                 
                 if edit_target != "선택":
                     target_info = filtered_for_edit[edit_target]
@@ -2045,7 +2107,11 @@ else:
                     st.markdown("<h4 style='color:#e74c3c;'>❌ 회원 강제 탈퇴(삭제)</h4>", unsafe_allow_html=True)
                     search_del = st.text_input("🔍 삭제할 회원 검색", key="search_del")
                     filtered_for_del = filter_students(all_users, search_del, approved_only=False)
-                    del_target = st.selectbox("삭제할 회원을 선택하세요", ["선택"] + list(filtered_for_del.keys()), format_func=lambda x: "선택" if x=="선택" else f"[{filtered_for_del[x].get('subject')}/{filtered_for_del[x].get('class_group')}] {filtered_for_del[x].get('name')} ({filtered_for_del[x].get('id')})", key="sel_del")
+                    
+                    options_del = ["선택"] + list(filtered_for_del.keys())
+                    default_idx_del = 1 if (search_del.strip() and len(filtered_for_del) > 0) else 0
+                    
+                    del_target = st.selectbox("삭제할 회원을 선택하세요", options_del, index=default_idx_del, format_func=lambda x: "선택" if x=="선택" else f"[{filtered_for_del[x].get('subject')}/{filtered_for_del[x].get('class_group')}] {filtered_for_del[x].get('name')} ({filtered_for_del[x].get('id')})", key="sel_del")
                     if del_target != "선택" and st.button("⚠️ 강제 탈퇴(삭제) 실행", type="primary"):
                         fresh_users = load_json(USERS_FILE, {})
                         if del_target in fresh_users: del fresh_users[del_target]
@@ -2056,7 +2122,11 @@ else:
                     st.markdown("<h4 style='color:#f39c12;'>🔑 학생 비밀번호 강제 변경</h4>", unsafe_allow_html=True)
                     search_pw = st.text_input("🔍 비밀번호 변경할 회원 검색", key="search_pw")
                     filtered_for_pw = filter_students(all_users, search_pw, approved_only=False)
-                    pw_target = st.selectbox("비밀번호를 변경할 회원을 선택하세요", ["선택"] + list(filtered_for_pw.keys()), format_func=lambda x: "선택" if x=="선택" else f"[{filtered_for_pw[x].get('subject')}/{filtered_for_pw[x].get('class_group')}] {filtered_for_pw[x].get('name')} ({filtered_for_pw[x].get('id')})", key="sel_pw")
+                    
+                    options_pw = ["선택"] + list(filtered_for_pw.keys())
+                    default_idx_pw = 1 if (search_pw.strip() and len(filtered_for_pw) > 0) else 0
+                    
+                    pw_target = st.selectbox("비밀번호를 변경할 회원을 선택하세요", options_pw, index=default_idx_pw, format_func=lambda x: "선택" if x=="선택" else f"[{filtered_for_pw[x].get('subject')}/{filtered_for_pw[x].get('class_group')}] {filtered_for_pw[x].get('name')} ({filtered_for_pw[x].get('id')})", key="sel_pw")
                     new_pw = st.text_input("새로운 비밀번호 입력", key="new_pw_input")
                     if pw_target != "선택" and st.button("비밀번호 변경 실행", type="primary"):
                         if new_pw:
@@ -2140,7 +2210,7 @@ else:
                         st.markdown("---")
                         st.markdown("<h3 style='font-size: 24px; font-weight: 800;'>👤 특정 학생 개별 조회 및 다운로드</h3>", unsafe_allow_html=True)
                         
-                        search_student_tab4 = st.text_input("🔍 조회할 학생 검색 (이름, 학교, 학번 입력)", key="search_student_tab4")
+                        search_student_tab4 = st.text_input("🔍 조회할 학생 검색 (이름, 과목, 반, 학번 입력)", key="search_student_tab4")
                         
                         filtered_student_list = []
                         for uid in student_list:
@@ -2153,7 +2223,10 @@ else:
                             appr_str = "" if all_users[x].get("approved", True) else " (미승인)"
                             return f"[{all_users[x].get('class_group')}] {all_users[x].get('name')} ({all_users[x].get('id')}){appr_str}"
                             
-                        selected_student = st.selectbox("학생 선택", ["선택"] + filtered_student_list, format_func=lambda x: "선택" if x=="선택" else format_student_dropdown(x))
+                        options_student = ["선택"] + filtered_student_list
+                        default_idx_student = 1 if (search_student_tab4.strip() and len(filtered_student_list) > 0) else 0
+
+                        selected_student = st.selectbox("학생 선택", options_student, index=default_idx_student, format_func=lambda x: "선택" if x=="선택" else format_student_dropdown(x))
                         
                         if selected_student != "선택":
                             u_info_sel = all_users[selected_student]
@@ -2227,7 +2300,6 @@ else:
                                     st.markdown("---")
                                     continue
                                 
-                                # 공통 엑셀 데이터 추출 로직 적용
                                 csv_data.extend(get_act_csv_rows(selected_view, ans, app_config))
                                 
                                 csv_data.append(["==================================================", ""])
