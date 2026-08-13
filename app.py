@@ -20,7 +20,7 @@ UPLOAD_DIR = "uploads"
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# 📌 과목 및 반 목록 세팅
+#📌 과목 및 반 목록 세팅
 SUBJECTS = [
     "3학년 여행지리", 
     "2학년 도시의 미래 탐구"
@@ -31,12 +31,12 @@ CLASSES_MAP = {
     "2학년 도시의 미래 탐구": ["2G(2-1반)", "2H(2-2반)", "2I(2-8반)"]
 }
 
-# 📌 단일 관리자 계정
+#📌 단일 관리자 계정
 ADMIN_ACCOUNTS = {
     "audskal": {"pw": "1847", "name": "김명남(관리자)"}
 }
 
-# 📌 학년별 하드코딩 기본 활동지 6종
+#📌 학년별 하드코딩 기본 활동지 6종
 ACT_3_1 = "[3학년] 수행평가 1 - 영상으로 떠나는 여행"
 ACT_3_2 = "[3학년] 수행평가 2 - 나를 성장시킨 장소 지도 만들기"
 ACT_3_3 = "[3학년] 수행평가 3 - 나의 세계관에 대해 알아가는 '여행'"
@@ -166,7 +166,7 @@ def init_system():
             if k in current_config: del current_config[k]; needs_update = True
         if needs_update: save_json(CONFIG_FILE, current_config)
 
-# 📌 카테고리 병합(Rowspan) 처리용 HTML 생성 함수
+#📌 카테고리 병합(Rowspan) 처리용 HTML 생성 함수
 def generate_points_html(df_records):
     if not df_records: return ""
     html = "<table style='width:100%; border-collapse:collapse; text-align:center;'><tr><th style='background-color:#ecf0f1; border:1px solid #bdc3c7; padding:10px;'>카테고리</th><th style='background-color:#ecf0f1; border:1px solid #bdc3c7; padding:10px;'>코드</th><th style='background-color:#ecf0f1; border:1px solid #bdc3c7; padding:10px;'>세부 개조 항목</th><th style='background-color:#ecf0f1; border:1px solid #bdc3c7; padding:10px;'>비용</th></tr>"
@@ -189,7 +189,7 @@ def generate_points_html(df_records):
     html += "</table><br>"
     return html
 
-# 📌 모둠원 데이터 자동 연동 스캐너 함수 (개별인 ACT_2_3 제외)
+#📌 모둠원 데이터 자동 연동 스캐너 함수 (개별인 ACT_2_3 제외)
 def get_user_activity_data(user_key, u_id, u_subj, u_class, act_name, learning_data):
     if act_name in [ACT_2_1, ACT_2_2]:
         u_id_str = str(u_id).strip()
@@ -352,7 +352,6 @@ def generate_html_content(act_name, ans):
         html += f"<p><b>3. 버리고 채운 것과 이유:</b> {ans.get('step4_3','')}</p>"
         html += f"<p><b>4. 일상의 변화:</b> {ans.get('step4_4','')}</p>"
 
-    # 📌 신규 2학년 3번째 수행평가 (미디어 파사드) HTML 생성 (개별)
     elif act_name == ACT_2_3:
         html += f"<h4>👤 개별 정보</h4><ul><li>학번: {ans.get('ind_id','')}</li><li>이름: {ans.get('ind_name','')}</li><li>희망 진로 혹은 계열: {ans.get('ind_career','')}</li></ul>"
         
@@ -992,7 +991,7 @@ def render_activity2_2nd(user_key, u_info, current_role):
             st.balloons()
             st.markdown("<div style='text-align:center; padding:30px; background-color:#e8f5e9; border-radius:8px; border:2px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 15px 0; font-size:26px; font-weight:900; color:#111;'>🎉 화면 저장이 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:700; color:#111;'>입력하신 내용이 데이터베이스에 안전하게 저장되었습니다.</p></div>", unsafe_allow_html=True)
 
-# 📌 2학년 신규 수행평가 (미디어 파사드 - 개별형 완벽 적용)
+#📌 2학년 신규 수행평가 (미디어 파사드 - 개별형 완벽 적용)
 def render_activity3_2nd(user_key, u_info, current_role):
     category = ACT_2_3
     u_name = u_info.get("name", "")
@@ -1170,7 +1169,7 @@ def render_activity3_2nd(user_key, u_info, current_role):
     step5_title = st.text_input("▶ 작품 제목 (관람객의 눈길을 끌 수 있도록. 부제를 붙여도 좋다.)", value=ans.get("step5_title", ""), disabled=disabled_flag, key=f"step5_title_{category}")
     step5_place = st.text_input("▶ 전시 장소 (건물명 / 투사 벽면 / 권장 관람 위치)", value=ans.get("step5_place", ""), disabled=disabled_flag, key=f"step5_place_{category}")
     step5_summary = st.text_area("▶ 작품 개요 (3문장 이내)", value=ans.get("step5_summary", ""), disabled=disabled_flag, key=f"step5_sum_{category}")
-    step5_identity = st.text_area("▶ 이 작품이 지역의 어떤 정체성을 담았는가 (Step 1의 근거 자료를 인용하여 쓸 것)", value=ans.get("step5_identity", ""), disabled=disabled_flag, key=f"step5_id_{category}")
+    step5_identity = st.text_area("▶ 이 작품이 지역의 어떤 정체성을 담았는가 (Step 1의 근거 자료를 인용하여 쓸 단 것)", value=ans.get("step5_identity", ""), disabled=disabled_flag, key=f"step5_id_{category}")
     step5_condition = st.text_area("▶ 현장 조건을 어떻게 작품에 반영했는가 (Step 3 에서 가장 잘 해결한 조건 1가지를 골라 쓸 것)", value=ans.get("step5_condition", ""), disabled=disabled_flag, key=f"step5_cond_{category}")
     step5_change = st.text_area("▶ 이 작품이 우리 지역에 남길 변화 (관람객/주민/상권 세 측면에서 각각 한 줄씩)", value=ans.get("step5_change", ""), disabled=disabled_flag, key=f"step5_chg_{category}")
 
@@ -1234,7 +1233,6 @@ def render_activity3_2nd(user_key, u_info, current_role):
             save_json(DATA_FILE, current_data); ans = new_ans
             st.balloons()
             st.markdown("<div style='text-align:center; padding:30px; background-color:#e8f5e9; border-radius:8px; border:2px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 15px 0; font-size:26px; font-weight:900; color:#111;'>🎉 화면 저장이 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:700; color:#111;'>입력하신 내용이 데이터베이스에 안전하게 저장되었습니다.</p></div>", unsafe_allow_html=True)
-
 
 def render_custom_activity(user_key, u_info, current_role, act_name, config):
     u_name = u_info.get("name", "")
@@ -1496,6 +1494,18 @@ else:
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("<div style='text-align: center; color: #222; font-size: 18px; font-weight: 900;'>Made by<br><span style='font-size: 24px; color: #000; font-weight: 900;'>신선여자고등학교 김명남</span></div>", unsafe_allow_html=True)
+
+# --- 🔍 학생 검색 필터 헬퍼 함수 ---
+def filter_students(user_dict, search_term, approved_only=True):
+    filtered = {}
+    for k, v in user_dict.items():
+        if v.get("role") != "학생": continue
+        if approved_only and not v.get("approved", True): continue
+        
+        search_target = f"{v.get('subject','')} {v.get('class_group','')} {v.get('name','')} {v.get('id','')}"
+        if search_term.lower() in search_target.lower():
+            filtered[k] = v
+    return filtered
 
 if not st.session_state.logged_in:
     st.markdown("<h1 style='font-size:36px; font-weight:900; color:#000;'>🏫 수업 및 활동 어시스트 프로그램</h1>", unsafe_allow_html=True)
@@ -1818,7 +1828,7 @@ else:
                 else: st.info("승인 대기 중인 학생이 없습니다.")
                 
                 st.markdown("---")
-                st.markdown("<h3 style='font-size: 24px; font-weight: 800; margin-top:20px;'>✅ 기존 승인된 학생 목록 (삭제 관리)</h3>", unsafe_allow_html=True)
+                st.markdown("<h3 style='font-size: 24px; font-weight: 800; margin-top:20px;'>✅ 기존 승인된 학생 목록 (조회 및 비밀번호 확인)</h3>", unsafe_allow_html=True)
                 col1, col2 = st.columns(2)
                 with col1:
                     filter_subj = st.selectbox("조회할 과목 선택", ["전체"] + SUBJECTS, key="manage_subj")
@@ -1829,14 +1839,80 @@ else:
                 filtered_approved = {k: v for k, v in approved_users.items() if (filter_subj == "전체" or v.get("subject", "").strip() == filter_subj.strip()) and (filter_class == "전체" or v.get("class_group", "").strip() == filter_class.strip())}
                 df_users = pd.DataFrame([{"과목": v.get("subject", "-"), "반": v.get("class_group", "-"), "학번": v.get("id", "-"), "이름": v.get("name", "-"), "비밀번호": v.get("password", "-")} for k, v in filtered_approved.items()])
                 st.dataframe(df_users, use_container_width=True)
+
+                st.markdown("---")
+                st.markdown("<h3 style='font-size: 24px; font-weight: 800; margin-top:20px;'>📝 학생 회원 정보(반/이름/학번) 수정</h3>", unsafe_allow_html=True)
+                st.info("💡 학생이 가입 시 분반을 잘못 선택했거나 이름/학번 등에 오류가 있는 경우 즉시 수정할 수 있습니다.")
                 
-                if filtered_approved:
-                    del_target = st.selectbox("삭제할 학생 선택", ["선택"] + list(filtered_approved.keys()), format_func=lambda x: x if x=="선택" else f"[{filtered_approved[x].get('class_group')}] {filtered_approved[x].get('name')} ({filtered_approved[x].get('id')})")
-                    if del_target != "선택" and st.button("⚠️ 해당 학생 영구 삭제", type="primary"):
+                search_edit = st.text_input("🔍 수정할 학생 검색 (이름, 과목, 반, 학번 입력)", key="search_edit")
+                filtered_for_edit = filter_students(all_users, search_edit, approved_only=False)
+                
+                edit_target = st.selectbox("정보를 수정할 학생을 선택하세요", ["선택"] + list(filtered_for_edit.keys()), format_func=lambda x: "선택" if x=="선택" else f"[{filtered_for_edit[x].get('subject')}/{filtered_for_edit[x].get('class_group')}] {filtered_for_edit[x].get('name')} ({filtered_for_edit[x].get('id')})", key="sel_edit")
+                
+                if edit_target != "선택":
+                    target_info = filtered_for_edit[edit_target]
+                    with st.form("edit_student_form"):
+                        e_subj = st.selectbox("과목", SUBJECTS, index=SUBJECTS.index(target_info.get("subject")) if target_info.get("subject") in SUBJECTS else 0)
+                        e_cls = st.selectbox("반", CLASSES_MAP.get(e_subj, []), index=CLASSES_MAP.get(e_subj, []).index(target_info.get("class_group")) if target_info.get("class_group") in CLASSES_MAP.get(e_subj, []) else 0)
+                        e_id = st.text_input("학번", value=target_info.get("id", ""))
+                        e_name = st.text_input("이름", value=target_info.get("name", ""))
+                        
+                        if st.form_submit_button("정보 수정 적용", type="primary"):
+                            fresh_users = load_json(USERS_FILE, {})
+                            fresh_data = load_json(DATA_FILE, {})
+                            
+                            new_key = f"{e_subj}_{e_cls}_{e_id}"
+                            new_info = target_info.copy()
+                            new_info.update({"subject": e_subj, "class_group": e_cls, "id": e_id, "name": e_name})
+                            
+                            if new_key != edit_target:
+                                if new_key in fresh_users:
+                                    st.error("❌ 변경하려는 과목/반/학번에 이미 다른 계정이 존재합니다.")
+                                else:
+                                    fresh_users[new_key] = new_info
+                                    del fresh_users[edit_target]
+                                    
+                                    if edit_target in fresh_data:
+                                        fresh_data[new_key] = fresh_data[edit_target]
+                                        del fresh_data[edit_target]
+                                        save_json(DATA_FILE, fresh_data)
+                                        
+                                    save_json(USERS_FILE, fresh_users)
+                                    st.success("✅ 학생 정보가 성공적으로 변경되었습니다."); st.rerun()
+                            else:
+                                fresh_users[edit_target] = new_info
+                                save_json(USERS_FILE, fresh_users)
+                                st.success("✅ 학생 정보가 업데이트되었습니다."); st.rerun()
+
+                st.markdown("<h3 style='font-size: 24px; font-weight: 800; margin-top:30px;'>⚙️ 개별 회원 권한 제어</h3>", unsafe_allow_html=True)
+                col_ctrl1, col_ctrl2 = st.columns(2)
+                
+                with col_ctrl1:
+                    st.markdown("<h4 style='color:#e74c3c;'>❌ 회원 강제 탈퇴(삭제)</h4>", unsafe_allow_html=True)
+                    search_del = st.text_input("🔍 삭제할 회원 검색", key="search_del")
+                    filtered_for_del = filter_students(all_users, search_del, approved_only=False)
+                    del_target = st.selectbox("삭제할 회원을 선택하세요", ["선택"] + list(filtered_for_del.keys()), format_func=lambda x: "선택" if x=="선택" else f"[{filtered_for_del[x].get('subject')}/{filtered_for_del[x].get('class_group')}] {filtered_for_del[x].get('name')} ({filtered_for_del[x].get('id')})", key="sel_del")
+                    if del_target != "선택" and st.button("⚠️ 강제 탈퇴(삭제) 실행", type="primary"):
                         fresh_users = load_json(USERS_FILE, {})
                         if del_target in fresh_users: del fresh_users[del_target]
                         save_json(USERS_FILE, fresh_users)
                         st.success("삭제 완료"); st.rerun()
+                        
+                with col_ctrl2:
+                    st.markdown("<h4 style='color:#f39c12;'>🔑 학생 비밀번호 강제 변경</h4>", unsafe_allow_html=True)
+                    search_pw = st.text_input("🔍 비밀번호 변경할 회원 검색", key="search_pw")
+                    filtered_for_pw = filter_students(all_users, search_pw, approved_only=False)
+                    pw_target = st.selectbox("비밀번호를 변경할 회원을 선택하세요", ["선택"] + list(filtered_for_pw.keys()), format_func=lambda x: "선택" if x=="선택" else f"[{filtered_for_pw[x].get('subject')}/{filtered_for_pw[x].get('class_group')}] {filtered_for_pw[x].get('name')} ({filtered_for_pw[x].get('id')})", key="sel_pw")
+                    new_pw = st.text_input("새로운 비밀번호 입력", key="new_pw_input")
+                    if pw_target != "선택" and st.button("비밀번호 변경 실행", type="primary"):
+                        if new_pw:
+                            fresh_users = load_json(USERS_FILE, {})
+                            if pw_target in fresh_users: 
+                                fresh_users[pw_target]["password"] = new_pw
+                                save_json(USERS_FILE, fresh_users)
+                                st.success("✅ 비밀번호 변경 완료!"); st.rerun()
+                        else:
+                            st.warning("새로운 비밀번호를 입력해주세요.")
 
             # --- 📥 탭 4: 학생 제출 자료 조회 및 관리 ---
             with menu_tabs[3]:
@@ -1910,12 +1986,22 @@ else:
                         st.markdown("---")
                         st.markdown("<h3 style='font-size: 24px; font-weight: 800;'>👤 특정 학생 개별 조회 및 다운로드</h3>", unsafe_allow_html=True)
                         
+                        search_student_tab4 = st.text_input("🔍 조회할 학생 검색 (이름, 학교, 학번 입력)", key="search_student_tab4")
+                        
+                        filtered_student_list = []
+                        for uid in student_list:
+                            s_info = all_users[uid]
+                            search_target = f"{s_info.get('subject','')} {s_info.get('class_group','')} {s_info.get('name','')} {s_info.get('id','')}"
+                            if search_student_tab4.lower() in search_target.lower():
+                                filtered_student_list.append(uid)
+                                
                         def format_student_dropdown(x):
                             appr_str = "" if all_users[x].get("approved", True) else " (미승인)"
                             return f"[{all_users[x].get('class_group')}] {all_users[x].get('name')} ({all_users[x].get('id')}){appr_str}"
                             
-                        selected_student = st.selectbox("학생 선택", student_list, format_func=format_student_dropdown)
-                        if selected_student:
+                        selected_student = st.selectbox("학생 선택", ["선택"] + filtered_student_list, format_func=lambda x: "선택" if x=="선택" else format_student_dropdown(x))
+                        
+                        if selected_student != "선택":
                             u_info_sel = all_users[selected_student]
                             u_name = u_info_sel.get('name', '학생')
                             u_class_selected = u_info_sel.get('class_group', '')
@@ -1987,317 +2073,8 @@ else:
                                     st.markdown("---")
                                     continue
                                 
-                                if selected_view == ACT_3_1:
-                                    st.write(f"- **영상의 제목:** {ans.get('a1_1','')} | **국가 혹은 지역:** {ans.get('a1_2','')}")
-                                    st.write(f"- **선택 이유:** {ans.get('a1_3','')}")
-                                    st.info(f"**첫 느낌:**\n{ans.get('a2_1','')}")
-                                    st.write(f"- **인상적이었던 장소:** {ans.get('a2_2_1','')} | **그 이유:** {ans.get('a2_2_2','')}")
-                                    st.write(f"- **누구에게 추천:** {ans.get('a2_3_1','')} | **추천 이유:** {ans.get('a2_3_2','')}")
-                                    st.info(f"**나만의 감상평:**\n{ans.get('a2_4','')}")
-                                    st.write(f"- **1) 영상의 제목:** {ans.get('a3_1','')} | **2) 주요 컨셉 혹은 느낌:** {ans.get('a3_2','')}")
-                                    st.write(f"- **3) 누구와 함께 가고 싶은가?:** {ans.get('a3_3','')}")
-                                    st.info(f"**4) 그 이유는?:**\n{ans.get('a3_4','')}")
-                                    st.write(f"- **5) 가장 해 보고 싶은 것:** {ans.get('a3_5','')}")
-                                    st.info(f"**6) 그 이유는?:**\n{ans.get('a3_6','')}")
-                                    st.write(f"- **7) 꼭 넣고 싶은 장소/공간:** {ans.get('a3_7','')}")
-                                    st.info(f"**8) 그 이유는?:**\n{ans.get('a3_8','')}")
-                                    st.info(f"**9) 썸네일 영상 기획:**\n{ans.get('a3_9','')}")
-                                    st.write(f"- **10) 어울리는 BGM:** {ans.get('a3_10','')}")
-                                    st.info(f"**11) 그 이유는?:**\n{ans.get('a3_11','')}")
-                                    
-                                    csv_data.append(["[1. 자신이 선택한 영상에 대한 첫번째 질문]", ""])
-                                    csv_data.append(["1. 영상의 제목", ans.get("a1_1", "")])
-                                    csv_data.append(["2. 영상에 등장하는 국가 혹은 지역", ans.get("a1_2", "")])
-                                    csv_data.append(["3. 해당 영상을 선택하게 된 이유", ans.get("a1_3", "")])
-                                    csv_data.append(["", ""])
-                                    csv_data.append(["[2. 자신이 선택한 영상에 대한 두 번째 질문]", ""])
-                                    csv_data.append(["1. 첫 느낌", ans.get("a2_1", "")])
-                                    csv_data.append(["2. 인상적이었던 장소 혹은 공간", ans.get("a2_2_1", "")])
-                                    csv_data.append(["이유", ans.get("a2_2_2", "")])
-                                    csv_data.append(["3. 누구에게 추천", ans.get("a2_3_1", "")])
-                                    csv_data.append(["추천하는 이유", ans.get("a2_3_2", "")])
-                                    csv_data.append(["4. 나만의 감상평", ans.get("a2_4", "")])
-                                    csv_data.append(["", ""])
-                                    csv_data.append(["[5. 만일 내가 영상 속 지역을 배경으로 영상을 찍는다면?]", ""])
-                                    csv_data.append(["1) 영상의 제목", ans.get("a3_1", "")])
-                                    csv_data.append(["2) 주요 컨셉 혹은 느낌", ans.get("a3_2", "")])
-                                    csv_data.append(["3) 누구와 함께 가고 싶은가?", ans.get("a3_3", "")])
-                                    csv_data.append(["4) 그 이유는?", ans.get("a3_4", "")])
-                                    csv_data.append(["5) 가장 해 보고 싶은 것", ans.get("a3_5", "")])
-                                    csv_data.append(["6) 그 이유는?", ans.get("a3_6", "")])
-                                    csv_data.append(["7) 꼭 넣고 싶은 장소 혹은 공간", ans.get("a3_7", "")])
-                                    csv_data.append(["8) 그 이유는?", ans.get("a3_8", "")])
-                                    csv_data.append(["9) 썸네일 영상 기획", ans.get("a3_9", "")])
-                                    csv_data.append(["10) 어울리는 BGM", ans.get("a3_10", "")])
-                                    csv_data.append(["11) BGM 선택 이유", ans.get("a3_11", "")])
-                                    
-                                elif selected_view == ACT_3_2:
-                                    st.write(f"- 편안한 장소: {ans.get('q1_1','')} | 이유: {ans.get('q1_2','')}")
-                                    st.write(f"- 성격: {ans.get('q2_1','')} | 영향 장소: {ans.get('q2_2','')}")
-                                    st.write(f"- 장점: {ans.get('q3_1','')} | 영향 장소: {ans.get('q3_2','')}")
-                                    st.write(f"- 성장 장소: {ans.get('q4_1','')} | 이유: {ans.get('q4_2','')}")
-                                    st.write(f"- 목표: {ans.get('q5_1','')} | 영향 장소: {ans.get('q5_2','')}")
-                                    st.write(f"- 소개할 장소: {ans.get('q6_1','')} | 이유: {ans.get('q6_2','')}")
-                                    st.write(f"- 비밀 장소: {ans.get('q7_1','')} | 이유: {ans.get('q7_2','')}")
-                                    st.write(f"- 과거로 간다면: {ans.get('q8_1','')} | 이유: {ans.get('q8_2','')}")
-                                    
-                                    csv_data.append(["1-1) 나에게 편안함을 주는 장소", ans.get("q1_1", "")])
-                                    csv_data.append(["1-2) 편안함을 주는 이유", ans.get("q1_2", "")])
-                                    csv_data.append(["2-1) 자신의 성격", ans.get("q2_1", "")])
-                                    csv_data.append(["2-2) 성격 형성에 영향을 준 장소", ans.get("q2_2", "")])
-                                    csv_data.append(["2-3) 그 이유", ans.get("q2_3", "")])
-                                    csv_data.append(["3-1) 자신의 장점", ans.get("q3_1", "")])
-                                    csv_data.append(["3-2) 장점 형성에 영향을 준 장소", ans.get("q3_2", "")])
-                                    csv_data.append(["3-3) 그 이유", ans.get("q3_3", "")])
-                                    csv_data.append(["4-1) 내가 성장함에 있어 영향을 준 장소", ans.get("q4_1", "")])
-                                    csv_data.append(["4-2) 어떤 면에서 영향을 주었는가", ans.get("q4_2", "")])
-                                    csv_data.append(["5-1) 지금 나의 목표", ans.get("q5_1", "")])
-                                    csv_data.append(["5-2) 목표 설정에 영향을 준 장소", ans.get("q5_2", "")])
-                                    csv_data.append(["6-1) 소중한 사람에게 소개해 주고 싶은 장소", ans.get("q6_1", "")])
-                                    csv_data.append(["6-2) 그 이유", ans.get("q6_2", "")])
-                                    csv_data.append(["7-1) 나만의 비밀 장소", ans.get("q7_1", "")])
-                                    csv_data.append(["7-2) 그 이유", ans.get("q7_2", "")])
-                                    csv_data.append(["8-1) 다시 가 보고 싶은 과거의 장소", ans.get("q8_1", "")])
-                                    csv_data.append(["8-2) 그 이유", ans.get("q8_2", "")])
-                                    
-                                elif selected_view == ACT_3_3:
-                                    st.markdown("### 1. 세계 인식 수준에 대한 확인")
-                                    st.dataframe(pd.DataFrame(ans.get("s1_df", [])), use_container_width=True)
-                                    st.dataframe(pd.DataFrame(ans.get("direct_df", [])), use_container_width=True)
-                                    st.write(f"영화: {ans.get('ind1','')} / 음악: {ans.get('ind2','')} / 음식: {ans.get('ind3','')}")
-                                    st.markdown("### 2. 특정 대륙/국가에 대한 자신의 편견과 고정관념")
-                                    st.dataframe(pd.DataFrame(ans.get("top5_want", [])), use_container_width=True)
-                                    st.dataframe(pd.DataFrame(ans.get("top5_notwant", [])), use_container_width=True)
-                                    st.dataframe(pd.DataFrame(ans.get("label_df", [])), use_container_width=True)
-                                    st.dataframe(pd.DataFrame(ans.get("prej_df", [])), use_container_width=True)
-                                    st.write(f"뉴스: {ans.get('media1_1','')} ({ans.get('media1_2','')}) / 영화: {ans.get('media2_1','')} ({ans.get('media2_2','')}) / 학교: {ans.get('media3_1','')} ({ans.get('media3_2','')})")
-                                    st.dataframe(pd.DataFrame(ans.get("fake_df", [])), use_container_width=True)
-                                    st.dataframe(pd.DataFrame(ans.get("discrim_df", [])), use_container_width=True)
-                                    st.markdown("### 3. 포용적이고 균형잡힌 세계관을 위한 노력")
-                                    st.dataframe(pd.DataFrame(ans.get("change_df", [])), use_container_width=True)
-                                    st.dataframe(pd.DataFrame(ans.get("ignore_df", [])), use_container_width=True)
-                                    st.dataframe(pd.DataFrame(ans.get("western_df", [])), use_container_width=True)
-                                    st.markdown("### 4. 목표로 하는 세계관")
-                                    st.info(f"**어떤 사람이 되고 싶은가?**\n{ans.get('goal_1','')}")
-                                    st.info(f"**어떤 세계관을 갖고 싶은가?**\n{ans.get('goal_2','')}")
-                                    
-                                    csv_data.append(["[1. 세계 인식 수준에 대한 확인]", ""])
-                                    csv_data.append(["1) 대륙별 관심도 및 지식 수준 체크", ""])
-                                    for row in ans.get("s1_df", []): csv_data.append([row.get("대륙", ""), f"관심도: {row.get('관심도', '')} / 지식수준: {row.get('지식수준', '')}"])
-                                    csv_data.append(["2) 특정 국가에 대한 기억과 인상 분석 (직접경험)", ""])
-                                    for row in ans.get("direct_df", []): csv_data.append([row.get("여행해 본 국가", ""), row.get("해당 국가에 대한 구체적인 기억 혹은 인상", "")])
-                                    csv_data.append(["간접경험 (영화/드라마)", ans.get("ind1", "")])
-                                    csv_data.append(["간접경험 (음악/연예인)", ans.get("ind2", "")])
-                                    csv_data.append(["간접경험 (음식)", ans.get("ind3", "")])
-                                    csv_data.append(["3) 꼭 가 보고 싶은 Top 5 국가와 그 이유", ""])
-                                    for row in ans.get("top5_want", []): csv_data.append([row.get("국가 혹은 지역", ""), row.get("이유", "")])
-                                    csv_data.append(["4) 절대 가고 싫은 Top 5 국가와 그 이유", ""])
-                                    for row in ans.get("top5_notwant", []): csv_data.append([row.get("국가 혹은 지역", ""), row.get("이유", "")])
-                                    csv_data.append(["", ""])
-                                    csv_data.append(["[2. 특정 대륙/국가에 대한 자신의 편견과 고정관념]", ""])
-                                    csv_data.append(["1) 국가별 한 단어 라벨링", ""])
-                                    for row in ans.get("label_df", []): csv_data.append([row.get("가 보고 싶은 국가", ""), f"라벨: {row.get('한 단어 라벨', '')} / 싫은 국가: {row.get('가고 싶지 않은 국가', '')} / 라벨(부정): {row.get('한 단어 라벨(부정)', '')}"])
-                                    csv_data.append(["2) 개인적으로 가장 강한 편견을 가진 국가", ""])
-                                    for row in ans.get("prej_df", []): csv_data.append([row.get("국가명", ""), f"편견 내용: {row.get('편견 내용', '')} / 형성 과정: {row.get('편견 형성 과정 혹은 이유', '')}"])
-                                    csv_data.append(["3) 미디어와 교육의 영향으로 인한 인식 발견", ""])
-                                    csv_data.append(["뉴스에서 접하는 국가들", ans.get("media1_1", "")])
-                                    csv_data.append(["뉴스에서의 이미지", ans.get("media1_2", "")])
-                                    csv_data.append(["영화/드라마에서 접하는 국가들", ans.get("media2_1", "")])
-                                    csv_data.append(["영화/드라마에서의 이미지", ans.get("media2_2", "")])
-                                    csv_data.append(["학교에서 배운 국가들", ans.get("media3_1", "")])
-                                    csv_data.append(["학교에서 배운 지식", ans.get("media3_2", "")])
-                                    csv_data.append(["4) 부정확한 정보나 과장된 인식 발견", ""])
-                                    for row in ans.get("fake_df", []): csv_data.append([row.get("국가명", ""), f"잘못 알고 있던 내용: {row.get('잘못 알고 있었던 내용', '')} / 실제 사실: {row.get('실제 사실', '')}"])
-                                    csv_data.append(["5) 우월감이나 차별 의식 점검", ""])
-                                    for row in ans.get("discrim_df", []): csv_data.append([row.get("어떤 국가에 대해?", ""), f"어떤 측면에서: {row.get('어떤 측면에서', '')} / 이유: {row.get('그 이유', '')}"])
-                                    csv_data.append(["", ""])
-                                    csv_data.append(["[3. 포용적이고 균형잡힌 세계관을 위한 노력]", ""])
-                                    for row in ans.get("change_df", []): csv_data.append([row.get("어떤 국가에 대해?", ""), f"현재 편견: {row.get('현재의 편견', '')} / 정보 수집 계획: {row.get('올바른 정보를 찾기 위한 계획', '')}"])
-                                    csv_data.append(["가장 무관심했던 대륙/국가", ""])
-                                    for row in ans.get("ignore_df", []): csv_data.append([row.get("선택 대륙/국가", ""), f"무관심 이유: {row.get('무관심 이유', '')} / 관심 확장 방법: {row.get('관심 확장을 위한 정보 수집 방법', '')}"])
-                                    csv_data.append(["서구 중심적 시각 벗어나기", ""])
-                                    for row in ans.get("western_df", []): csv_data.append([row.get("현재 가지고 있는 서구 중심적 시각", ""), f"개선 방법: {row.get('개선 방법', '')}"])
-                                    csv_data.append(["", ""])
-                                    csv_data.append(["[4. 목표로 하는 세계관]", ""])
-                                    csv_data.append(["어떤 사람이 되고 싶은가?", ans.get("goal_1", "")])
-                                    csv_data.append(["어떤 세계관을 갖고 싶은가?", ans.get("goal_2", "")])
-                                    
-                                elif selected_view == ACT_2_1:
-                                    st.write(f"**[모둠 구성원]** 1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}")
-                                    st.markdown("### Step 1. 우리 지역에 대한 '밈' 수집 및 지리 정보 팩트 체크 일지")
-                                    st.write(f"1. 밈: {ans.get('step1_1','')}")
-                                    st.write(f"2. 주관적 이미지: {ans.get('step1_2','')}")
-                                    st.write(f"3. 특별한 장소: {ans.get('step1_3','')}")
-                                    st.write(f"4. 감정/생각: {ans.get('step1_4','')}")
-                                    st.markdown("### Step 2. 도시 발달 과정과 객관적 지표")
-                                    st.write(f"- 탐구 시기: {ans.get('step2_1_period','')} / 공간: {ans.get('step2_1_space','')} / 특징: {ans.get('step2_1_feat','')}")
-                                    st.write(f"- 객관적 지표: {ans.get('step2_3','')}")
-                                    st.markdown("### Step 3. 살기 좋은 울산의 조건: 거주 적합성 진단")
-                                    st.dataframe(pd.DataFrame(ans.get("step3_df", [])), use_container_width=True)
-                                    st.markdown("### Step 4. 우리의 방식으로 해 보는 울산 브랜딩: 정체성 리뉴얼")
-                                    st.write(f"- 1. 기존 프레임: {ans.get('step4_1','')}")
-                                    st.write(f"- 2. 지리적 본질: {ans.get('step4_2','')}")
-                                    st.write(f"- 3. 슬로건: {ans.get('step4_3','')}")
-                                    st.write(f"- 4. 개선 아이디어: {ans.get('step4_4','')}")
-                                    
-                                    csv_data.append(["모둠 구성원", f"1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}"])
-                                    csv_data.append(["1. 밈 수집", ans.get("step1_1", "")])
-                                    csv_data.append(["2. 주관적 이미지", ans.get("step1_2", "")])
-                                    csv_data.append(["3. 특별한 장소", ans.get("step1_3", "")])
-                                    csv_data.append(["4. 감정/생각", ans.get("step1_4", "")])
-                                    csv_data.append(["탐구 시기", ans.get("step2_1_period", "")])
-                                    csv_data.append(["핵심 공간", ans.get("step2_1_space", "")])
-                                    csv_data.append(["객관적 특징", ans.get("step2_1_feat", "")])
-                                    csv_data.append(["객관적 지표", ans.get("step2_3", "")])
-                                    for row in ans.get("step3_df", []): csv_data.append([row.get("거주 적합성 요인", ""), f"별점: {row.get('만족도 점수', '')} / 평가: {row.get('한 줄 평가', '')}"])
-                                    csv_data.append(["1. 기존 프레임", ans.get("step4_1", "")])
-                                    csv_data.append(["2. 지리적 본질", ans.get("step4_2", "")])
-                                    csv_data.append(["3. 슬로건", ans.get("step4_3", "")])
-                                    csv_data.append(["4. 개선 아이디어", ans.get("step4_4", "")])
-                                    
-                                elif selected_view == ACT_2_2:
-                                    st.write(f"**[모둠 구성원]** 1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}")
-                                    st.markdown("### Step 1. 우리 동네 현황 진단")
-                                    st.write(f"1. 대상 지역: {ans.get('step1_1','')}")
-                                    st.markdown("#### 2. 15분 생활권 필수 서비스 체크리스트")
-                                    st.dataframe(pd.DataFrame(ans.get("step1_2_df", [])), use_container_width=True)
-                                    st.markdown("#### 3. 선택한 지역의 핵심 문제점")
-                                    st.write(f"- 문제점 1: {ans.get('step1_3_1','')}")
-                                    st.write(f"- 문제점 2: {ans.get('step1_3_2','')}")
-                                    st.write(f"- 문제점 3: {ans.get('step1_3_3','')}")
-                                    
-                                    st.markdown("### Step 2. 도시 개조 포인트를 활용한 트레이드오프 설계")
-                                    st.markdown(generate_points_html(ans.get("step2_point_df", [])), unsafe_allow_html=True)
-                                    st.dataframe(pd.DataFrame(ans.get("step2_df", [])), use_container_width=True)
-                                    
-                                    st.markdown("### Step 3. N분 도시 공간 개조 자료 스케치/기획안 업로드")
-                                    col_v1, col_v2 = st.columns(2)
-                                    b64_b = ans.get("file_before_data", ans.get("img_before", ""))
-                                    name_b = ans.get("file_before_name", f"{u_name}_변경전_스케치.png" if ans.get("img_before") else "")
-                                    if b64_b:
-                                        with col_v1:
-                                            file_bytes = base64.b64decode(b64_b)
-                                            if name_b.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
-                                                st.image(file_bytes, caption="변경 전 스케치", use_container_width=True)
-                                            st.download_button("📥 변경 전 자료 원본 다운로드", file_bytes, file_name=name_b, key=f"dl_csv_bef_{s_uid}")
-                                            
-                                    b64_a = ans.get("file_after_data", ans.get("img_after", ""))
-                                    name_a = ans.get("file_after_name", f"{u_name}_변경후_스케치.png" if ans.get("img_after") else "")
-                                    if b64_a:
-                                        with col_v2:
-                                            file_bytes = base64.b64decode(b64_a)
-                                            if name_a.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
-                                                st.image(file_bytes, caption="변경 후 스케치", use_container_width=True)
-                                            st.download_button("📥 변경 후 자료 원본 다운로드", file_bytes, file_name=name_a, key=f"dl_csv_aft_{s_uid}")
-                                            
-                                    st.markdown("### Step 4. 3분 공청회 발표를 위한 준비")
-                                    st.write(f"- 1. 슬로건: {ans.get('step4_1','')}")
-                                    st.write(f"- 2. 공간 문제: {ans.get('step4_2','')}")
-                                    st.write(f"- 3. 버리고 채운 것: {ans.get('step4_3','')}")
-                                    st.write(f"- 4. 일상 변화: {ans.get('step4_4','')}")
-                                    
-                                    csv_data.append(["모둠 구성원", f"1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}"])
-                                    csv_data.append(["1. 대상 지역", ans.get("step1_1", "")])
-                                    for row in ans.get("step1_2_df", []): csv_data.append([row.get("구분", ""), f"항목: {row.get('필수 서비스 항목', '')} / 충분: {row.get('충분', '')} / 부족: {row.get('부족 or 없음', '')}"])
-                                    csv_data.append(["문제점 1", ans.get("step1_3_1", "")])
-                                    csv_data.append(["문제점 2", ans.get("step1_3_2", "")])
-                                    csv_data.append(["문제점 3", ans.get("step1_3_3", "")])
-                                    csv_data.append(["[도시 개조 포인트 (학생 추가 포함)]", ""])
-                                    csv_data.append(["카테고리", "코드", "세부 개조 항목", "비용"])
-                                    for row in ans.get("step2_point_df", []): csv_data.append([row.get("카테고리", ""), row.get("코드", ""), row.get("세부 개조 항목", ""), row.get("비용", "")])
-                                    for row in ans.get("step2_df", []): csv_data.append([f"트레이드오프 순번 {row.get('순번', '')}", f"코드: {row.get('선택 코드', '')} / 버릴공간: {row.get('버릴 공간', '')} / 포인트: {row.get('사용 포인트', '')} / 재설계: {row.get('공간 재설계 이유 및 기대효과', '')}"])
-                                    if b64_b: csv_data.append(["변경 전 자료", f"제출 완료 ({name_b})"])
-                                    if b64_a: csv_data.append(["변경 후 자료", f"제출 완료 ({name_a})"])
-                                    csv_data.append(["1. 슬로건", ans.get("step4_1", "")])
-                                    csv_data.append(["2. 공간 문제", ans.get("step4_2", "")])
-                                    csv_data.append(["3. 버리고 채운 것", ans.get("step4_3", "")])
-                                    csv_data.append(["4. 일상 변화", ans.get("step4_4", "")])
-                                
-                                # 📌 신규 2학년 3번째 수행평가 (미디어 파사드) 개별형 엑셀 연동
-                                elif selected_view == ACT_2_3:
-                                    st.markdown("### 👤 개별 정보")
-                                    st.write(f"- 학번: {ans.get('ind_id','')}")
-                                    st.write(f"- 이름: {ans.get('ind_name','')}")
-                                    st.write(f"- 희망 진로 혹은 계열: {ans.get('ind_career','')}")
-                                    
-                                    st.markdown("### Step 1. 우리 지역 정체성 자원 발굴 및 팩트 체크")
-                                    st.dataframe(pd.DataFrame(ans.get("step1_df", [])), use_container_width=True)
-                                    st.write(f"- 최종 선택 키워드: {ans.get('step1_keyword','')}")
-                                    st.write(f"- 단 하나의 메시지: {ans.get('step1_message','')}")
-                                    
-                                    st.markdown("### Step 2. 캔버스 선정")
-                                    st.dataframe(pd.DataFrame(ans.get("step2_df", [])), use_container_width=True)
-                                    st.write(f"- 최종 선정 건물: {ans.get('step2_final_building','')}")
-                                    st.write(f"- 이유: {ans.get('step2_reason','')}")
-                                    
-                                    st.markdown("### Step 3. 주어진 조건 진단 및 대응 설계")
-                                    st.dataframe(pd.DataFrame(ans.get("step3_df", [])), use_container_width=True)
-                                    
-                                    st.markdown("### Step 4. 작품 스토리보드 4컷")
-                                    for i in range(1, 5):
-                                        st.write(f"**[컷 {i}]** 설명: {ans.get(f'cut_{i}_desc','')}")
-                                        b64_f = ans.get(f"cut_{i}_file_data", "")
-                                        name_f = ans.get(f"cut_{i}_file_name", "")
-                                        if b64_f:
-                                            st.write(f"📎 첨부파일: {name_f}")
-                                            if name_f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
-                                                st.image(base64.b64decode(b64_f), use_container_width=True)
-                                            st.download_button(f"📥 컷 {i} 원본 다운로드", base64.b64decode(b64_f), file_name=name_f, key=f"dl_c{i}_{s_uid}")
-                                    
-                                    st.markdown("### Step 5. 작품 설명 카드 작성 및 갤러리 워크")
-                                    st.write(f"- 제목: {ans.get('step5_title','')}")
-                                    st.write(f"- 장소: {ans.get('step5_place','')}")
-                                    st.write(f"- 개요: {ans.get('step5_summary','')}")
-                                    st.write(f"- 정체성 반영: {ans.get('step5_identity','')}")
-                                    st.write(f"- 조건 반영: {ans.get('step5_condition','')}")
-                                    st.write(f"- 남길 변화: {ans.get('step5_change','')}")
-                                    
-                                    st.markdown("### Step 6. 제출 전 자기 점검 및 활용 기록")
-                                    st.dataframe(pd.DataFrame(ans.get("step6_chk_df", [])), use_container_width=True)
-                                    st.dataframe(pd.DataFrame(ans.get("step6_ai_df", [])), use_container_width=True)
-                                    st.write(f"- 활동 성찰: {ans.get('step6_reflection','')}")
-                                    
-                                    csv_data.append(["개별 정보", f"학번: {ans.get('ind_id', '')} / 이름: {ans.get('ind_name', '')}"])
-                                    csv_data.append(["희망 진로 혹은 계열", ans.get("ind_career", "")])
-                                    
-                                    csv_data.append(["[Step 1. 우리 지역 정체성 자원 발굴 및 팩트 체크]", ""])
-                                    for row in ans.get("step1_df", []): csv_data.append([row.get("구분", ""), f"키워드: {row.get('내가 찾은 정체성 키워드 혹은 문장', '')} / 근거: {row.get('근거가 되는 사실·통계·사건', '')} / 출처: {row.get('출처(기관명/자료명/연도)', '')}"])
-                                    csv_data.append(["최종 선택 키워드", ans.get("step1_keyword", "")])
-                                    csv_data.append(["단 하나의 메시지", ans.get("step1_message", "")])
-                                    
-                                    csv_data.append(["[Step 2. 캔버스 선정]", ""])
-                                    for row in ans.get("step2_df", []): csv_data.append([row.get("건물명", ""), f"벽면: {row.get('벽면 조건', '')} / 관람: {row.get('관람 조건', '')} / 접근성: {row.get('접근성', '')} / 제약: {row.get('예상 제약', '')} / 연관성: {row.get('정체성 연관성', '')} / 적합도: {row.get('적합도(별점)', '')}"])
-                                    csv_data.append(["최종 선정 건물", ans.get("step2_final_building", "")])
-                                    csv_data.append(["선정 이유", ans.get("step2_reason", "")])
-                                    
-                                    csv_data.append(["[Step 3. 주어진 조건 진단 및 대응 설계]", ""])
-                                    for row in ans.get("step3_df", []): csv_data.append([row.get("조건 영역", ""), f"실제조건: {row.get('현장의 실제 조건 (확인한 사실)', '')} / 미치는 영향: {row.get('작품에 미치는 영향', '')} / 대응 방안: {row.get('나의 대응 방안', '')}"])
-                                    
-                                    csv_data.append(["[Step 4. 작품 스토리보드 4컷]", ""])
-                                    for i in range(1, 5):
-                                        c_desc = ans.get(f'cut_{i}_desc', '')
-                                        c_name = ans.get(f'cut_{i}_file_name', '')
-                                        csv_data.append([f"컷 {i}", f"설명: {c_desc} / 파일: {c_name if c_name else '첨부없음'}"])
-                                        
-                                    csv_data.append(["[Step 5. 작품 설명 카드]", ""])
-                                    csv_data.append(["제목", ans.get("step5_title", "")])
-                                    csv_data.append(["장소", ans.get("step5_place", "")])
-                                    csv_data.append(["개요", ans.get("step5_summary", "")])
-                                    csv_data.append(["정체성 반영", ans.get("step5_identity", "")])
-                                    csv_data.append(["조건 반영", ans.get("step5_condition", "")])
-                                    csv_data.append(["남길 변화", ans.get("step5_change", "")])
-                                    
-                                    csv_data.append(["[Step 6. 생성형 AI 활용 및 성찰]", ""])
-                                    for row in ans.get("step6_chk_df", []): csv_data.append([row.get("점검 항목", ""), "확인됨" if row.get("확인") else "미확인"])
-                                    for row in ans.get("step6_ai_df", []): csv_data.append([row.get("사용한 도구명", ""), f"프롬프트: {row.get('입력한 프롬프트', '')} / 수정내용: {row.get('AI 결과물을 내가 수정·판단한 내용', '')}"])
-                                    csv_data.append(["활동 성찰", ans.get("step6_reflection", "")])
-
-                                else:
-                                    c_form = load_json(CONFIG_FILE, {}).get("custom_forms", {}).get(selected_view, [])
-                                    for q in c_form:
-                                        st.write(f"**{q['label']}**")
-                                        st.info(ans.get(q['id'], ""))
-                                        csv_data.append([q["label"], ans.get(q["id"], "")])
+                                # 공통 엑셀 데이터 추출 로직 적용
+                                csv_data.extend(get_act_csv_rows(selected_view, ans, app_config))
                                 
                                 csv_data.append(["==================================================", ""])
                                 csv_data.append(["", ""])
