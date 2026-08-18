@@ -109,6 +109,15 @@ def check_active(act_name, class_group):
     if is_time_match: return True, "✅ 현재 수업 시간입니다. 정상적으로 작성하고 저장(제출)할 수 있습니다."
     else: return False, f"⏳ 현재는 정해진 수업 시간이 아닙니다. 지정된 수업 시간에만 입력할 수 있습니다.\n\n(나의 주간 수업 시간: {sched_display} / 최종 기한: {final_dl_str})"
 
+# --- [📌 반별 수행평가 공개/비공개 여부 확인 함수] ---
+def is_act_visible_for_class(act_name, class_group, config):
+    vis_data = config.get("activity_visibility", {}).get(act_name, {})
+    if isinstance(vis_data, dict):
+        return vis_data.get(class_group, True)
+    elif isinstance(vis_data, bool):
+        return vis_data
+    return True
+
 # --- [2] 데이터 입출력 및 초기화 함수 (데이터 영구 저장 핵심) ---
 def load_json(file_path, default_value):
     with db_lock:
@@ -1492,11 +1501,11 @@ def render_class_overview(current_role, u_info, view_subj):
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111;'>📝 학년별 수행평가 목록</h3>", unsafe_allow_html=True)
     st.caption("아래 버튼을 눌러 해당 수행평가 작성 화면으로 이동하세요.")
     acts_for_subj = app_config.get("subject_activities", {}).get(view_subj, [])
-    vis_map = app_config.get("activity_visibility", {})
+    user_class_group = u_info.get("class_group", "")
 
-    # 🌟 [개선 기능 반영] 학생 화면에서는 비공개(False)된 활동지를 완전히 숨김
+    # 🌟 [개선 기능 반영] 학생 화면에서는 본인 소속 학급(반)에 비공개된 활동지를 완전히 숨김
     if current_role == "학생":
-        display_acts = [a for a in acts_for_subj if vis_map.get(a, True)]
+        display_acts = [a for a in acts_for_subj if is_act_visible_for_class(a, user_class_group, app_config)]
     else:
         display_acts = acts_for_subj
 
@@ -1504,16 +1513,12 @@ def render_class_overview(current_role, u_info, view_subj):
         cols = st.columns(3)
         for idx, act in enumerate(display_acts):
             with cols[idx % 3]:
-                prefix = ""
-                if current_role == "관리자" and not vis_map.get(act, True):
-                    prefix = "🔒 (비공개) "
-                else:
-                    prefix = "📄 "
+                prefix = "📄 "
                 if st.button(f"{prefix}{act}", use_container_width=True, key=f"btn_go_{act}"):
                     change_page(act)
     else:
         if current_role == "학생":
-            st.info("현재 공개되어 진행 중인 수행평가가 없습니다. (선생님의 공개 설정을 기다려주세요.)")
+            st.info("현재 공개되어 진행 중인 수행평가가 없습니다. (선생님의 수업 시간 공개 설정을 기다려주세요.)")
         else:
             st.info("아직 이 과목에 할당된 수행평가 목록이 없습니다.")
 
@@ -1738,10 +1743,9 @@ else:
     if st.session_state.current_page != "main":
         act_name = st.session_state.current_page
         
-        # 🌟 학생 접근 제어 (비공개 활동지 진입 차단)
-        vis_map = app_config.get("activity_visibility", {})
-        if current_role == "학생" and not vis_map.get(act_name, True):
-            st.error("🚫 현재 이 수행평가는 비공개 상태입니다. 지정된 수업 시간에 공개됩니다.")
+        # 🌟 [반별 진입 통제] 학생의 소속 반에 비공개된 활동지 진입 차단
+        if current_role == "학생" and not is_act_visible_for_class(act_name, user_class_group, app_config):
+            st.error(f"🚫 현재 [{user_class_group}]은(는) 이 수행평가가 비공개 상태입니다. 해당 반 수업 시간에 맞춰 공개됩니다.")
             if st.button("⬅️ 메인 화면으로 돌아가기", use_container_width=True): change_page("main")
         else:
             if act_name == ACT_3_1: render_activity1_3th(current_user_key, u_info, current_role)
@@ -1797,31 +1801,51 @@ else:
                 render_class_overview(current_role, u_info, admin_view_subj)
                 st.markdown("---")
                 
-                st.markdown(f"<h3 style='font-size: 24px; font-weight: 800; margin-top:20px;'>⚙️ [{admin_view_subj}] 메인 화면 편집 및 기한/공개 설정</h3>", unsafe_allow_html=True)
+                st.markdown(f"<h3 style='font-size: 24px; font-weight: 800; margin-top:20px;'>⚙️ [{admin_view_subj}] 메인 화면 편집 및 기한/반별 공개 설정</h3>", unsafe_allow_html=True)
                 fresh_config = load_json(CONFIG_FILE, {})
                 
-                # 🌟 [신규 기능 1] 수행평가별 공개 / 비공개(학생 화면 숨김) 설정 섹션
-                st.markdown("#### 🔒 학년/과목별 수행평가 공개 및 비공개 설정")
-                st.info("💡 '비공개'로 설정된 수행평가는 학생 화면에서 완전히 숨겨져 사전 유출 및 조기 작성을 방지합니다.")
+                # 🌟 [반별 공개/비공개 설정 완벽 지원 UI]
+                st.markdown("#### 🔒 학급(반)별 수행평가 공개 및 비공개 설정")
+                st.info("💡 학급마다 수업 진도와 시간표가 다르므로, 각 수행평가를 **반별로 개별 공개/비공개**할 수 있습니다. 비공개로 설정된 반의 학생 화면에는 해당 활동지가 나타나지 않습니다.")
                 
                 if admin_view_subj in SUBJECTS:
                     acts_for_vis = fresh_config.get("subject_activities", {}).get(admin_view_subj, [])
+                    classes_for_vis = CLASSES_MAP.get(admin_view_subj, [])
+                    
                     if acts_for_vis:
                         vis_map = fresh_config.get("activity_visibility", {})
-                        with st.form(f"vis_form_{admin_view_subj}"):
-                            updated_vis = {}
+                        with st.form(f"vis_form_class_{admin_view_subj}"):
+                            updated_vis_by_class = {}
                             for act in acts_for_vis:
-                                cur_val = vis_map.get(act, True)
-                                updated_vis[act] = st.toggle(f"📄 {act}", value=cur_val)
-                            if st.form_submit_button(f"[{admin_view_subj}] 수행평가 공개/비공개 설정 저장", type="primary"):
-                                fresh_config.setdefault("activity_visibility", {}).update(updated_vis)
+                                st.markdown(f"**📄 {act}**")
+                                act_vis_dict = vis_map.get(act, {})
+                                if not isinstance(act_vis_dict, dict):
+                                    act_vis_dict = {}
+                                
+                                cols_cls = st.columns(len(classes_for_vis))
+                                updated_vis_by_class[act] = {}
+                                for i, c_group in enumerate(classes_for_vis):
+                                    with cols_cls[i]:
+                                        cur_cls_val = act_vis_dict.get(c_group, True)
+                                        updated_vis_by_class[act][c_group] = st.toggle(
+                                            f"🏫 {c_group}",
+                                            value=cur_cls_val,
+                                            key=f"toggle_vis_{admin_view_subj}_{act}_{c_group}"
+                                        )
+                                st.markdown("<hr style='margin: 10px 0; border: 0; border-top: 1px dashed #ddd;'>", unsafe_allow_html=True)
+                                
+                            if st.form_submit_button(f"[{admin_view_subj}] 반별 공개/비공개 설정 일괄 저장", type="primary"):
+                                if "activity_visibility" not in fresh_config:
+                                    fresh_config["activity_visibility"] = {}
+                                for act, cls_dict in updated_vis_by_class.items():
+                                    fresh_config["activity_visibility"][act] = cls_dict
                                 save_json(CONFIG_FILE, fresh_config)
                                 st.session_state.admin_save_success = True
                                 st.rerun()
                     else:
                         st.warning("등록된 수행평가가 없습니다.")
                 else:
-                    st.info("🔒 수행평가 공개 설정은 왼쪽 사이드바 '관리 및 미리보기 과목'에서 특정 과목을 선택해주세요.")
+                    st.info("🔒 반별 공개 설정은 왼쪽 사이드바 '관리 및 미리보기 과목'에서 특정 과목을 선택해주세요.")
 
                 st.markdown("---")
                 st.markdown("#### 📝 자유 텍스트/공지 블록 추가 (메인 화면)")
