@@ -154,6 +154,7 @@ def create_auto_backup(reason="자동 스냅샷"):
             with open(backup_file, "w", encoding="utf-8") as f:
                 json.dump(backup_bundle, f, ensure_ascii=False, indent=2)
             
+            # 백업 파일 최대 30개 유지 (오래된 것 자동 정리)
             all_bks = sorted([os.path.join(BACKUP_DIR, f) for f in os.listdir(BACKUP_DIR) if f.startswith("backup_") and f.endswith(".json")])
             if len(all_bks) > 30:
                 for old_bk in all_bks[:-30]:
@@ -1477,7 +1478,6 @@ def render_custom_activity(user_key, u_info, current_role, act_name, config):
         html_data += "</body></html>"
         st.download_button("📥 내 작성 내용 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{act_name}.html", mime="text/html")
 
-# 🌟 [세분화된 공지사항 필터링 및 렌더링 함수]
 def render_class_overview(current_role, u_info, view_subj):
     st.markdown(f"<h2 style='font-size: 28px; font-weight: 900; color: #000; margin-bottom: 20px;'>🎯 [{view_subj}] 수행평가 및 활동 모듈</h2>", unsafe_allow_html=True)
     st.markdown("---")
@@ -1515,23 +1515,16 @@ def render_class_overview(current_role, u_info, view_subj):
             col_idx += 1
         st.markdown("---")
 
-    # 🌟 [세분화된 공지사항 필터링 로직]
     all_notices = app_config.get("notices", [])
     filtered_notices = []
-    
     for notice in all_notices:
         n_subj = notice.get("subject", "전체 공지")
         n_class = notice.get("target_class", "전체")
-        
-        # 1. 과목 일치 검사
         subj_match = (n_subj == "전체 공지" or n_subj == view_subj)
-        
-        # 2. 학반 일치 검사 (학생일 때는 본인 반 또는 전체 반만 표시, 관리자는 전체 미리보기)
         if current_role == "학생":
             class_match = (n_class in ["전체", "전체 반", "전체 공지"] or n_class == user_class_group)
         else:
             class_match = True
-            
         if subj_match and class_match:
             filtered_notices.append(notice)
 
@@ -1541,10 +1534,8 @@ def render_class_overview(current_role, u_info, view_subj):
             t = notice.get("제목", "").strip()
             c = notice.get("내용", "").strip()
             target_c = notice.get("target_class", "전체")
-            
-            badge_text = f" [{target_c}]" if target_c not in ["전체", "전체 반"] else ""
-            if t or c:
-                st.info(f"**{t}**{badge_text}\n\n{c}")
+            badge = f" [{target_c}]" if target_c not in ["전체", "전체 반"] else ""
+            if t or c: st.info(f"**{t}**{badge}\n\n{c}")
         st.markdown("---")
 
     materials = app_config.get("materials", [])
@@ -1554,14 +1545,14 @@ def render_class_overview(current_role, u_info, view_subj):
             if mat.get("subject", "전체 공지") in ["전체 공지", view_subj]:
                 if mat["type"] == "link": st.markdown(f"🔗 **[{mat['title']}]({mat['content']})**")
                 elif mat["type"] == "file" and os.path.exists(mat["content"]):
-                    with open(mat["content"], "rb") as f: st.download_button(f"📥 {mat['title']} ({mat['filename']}) 다운로드", f, file_name=mat['filename'], key=f"mat_dl_{mat['id']}")
+                    with open(mat["content"], "rb") as f: st.download_button(f"📥 {mat['title']} 다운로드", f, file_name=mat['filename'], key=f"mat_dl_{mat['id']}")
         st.markdown("---")
 
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111;'>📝 학년별 수행평가 목록</h3>", unsafe_allow_html=True)
     st.caption("아래 버튼을 눌러 해당 수행평가 작성 화면으로 이동하세요.")
     acts_for_subj = app_config.get("subject_activities", {}).get(view_subj, [])
 
-    # 🌟 [반별 공개 설정 반영] 학생 화면에서는 본인 소속 학급(반)에 비공개된 활동지를 완전히 숨김
+    # 🌟 [개선 기능 반영] 학생 화면에서는 본인 소속 학급(반)에 비공개된 활동지를 완전히 숨김
     if current_role == "학생":
         display_acts = [a for a in acts_for_subj if is_act_visible_for_class(a, user_class_group, app_config)]
     else:
@@ -1572,9 +1563,6 @@ def render_class_overview(current_role, u_info, view_subj):
         for idx, act in enumerate(display_acts):
             with cols[idx % 3]:
                 prefix = "📄 "
-                if current_role == "관리자" and not is_act_visible_for_class(act, "관리자", app_config):
-                    # 관리자 모드에서 비공개인지 확인하는 로직 (기본은 True지만 시각적 안내 위해)
-                    pass
                 if st.button(f"{prefix}{act}", use_container_width=True, key=f"btn_go_{act}"):
                     change_page(act)
     else:
@@ -1736,7 +1724,7 @@ else:
                     else:
                         fresh_users[user_key] = {"id": reg_id.strip(), "password": reg_pw.strip(), "name": reg_name.strip(), "role": "학생", "subject": reg_subject.strip(), "class_group": reg_class.strip(), "approved": False}
                         save_json(USERS_FILE, fresh_users)
-                        create_auto_backup(f"[{reg_name}] 회원가입 신청")
+                        create_auto_backup(f"[{reg_name}] 학생 회원가입 신청")
                         st.success("🎉 가입 완료! 선생님의 승인을 기다려주세요.")
                 else: st.warning("⚠️ 모든 빈칸을 빠짐없이 입력해주세요.")
                 
@@ -1849,9 +1837,7 @@ else:
 
         elif current_role == "관리자":
             st.markdown("<h1 style='font-size:36px; font-weight:900; color:#000;'>🛠️ 관리자(교사) 대시보드</h1>", unsafe_allow_html=True)
-            
-            # 🌟 [요구사항 반영] 기존 5개 탭 구조에 "자동 백업 센터" 6번째 탭 명시적 추가
-            menu_tabs = st.tabs(["📌 메인 화면/기한 설정", "🗂️ 수행평가 문항 제작", "👥 회원 관리", "📥 학생 제출 자료 조회 및 관리", "💾 DB 백업 및 복구", "🛡️ 자동 백업 센터"])
+            menu_tabs = st.tabs(["📌 메인 화면/기한 설정", "🗂️ 수행평가 문항 제작", "👥 회원 관리", "📥 학생 제출 자료 조회 및 관리", "💾 DB 수동 백업 및 복구", "🛡️ 자동 백업 센터"])
             
             with menu_tabs[0]:
                 if st.session_state.get("admin_save_success", False):
@@ -1915,12 +1901,13 @@ else:
                 st.markdown("---")
                 
                 # 📢 [세분화된 공지사항 관리 UI: 전체/과목/학반별]
-                st.markdown("#### 📢 메인 화면 맞춤형 공지사항 관리 (과목/학반별 세분화)")
+                st.markdown("#### 📢 메인 화면 맞춤형 공지사항 관리 (학년/과목/학반별 세분화)")
                 st.info("💡 공지 대상을 **[전체 반]** 또는 **[특정 학급(반)]**으로 지정하여 등록할 수 있습니다. 지정된 반 학생들에게만 맞춤 공지가 전달됩니다.")
                 
                 all_notices = fresh_config.get("notices", [])
                 current_notices = [n for n in all_notices if n.get("subject", "전체 공지") == admin_view_subj]
                 
+                # 기존 데이터 호환성 보정
                 for n in current_notices:
                     if "target_class" not in n:
                         n["target_class"] = "전체" if admin_view_subj == "전체 공지" else "전체 반"
@@ -2110,7 +2097,7 @@ else:
                             if st.form_submit_button("이 수행평가의 반별 시간표 및 마감일 일괄 저장", type="primary"):
                                 fresh_config["deadlines"][selected_act_for_setting] = new_act_deadlines
                                 save_json(CONFIG_FILE, fresh_config)
-                                create_auto_backup(f"[{selected_act_for_setting}] 시간표 및 마감일 변경")
+                                create_auto_backup(f"[{selected_act_for_setting}] 시간표 변경")
                                 st.session_state.admin_save_success = True; st.rerun()
                 else:
                     st.info("⏰ 기한 설정은 왼쪽 '관리 및 미리보기 과목'에서 개별 과목을 선택해야만 편집 가능합니다.")
@@ -2148,7 +2135,7 @@ else:
                             fresh_config["subject_activities"][edit_subj].append(new_act_name)
                             fresh_config["custom_forms"][new_act_name] = [{"id": "q_1", "type": "textarea", "label": "수행평가 내용을 자유롭게 서술하세요."}]
                             save_json(CONFIG_FILE, fresh_config)
-                            create_auto_backup(f"[{edit_subj}] 새 수행평가 추가: {new_act_name}")
+                            create_auto_backup(f"[{edit_subj}] 새 수행평가 생성: {new_act_name}")
                             st.success("새 수행평가가 성공적으로 생성되었습니다!"); st.rerun()
                 with col_del:
                     if acts_list:
@@ -2393,4 +2380,96 @@ else:
                         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
                             for s_uid in student_list:
                                 u_info_iter = all_users[s_uid]
-                                acts_for_iter = load_json(CONFIG_FILE, {}).get("subject_activities", {}).getI'm having a hard time fulfilling your request. Can I help you with something else instead?
+                                acts_for_iter = load_json(CONFIG_FILE, {}).get("subject_activities", {}).get(view_subj, [])
+                                
+                                s_ans_dict = {}
+                                for act in acts_for_iter:
+                                    _, temp_ans = get_user_activity_data(s_uid, u_info_iter.get('id',''), view_subj, u_info_iter.get('class_group',''), act, learning_data)
+                                    if temp_ans: s_ans_dict[act] = temp_ans
+                                
+                                if s_ans_dict:
+                                    u_n = u_info_iter.get('name', '학생')
+                                    u_c = u_info_iter.get('class_group', '')
+                                    h_content = generate_portfolio_html(s_uid, u_info_iter, view_subj, load_json(CONFIG_FILE, {}), learning_data)
+                                    file_n = f"{u_c}_{u_n}_포트폴리오.html"
+                                    zip_file.writestr(file_n, h_content.encode('utf-8-sig'))
+                                    has_data = True
+                        
+                        if has_data:
+                            st.download_button(
+                                label=f"📦 [{view_subj}] - [{view_class}] 학생 {len(student_list)}명 전체 포트폴리오 일괄 다운로드 (ZIP)",
+                                data=zip_buffer.getvalue(),
+                                file_name=f"{view_subj}_{view_class}_전체포트폴리오.zip",
+                                mime="application/zip",
+                                type="primary"
+                            )
+                        else:
+                            st.warning("제출된 데이터가 없어 일괄 다운로드를 생성할 수 없습니다.")
+                            
+                        st.markdown("---")
+                        st.markdown("<h3 style='font-size: 24px; font-weight: 800;'>👤 특정 학생 개별 조회 및 다운로드</h3>", unsafe_allow_html=True)
+                        
+                        search_student_tab4 = st.text_input("🔍 조회할 학생 검색 (이름, 과목, 반, 학번 입력)", key="search_student_tab4")
+                        
+                        filtered_student_list = []
+                        for uid in student_list:
+                            s_info = all_users[uid]
+                            search_target = f"{s_info.get('subject','')} {s_info.get('class_group','')} {s_info.get('name','')} {s_info.get('id','')}"
+                            if search_student_tab4.lower() in search_target.lower():
+                                filtered_student_list.append(uid)
+                                
+                        def format_student_dropdown(x):
+                            appr_str = "" if all_users[x].get("approved", True) else " (미승인)"
+                            return f"[{all_users[x].get('class_group')}] {all_users[x].get('name')} ({all_users[x].get('id')}){appr_str}"
+                            
+                        options_student = ["선택"] + filtered_student_list
+                        default_idx_student = 1 if (search_student_tab4.strip() and len(filtered_student_list) > 0) else 0
+
+                        selected_student = st.selectbox("학생 선택", options_student, index=default_idx_student, format_func=lambda x: "선택" if x=="선택" else format_student_dropdown(x), key=f"sel_stu_tab4_{search_student_tab4}")
+                        
+                        if selected_student != "선택":
+                            u_info_sel = all_users[selected_student]
+                            u_name = u_info_sel.get('name', '학생')
+                            u_class_selected = u_info_sel.get('class_group', '')
+                            u_id_selected = u_info_sel.get('id', '')
+                            
+                            st.markdown(f"<h2 style='font-size: 28px; font-weight: 900;'>👀 <span style='color:#0056b3'>{u_name}</span> 학생의 실시간 활동 내역</h2>", unsafe_allow_html=True)
+                            
+                            acts_for_subj = load_json(CONFIG_FILE, {}).get("subject_activities", {}).get(view_subj, [])
+                            
+                            filter_act = st.selectbox("👀 화면에서 조회할 활동지 필터링", ["전체 활동지 보기"] + acts_for_subj)
+                            st.markdown("---")
+                            
+                            has_any_act = False
+                            
+                            for act in acts_for_subj:
+                                if filter_act != "전체 활동지 보기" and act != filter_act:
+                                    continue
+                                    
+                                has_any_act = True
+                                
+                                # 📌 교사용 화면 학생 조회 폼
+                                if act == ACT_3_1: render_activity1_3th(selected_student, u_info_sel, current_role)
+                                elif act == ACT_3_2: render_activity2_3th(selected_student, u_info_sel, current_role)
+                                elif act == ACT_3_3: render_activity3_3th(selected_student, u_info_sel, current_role)
+                                elif act == ACT_2_1: render_activity1_2nd(selected_student, u_info_sel, current_role)
+                                elif act == ACT_2_2: render_activity2_2nd(selected_student, u_info_sel, current_role)
+                                elif act == ACT_2_3: render_activity3_2nd(selected_student, u_info_sel, current_role)
+                                else: render_custom_activity(selected_student, u_info_sel, current_role, act, app_config)
+                                
+                                owner_key, ans = get_user_activity_data(selected_student, u_id_selected, view_subj, u_class_selected, act, learning_data)
+                                if ans:
+                                    st.write("")
+                                    act_html = generate_activity_html(act, ans, u_name)
+                                    st.download_button(label=f"📥 [{act}] 개별 결과물 다운로드 (웹문서)", data=act_html.encode('utf-8-sig'), file_name=f"{u_name}_{act}.html", mime="text/html", key=f"teach_dl_{selected_student}_{act}")
+                                st.markdown("---")
+                            
+                            if not has_any_act:
+                                st.warning("조건에 맞는 활동지가 없습니다.")
+                            
+                            if filter_act == "전체 활동지 보기":
+                                html_content = generate_portfolio_html(selected_student, u_info_sel, view_subj, load_json(CONFIG_FILE, {}), learning_data)
+                                st.download_button(label=f"📄 {u_name} 학생 전체 포트폴리오 일괄 다운로드 (웹문서)", data=html_content.encode('utf-8-sig'), file_name=f"{u_name}_{view_subj}_포트폴리오.html", mime="text/html", type="primary")
+
+                    elif view_mode == "📅 항목별(수행평가) 전체 현황 (엑셀/HTML 다운로드)":
+                        acts_for_subj = load_json(CONFIG_FILE, {}).get("subject_activities", {}).I encountered an error doing what you asked. Could you try again?
