@@ -1438,12 +1438,6 @@ def inject_custom_scripts():
     """, height=0, width=0)
 
 st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", layout="wide")
-
-st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", layout="wide")
-
-# 👇 여기서부터 아래까지 통째로 덮어씌워 주세요.
-st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", layout="wide")
-
 st.markdown("""
 <style>
 /* 기존 텍스트 및 기본 스타일 유지 */
@@ -1485,19 +1479,22 @@ button[kind="secondary"] p, button[kind="secondary"] div {
     box-shadow: none !important;
 }
 
-/* 🔽 3. 신규 추가: 드롭다운(Selectbox) 배경 파란색 & 글씨 하얀색 변경 */
-div[data-baseweb="select"] > div {
-    background-color: #3498db !important; /* 파란색 배경 */
-    border-color: #3498db !important;     /* 테두리 색상도 파란색으로 통일 */
+/* 🔽 3. 드롭다운(Selectbox) 초강력 스타일 강제 적용 */
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+    background-color: #3498db !important; /* 드롭다운 겉 배경색 파란색 */
+    border-color: #3498db !important;     /* 테두리 색상 파란색 통일 */
     border-radius: 8px !important;        /* 둥근 모서리 */
 }
-div[data-baseweb="select"] > div span {
-    color: #ffffff !important;            /* 선택된 글자 하얀색 */
-    font-weight: 700 !important;          /* 글자 굵게 */
-}
-div[data-baseweb="select"] > div svg {
-    fill: #ffffff !important;             /* 우측 화살표 아이콘 하얀색 */
+
+/* 드롭다운 내부의 모든 텍스트 강제 하얀색 변경 */
+div[data-testid="stSelectbox"] div[data-baseweb="select"] * {
     color: #ffffff !important;
+    font-weight: 700 !important;
+}
+
+/* 드롭다운 우측 화살표 아이콘 하얀색 변경 */
+div[data-testid="stSelectbox"] div[data-baseweb="select"] svg {
+    fill: #ffffff !important;
 }
 </style>
 """, unsafe_allow_html=True)
