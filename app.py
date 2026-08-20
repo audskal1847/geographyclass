@@ -1788,10 +1788,11 @@ else:
                             create_auto_backup(f"[{edit_subj}] 수행평가 삭제: {del_act_name}")
                             st.success("삭제 완료"); st.rerun()
 
-            with menu_tabs[2]:
+           with menu_tabs[2]:
                 all_users = load_json(USERS_FILE, {})
                 pending_users = {k: v for k, v in all_users.items() if not v.get("approved", True) and v.get("role")=="학생"}
                 approved_users = {k: v for k, v in all_users.items() if v.get("approved", True) and v.get("role")=="학생"}
+                
                 st.markdown("### ⏳ 가입 승인 대기 목록")
                 if pending_users:
                     df_pending = pd.DataFrame([{"과목": v.get("subject", "-"), "반": v.get("class_group", "-"), "학번": v.get("id", "-"), "이름": v.get("name", "-")} for k, v in pending_users.items()])
@@ -1827,7 +1828,46 @@ else:
                             save_json(USERS_FILE, fresh_users)
                             create_auto_backup("전체 대기 학생 일괄 승인")
                             st.success("승인 완료"); st.rerun()
-                else: st.info("대기 중인 학생이 없습니다.")
+                else: 
+                    st.info("대기 중인 학생이 없습니다.")
+                
+                st.markdown("---")
+                
+                # 🌟 [신규 추가] 승인 완료된 전체 학생 목록 표출 영역 🌟
+                st.markdown("### ✅ 승인 완료 학생 목록 (전체 회원)")
+                if approved_users:
+                    col_fa1, col_fa2 = st.columns(2)
+                    with col_fa1:
+                        filter_subj = st.selectbox("📘 과목 필터", ["전체 보기"] + SUBJECTS, key="filter_subj_approved")
+                    with col_fa2:
+                        class_options = ["전체 보기"]
+                        if filter_subj != "전체 보기":
+                            class_options += CLASSES_MAP.get(filter_subj, [])
+                        filter_class = st.selectbox("🏫 반 필터", class_options, key="filter_class_approved")
+                        
+                    display_approved = []
+                    for k, v in approved_users.items():
+                        if filter_subj != "전체 보기" and v.get("subject") != filter_subj: continue
+                        if filter_class != "전체 보기" and v.get("class_group") != filter_class: continue
+                        display_approved.append({
+                            "과목": v.get("subject", "-"), 
+                            "반": v.get("class_group", "-"), 
+                            "학번": v.get("id", "-"), 
+                            "이름": v.get("name", "-"),
+                            "비밀번호": v.get("password", "-") # 교사가 비밀번호 분실 학생을 도울 수 있도록 표시
+                        })
+                        
+                    if display_approved:
+                        df_approved = pd.DataFrame(display_approved)
+                        # 과목, 반, 학번 순으로 깔끔하게 정렬
+                        df_approved = df_approved.sort_values(by=["과목", "반", "학번"])
+                        st.dataframe(df_approved, use_container_width=True, hide_index=True)
+                        st.caption(f"총 {len(display_approved)}명의 학생이 조회되었습니다.")
+                    else:
+                        st.info("조건에 일치하는 학생이 없습니다.")
+                else:
+                    st.info("현재 가입 승인된 학생이 없습니다.")
+
                 st.markdown("---")
                 st.markdown("### 📝 학생 회원 정보 수정")
                 search_edit = st.text_input("🔍 수정할 학생 검색", key="search_edit")
