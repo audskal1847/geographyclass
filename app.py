@@ -1978,19 +1978,30 @@ else:
                 with col_bk2:
                     st.markdown("#### 2️⃣ 과거 시스템 DB 불러오기 (복구)")
                     
+                    # 📌 [핵심 수정] BOM(특수기호) 에러를 원천 차단하는 초강력 헬퍼 함수
+                    def safe_parse_json(uploaded_file):
+                        raw_bytes = uploaded_file.getvalue()
+                        try:
+                            text = raw_bytes.decode('utf-8-sig')
+                        except:
+                            text = raw_bytes.decode('utf-8', errors='replace')
+                        
+                        # 문자열 맨 앞에 숨어있는 \ufeff (BOM) 기호를 강제로 뜯어냄
+                        text = text.lstrip('\ufeff')
+                        return json.loads(text)
+
                     st.write("📂 [1] 학생 학습 데이터 복구")
                     up_data = st.file_uploader("learning_data.json 수동 복구", type="json", key="up_data", label_visibility="collapsed")
                     if st.button("학생 학습 데이터 복구 실행", use_container_width=True, key="btn_restore_data"):
                         if up_data is not None:
                             try:
-                                # Streamlit 업로드 파일을 안전하게 문자열로 변환 후 JSON 로드
-                                parsed_data = json.loads(up_data.getvalue().decode('utf-8'))
+                                parsed_data = safe_parse_json(up_data)
                                 save_json(DATA_FILE, parsed_data)
                                 create_auto_backup("수동 학습 데이터 복구")
                                 st.session_state.restore_success_manual = True 
                                 st.rerun() 
                             except Exception as e: 
-                                st.error(f"❌ 올바른 json 파일이 아니거나 손상되었습니다. (상세에러: {e})")
+                                st.error(f"❌ 데이터 파싱 오류가 발생했습니다. (상세에러: {e})")
                         else:
                             st.warning("⚠️ 파일을 먼저 업로드해주세요.")
                     
@@ -1999,13 +2010,13 @@ else:
                     if st.button("회원 정보 복구 실행", use_container_width=True, key="btn_restore_users"):
                         if up_users is not None:
                             try:
-                                parsed_users = json.loads(up_users.getvalue().decode('utf-8'))
+                                parsed_users = safe_parse_json(up_users)
                                 save_json(USERS_FILE, parsed_users)
                                 create_auto_backup("수동 회원 정보 복구")
                                 st.session_state.restore_success_manual = True 
                                 st.rerun() 
                             except Exception as e: 
-                                st.error(f"❌ 올바른 json 파일이 아니거나 손상되었습니다. (상세에러: {e})")
+                                st.error(f"❌ 데이터 파싱 오류가 발생했습니다. (상세에러: {e})")
                         else:
                             st.warning("⚠️ 파일을 먼저 업로드해주세요.")
                     
@@ -2014,16 +2025,16 @@ else:
                     if st.button("시스템 설정 복구 실행", use_container_width=True, key="btn_restore_config"):
                         if up_config is not None:
                             try:
-                                parsed_config = json.loads(up_config.getvalue().decode('utf-8'))
+                                parsed_config = safe_parse_json(up_config)
                                 save_json(CONFIG_FILE, parsed_config)
                                 create_auto_backup("수동 시스템 설정 복구")
                                 st.session_state.restore_success_manual = True 
                                 st.rerun() 
                             except Exception as e: 
-                                st.error(f"❌ 올바른 json 파일이 아니거나 손상되었습니다. (상세에러: {e})")
+                                st.error(f"❌ 데이터 파싱 오류가 발생했습니다. (상세에러: {e})")
                         else:
                             st.warning("⚠️ 파일을 먼저 업로드해주세요.")
-
+                            
             # --- 🛡️ 탭 5: 자동 백업 센터 ---
             with menu_tabs[5]:
                 # 🌟 [세션 성공 메시지 출력]
