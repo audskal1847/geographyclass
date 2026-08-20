@@ -1442,6 +1442,9 @@ st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", lay
 st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", layout="wide")
 
 # 👇 여기서부터 아래까지 통째로 덮어씌워 주세요.
+st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", layout="wide")
+
+# 👇 여기서부터 덮어씌워 주세요.
 st.markdown("""
 <style>
 /* 기존 텍스트 및 기본 스타일 유지 */
@@ -1451,7 +1454,7 @@ st.markdown("""
 div[data-testid="stMarkdownContainer"] > p, div[data-testid="stMarkdownContainer"] > ul > li { font-size: 16px !important; font-weight: 500 !important; color: #333333 !important; line-height: 1.6 !important; }
 .stMarkdown strong, .stMarkdown b { font-weight: 700 !important; color: #000000 !important; }
 
-/* 기존 빨간색 주요 버튼(가입 신청, 저장하기 등) 유지 */
+/* 🔴 기존 빨간색 주요 버튼 (가입 신청, 저장하기 등) */
 [data-testid="stFormSubmitButton"] button, button[kind="primary"] { 
     background-color: #FF4B4B !important; 
     border: none !important; 
@@ -1466,9 +1469,9 @@ div[data-testid="stMarkdownContainer"] > p, div[data-testid="stMarkdownContainer
     font-weight: 800 !important; 
 }
 
-/* 🔵 1. 추가: 일반(Secondary) 버튼(다운로드, 스냅샷 등)을 파란색 배경으로 변경 */
+/* 🔵 1. 일반(Secondary) 버튼 (다운로드, 스냅샷 등) 파란색 배경 */
 button[kind="secondary"] {
-    background-color: #3498db !important; /* 파란색 */
+    background-color: #3498db !important; 
     border: none !important;
     border-radius: 8px !important;
 }
@@ -1477,13 +1480,29 @@ button[kind="secondary"] p, button[kind="secondary"] div {
     font-weight: 700 !important;
 }
 
-/* 🚫 2. 추가: 폼(로그인/가입신청 박스)의 겉 테두리 선 제거 */
+/* 🚫 2. 폼(로그인/가입신청 박스) 겉 테두리 선 제거 */
 [data-testid="stForm"] {
     border: none !important;
     box-shadow: none !important;
 }
+
+/* 🔽 3. 신규 추가: 드롭다운(Selectbox) 배경 파란색 & 글씨 하얀색 변경 */
+div[data-baseweb="select"] > div {
+    background-color: #3498db !important; /* 파란색 배경 */
+    border-color: #3498db !important;     /* 테두리 색상도 파란색으로 통일 */
+    border-radius: 8px !important;        /* 둥근 모서리 */
+}
+div[data-baseweb="select"] > div span {
+    color: #ffffff !important;            /* 선택된 글자 하얀색 */
+    font-weight: 700 !important;          /* 글자 굵게 */
+}
+div[data-baseweb="select"] > div svg {
+    fill: #ffffff !important;             /* 우측 화살표 아이콘 하얀색 */
+    color: #ffffff !important;
+}
 </style>
 """, unsafe_allow_html=True)
+# 👆 여기까지 교체해 주시면 됩니다.
 # 👆 여기까지 교체해 주시면 됩니다.
 
 init_system()
