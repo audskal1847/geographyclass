@@ -1958,8 +1958,11 @@ else:
                 # 🌟 [세션 성공 메시지 및 풍선 애니메이션 출력]
                 if st.session_state.get("restore_success_manual", False):
                     st.balloons()
-                    st.markdown("<div style='text-align:center; padding:30px; background-color:#e8f5e9; border-radius:8px; border:2px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 15px 0; font-size:26px; font-weight:900; color:#111;'>🎉 데이터 복구가 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:700; color:#111;'>업로드하신 파일로 시스템 데이터베이스가 안전하게 덮어쓰기 되었습니다.</p></div>", unsafe_allow_html=True)
+                    msg = st.session_state.get('restore_msg', '시스템 데이터베이스가 안전하게 덮어쓰기 되었습니다.')
+                    st.markdown(f"<div style='text-align:center; padding:30px; background-color:#e8f5e9; border-radius:8px; border:2px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 15px 0; font-size:26px; font-weight:900; color:#111;'>🎉 데이터 복구가 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:700; color:#111;'>{msg}</p></div>", unsafe_allow_html=True)
+                    # 💡 파일 업로드 시 재실행(Rerun)되어 풍선이 뜨는 버그를 차단하기 위한 명시적 초기화
                     st.session_state.restore_success_manual = False
+                    st.session_state.restore_msg = ""
 
                 st.error("🚨 **[주의]** 데이터 복구(업로드) 시 기존 데이터는 모두 지워지고 업로드한 파일로 완전히 덮어씌워집니다. 과거 자료 복원을 원하실 때만 신중하게 작업해 주세요!")
                 
@@ -1978,62 +1981,72 @@ else:
                 with col_bk2:
                     st.markdown("#### 2️⃣ 과거 시스템 DB 불러오기 (복구)")
                     
-                    # 📌 [핵심 수정] BOM(특수기호) 에러를 원천 차단하는 초강력 헬퍼 함수
-                    def safe_parse_json(uploaded_file):
+                    # 📌 [스마트 헬퍼 함수] 인코딩 깨짐 방지 및 '통합 백업본' 자동 추출 기능 추가
+                    def safe_parse_json(uploaded_file, expected_key):
                         raw_bytes = uploaded_file.getvalue()
                         try:
                             text = raw_bytes.decode('utf-8-sig')
                         except:
                             text = raw_bytes.decode('utf-8', errors='replace')
                         
-                        # 문자열 맨 앞에 숨어있는 \ufeff (BOM) 기호를 강제로 뜯어냄
                         text = text.lstrip('\ufeff')
-                        return json.loads(text)
+                        parsed = json.loads(text)
+                        
+                        # 💡 탭 5에서 받은 '통합 스냅샷' 파일을 올렸더라도 당황하지 않고 알맹이만 자동 추출
+                        if isinstance(parsed, dict) and "timestamp" in parsed and expected_key in parsed:
+                            return parsed[expected_key]
+                        return parsed
 
                     st.write("📂 [1] 학생 학습 데이터 복구")
                     up_data = st.file_uploader("learning_data.json 수동 복구", type="json", key="up_data", label_visibility="collapsed")
                     if st.button("학생 학습 데이터 복구 실행", use_container_width=True, key="btn_restore_data"):
                         if up_data is not None:
                             try:
-                                parsed_data = safe_parse_json(up_data)
+                                parsed_data = safe_parse_json(up_data, "learning_data")
+                                if not isinstance(parsed_data, dict): parsed_data = {}
                                 save_json(DATA_FILE, parsed_data)
                                 create_auto_backup("수동 학습 데이터 복구")
+                                st.session_state.restore_msg = f"학생 학습 데이터 {len(parsed_data.keys())}건이 완벽하게 복구되었습니다."
                                 st.session_state.restore_success_manual = True 
                                 st.rerun() 
                             except Exception as e: 
-                                st.error(f"❌ 데이터 파싱 오류가 발생했습니다. (상세에러: {e})")
+                                st.error(f"❌ 파일 데이터 파싱 오류: {e}")
                         else:
-                            st.warning("⚠️ 파일을 먼저 업로드해주세요.")
+                            st.warning("⚠️ 파일을 먼저 첨부한 뒤 복구 실행 버튼을 눌러주세요.")
                     
                     st.write("📂 [2] 회원 정보 데이터 복구")
                     up_users = st.file_uploader("users.json 수동 복구", type="json", key="up_users", label_visibility="collapsed")
                     if st.button("회원 정보 복구 실행", use_container_width=True, key="btn_restore_users"):
                         if up_users is not None:
                             try:
-                                parsed_users = safe_parse_json(up_users)
+                                parsed_users = safe_parse_json(up_users, "users")
+                                if not isinstance(parsed_users, dict): parsed_users = {}
                                 save_json(USERS_FILE, parsed_users)
                                 create_auto_backup("수동 회원 정보 복구")
+                                st.session_state.restore_msg = f"학생 및 계정 정보 {len(parsed_users.keys())}건이 완벽하게 복구되었습니다."
                                 st.session_state.restore_success_manual = True 
                                 st.rerun() 
                             except Exception as e: 
-                                st.error(f"❌ 데이터 파싱 오류가 발생했습니다. (상세에러: {e})")
+                                st.error(f"❌ 파일 데이터 파싱 오류: {e}")
                         else:
-                            st.warning("⚠️ 파일을 먼저 업로드해주세요.")
+                            st.warning("⚠️ 파일을 먼저 첨부한 뒤 복구 실행 버튼을 눌러주세요.")
                     
                     st.write("📂 [3] 시스템 설정 데이터 복구")
                     up_config = st.file_uploader("config.json 수동 복구", type="json", key="up_config", label_visibility="collapsed")
                     if st.button("시스템 설정 복구 실행", use_container_width=True, key="btn_restore_config"):
                         if up_config is not None:
                             try:
-                                parsed_config = safe_parse_json(up_config)
+                                parsed_config = safe_parse_json(up_config, "config")
+                                if not isinstance(parsed_config, dict): parsed_config = {}
                                 save_json(CONFIG_FILE, parsed_config)
                                 create_auto_backup("수동 시스템 설정 복구")
+                                st.session_state.restore_msg = "수행평가 기한 및 공지사항 등 환경설정이 완벽하게 복구되었습니다."
                                 st.session_state.restore_success_manual = True 
                                 st.rerun() 
                             except Exception as e: 
-                                st.error(f"❌ 데이터 파싱 오류가 발생했습니다. (상세에러: {e})")
+                                st.error(f"❌ 파일 데이터 파싱 오류: {e}")
                         else:
-                            st.warning("⚠️ 파일을 먼저 업로드해주세요.")
+                            st.warning("⚠️ 파일을 먼저 첨부한 뒤 복구 실행 버튼을 눌러주세요.")
                             
             # --- 🛡️ 탭 5: 자동 백업 센터 ---
             with menu_tabs[5]:
