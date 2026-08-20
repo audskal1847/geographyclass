@@ -1444,7 +1444,6 @@ st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", lay
 # 👇 여기서부터 아래까지 통째로 덮어씌워 주세요.
 st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", layout="wide")
 
-# 👇 여기서부터 덮어씌워 주세요.
 st.markdown("""
 <style>
 /* 기존 텍스트 및 기본 스타일 유지 */
@@ -1502,8 +1501,6 @@ div[data-baseweb="select"] > div svg {
 }
 </style>
 """, unsafe_allow_html=True)
-# 👆 여기까지 교체해 주시면 됩니다.
-# 👆 여기까지 교체해 주시면 됩니다.
 
 init_system()
 
