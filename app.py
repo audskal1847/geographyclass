@@ -1438,16 +1438,17 @@ def inject_custom_scripts():
     """, height=0, width=0)
 
 st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", layout="wide")
+# 👇 여기서부터 복사해서 기존 <style> 부분을 통째로 덮어씌워 주세요.
 st.markdown("""
 <style>
-/* 기존 텍스트 및 기본 스타일 유지 */
+/* 1. 기본 텍스트 및 제목 스타일 */
 .stMarkdown h1 { font-size: 34px !important; font-weight: 900 !important; color: #000000 !important; margin-bottom: 20px !important; }
 .stMarkdown h2 { font-size: 28px !important; font-weight: 900 !important; color: #000000 !important; margin-top: 10px !important; margin-bottom: 15px !important; padding-bottom: 8px !important; border-bottom: 2px solid #dddddd !important; }
 .stMarkdown h3 { font-size: 24px !important; font-weight: 800 !important; color: #111111 !important; margin-top: 25px !important; margin-bottom: 10px !important; }
 div[data-testid="stMarkdownContainer"] > p, div[data-testid="stMarkdownContainer"] > ul > li { font-size: 16px !important; font-weight: 500 !important; color: #333333 !important; line-height: 1.6 !important; }
 .stMarkdown strong, .stMarkdown b { font-weight: 700 !important; color: #000000 !important; }
 
-/* 🔴 기존 빨간색 주요 버튼 (가입 신청, 저장하기 등) */
+/* 2. 빨간색 주요 버튼 (가입 신청, 저장 등) */
 [data-testid="stFormSubmitButton"] button, button[kind="primary"] { 
     background-color: #FF4B4B !important; 
     border: none !important; 
@@ -1462,7 +1463,7 @@ div[data-testid="stMarkdownContainer"] > p, div[data-testid="stMarkdownContainer
     font-weight: 800 !important; 
 }
 
-/* 🔵 1. 일반(Secondary) 버튼 (다운로드, 스냅샷 등) 파란색 배경 */
+/* 3. 파란색 일반 버튼 (다운로드, 스냅샷 등) */
 button[kind="secondary"] {
     background-color: #3498db !important; 
     border: none !important;
@@ -1473,32 +1474,31 @@ button[kind="secondary"] p, button[kind="secondary"] div {
     font-weight: 700 !important;
 }
 
-/* 🚫 2. 폼(로그인/가입신청 박스) 겉 테두리 선 제거 */
+/* 4. 폼(박스) 겉 테두리 선 제거 */
 [data-testid="stForm"] {
     border: none !important;
     box-shadow: none !important;
 }
 
-/* 🔽 3. 드롭다운(Selectbox) 초강력 스타일 강제 적용 */
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
-    background-color: #3498db !important; /* 드롭다운 겉 배경색 파란색 */
-    border-color: #3498db !important;     /* 테두리 색상 파란색 통일 */
-    border-radius: 8px !important;        /* 둥근 모서리 */
+/* 🔽 5. 드롭다운(Selectbox) 무조건 파란색 적용 (초강력) */
+div[data-baseweb="select"] {
+    background-color: #3498db !important; /* 드롭다운 최상위 배경 파란색 */
+    border-radius: 8px !important;
 }
-
-/* 드롭다운 내부의 모든 텍스트 강제 하얀색 변경 */
-div[data-testid="stSelectbox"] div[data-baseweb="select"] * {
-    color: #ffffff !important;
-    font-weight: 700 !important;
+div[data-baseweb="select"] > div {
+    background-color: transparent !important; /* 내부 겹겹이 쌓인 박스 투명화 */
+    border: none !important;
 }
-
-/* 드롭다운 우측 화살표 아이콘 하얀색 변경 */
-div[data-testid="stSelectbox"] div[data-baseweb="select"] svg {
-    fill: #ffffff !important;
+div[data-baseweb="select"] * {
+    color: #ffffff !important; /* 내부 글씨 무조건 하얀색 */
+    font-weight: bold !important;
+}
+div[data-baseweb="select"] svg {
+    fill: #ffffff !important; /* 우측 화살표 무조건 하얀색 */
 }
 </style>
 """, unsafe_allow_html=True)
-
+# 👆 여기까지입니다.
 init_system()
 
 if "logged_in" not in st.session_state: 
