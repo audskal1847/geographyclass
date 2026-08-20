@@ -1951,7 +1951,7 @@ else:
                                 if has_html_item:
                                     st.download_button(f"📦 웹문서(HTML/ZIP) 다운로드", data=zip_buffer_item.getvalue(), file_name=f"{view_subj}_{view_class}_HTML.zip", mime="application/zip", type="primary", use_container_width=True)
 
-            # 🌟 [Source 2] 반영: 탭 4: 데이터 수동 백업 및 복구 영역 변경 🌟
+            # --- 💾 탭 4: 데이터 수동 백업 및 복구 ---
             with menu_tabs[4]:
                 st.markdown("### 💾 시스템 데이터베이스(DB) 수동 백업 및 복구")
                 
@@ -1961,7 +1961,7 @@ else:
                     st.markdown("<div style='text-align:center; padding:30px; background-color:#e8f5e9; border-radius:8px; border:2px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 15px 0; font-size:26px; font-weight:900; color:#111;'>🎉 데이터 복구가 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:700; color:#111;'>업로드하신 파일로 시스템 데이터베이스가 안전하게 덮어쓰기 되었습니다.</p></div>", unsafe_allow_html=True)
                     st.session_state.restore_success_manual = False
 
-                st.error("🚨 **[주의]** 데이터 복구(업로드) 시 기존 데이터는 모두 지워지고 업로드한 파일로 완전히 덮어씌워집니다.")
+                st.error("🚨 **[주의]** 데이터 복구(업로드) 시 기존 데이터는 모두 지워지고 업로드한 파일로 완전히 덮어씌워집니다. 과거 자료 복원을 원하실 때만 신중하게 작업해 주세요!")
                 
                 col_bk1, col_bk2 = st.columns(2)
                 with col_bk1:
@@ -1980,36 +1980,49 @@ else:
                     
                     st.write("📂 [1] 학생 학습 데이터 복구")
                     up_data = st.file_uploader("learning_data.json 수동 복구", type="json", key="up_data", label_visibility="collapsed")
-                    if st.button("학생 학습 데이터 복구 실행", use_container_width=True):
-                        if up_data:
+                    if st.button("학생 학습 데이터 복구 실행", use_container_width=True, key="btn_restore_data"):
+                        if up_data is not None:
                             try:
-                                save_json(DATA_FILE, json.load(up_data))
+                                # Streamlit 업로드 파일을 안전하게 문자열로 변환 후 JSON 로드
+                                parsed_data = json.loads(up_data.getvalue().decode('utf-8'))
+                                save_json(DATA_FILE, parsed_data)
                                 create_auto_backup("수동 학습 데이터 복구")
-                                st.session_state.restore_success_manual = True # 상태 저장
-                                st.rerun() # 새로고침 후 풍선 띄우기
-                            except: st.error("❌ 올바른 json 파일이 아닙니다.")
+                                st.session_state.restore_success_manual = True 
+                                st.rerun() 
+                            except Exception as e: 
+                                st.error(f"❌ 올바른 json 파일이 아니거나 손상되었습니다. (상세에러: {e})")
+                        else:
+                            st.warning("⚠️ 파일을 먼저 업로드해주세요.")
                     
                     st.write("📂 [2] 회원 정보 데이터 복구")
                     up_users = st.file_uploader("users.json 수동 복구", type="json", key="up_users", label_visibility="collapsed")
-                    if st.button("회원 정보 복구 실행", use_container_width=True):
-                        if up_users:
+                    if st.button("회원 정보 복구 실행", use_container_width=True, key="btn_restore_users"):
+                        if up_users is not None:
                             try:
-                                save_json(USERS_FILE, json.load(up_users))
+                                parsed_users = json.loads(up_users.getvalue().decode('utf-8'))
+                                save_json(USERS_FILE, parsed_users)
                                 create_auto_backup("수동 회원 정보 복구")
-                                st.session_state.restore_success_manual = True # 상태 저장
-                                st.rerun() # 새로고침 후 풍선 띄우기
-                            except: st.error("❌ 올바른 json 파일이 아닙니다.")
+                                st.session_state.restore_success_manual = True 
+                                st.rerun() 
+                            except Exception as e: 
+                                st.error(f"❌ 올바른 json 파일이 아니거나 손상되었습니다. (상세에러: {e})")
+                        else:
+                            st.warning("⚠️ 파일을 먼저 업로드해주세요.")
                     
                     st.write("📂 [3] 시스템 설정 데이터 복구")
                     up_config = st.file_uploader("config.json 수동 복구", type="json", key="up_config", label_visibility="collapsed")
-                    if st.button("시스템 설정 복구 실행", use_container_width=True):
-                        if up_config:
+                    if st.button("시스템 설정 복구 실행", use_container_width=True, key="btn_restore_config"):
+                        if up_config is not None:
                             try:
-                                save_json(CONFIG_FILE, json.load(up_config))
+                                parsed_config = json.loads(up_config.getvalue().decode('utf-8'))
+                                save_json(CONFIG_FILE, parsed_config)
                                 create_auto_backup("수동 시스템 설정 복구")
-                                st.session_state.restore_success_manual = True # 상태 저장
-                                st.rerun() # 새로고침 후 풍선 띄우기
-                            except: st.error("❌ 올바른 json 파일이 아닙니다.")
+                                st.session_state.restore_success_manual = True 
+                                st.rerun() 
+                            except Exception as e: 
+                                st.error(f"❌ 올바른 json 파일이 아니거나 손상되었습니다. (상세에러: {e})")
+                        else:
+                            st.warning("⚠️ 파일을 먼저 업로드해주세요.")
 
             # --- 🛡️ 탭 5: 자동 백업 센터 ---
             with menu_tabs[5]:
