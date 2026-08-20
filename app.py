@@ -1481,6 +1481,7 @@ button[kind="secondary"] p, button[kind="secondary"] div {
 [data-testid="stForm"] {
     border: none !important;
     box-shadow: none !important;
+    padding: 0 !important;
 }
 </style>
 """, unsafe_allow_html=True)
