@@ -1479,23 +1479,26 @@ button[kind="secondary"] p, button[kind="secondary"] div {
     box-shadow: none !important;
 }
 
-/* 🔽 5. 드롭다운(Selectbox) 무조건 파란색 적용 (최종 강력 버전) */
-/* 드롭다운 바깥쪽 껍데기 박스 파란색으로 칠하기 */
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div:nth-of-type(1) {
+/* 🔽 5. 드롭다운(Selectbox) 파란색 강제 적용 (가장 안쪽 요소까지 침투) */
+div[data-baseweb="select"] > div:first-child {
     background-color: #3498db !important;
-    border-color: #3498db !important;
+    border: 1px solid #3498db !important;
     border-radius: 8px !important;
 }
 
-/* 드롭다운 내부에 들어가는 모든 글씨(선택된 값) 하얀색 및 굵게 */
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div:nth-of-type(1) div,
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div:nth-of-type(1) span {
+/* 겹쳐진 투명 박스들이 회색을 띠지 못하게 원천 차단 */
+div[data-baseweb="select"] > div:first-child > div {
+    background-color: transparent !important;
+}
+
+/* 드롭다운 화면에 보이는 텍스트(선택된 과목 등) 하얀색 변경 */
+div[data-baseweb="select"] > div:first-child * {
     color: #ffffff !important;
     font-weight: 700 !important;
 }
 
-/* 드롭다운 우측 끝에 있는 🔽 화살표 아이콘 하얀색으로 칠하기 */
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div:nth-of-type(1) svg {
+/* 드롭다운 우측 펼치기 화살표 하얀색 변경 */
+div[data-baseweb="select"] > div:first-child svg {
     fill: #ffffff !important;
     color: #ffffff !important;
 }
