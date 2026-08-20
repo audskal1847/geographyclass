@@ -1788,7 +1788,7 @@ else:
                             create_auto_backup(f"[{edit_subj}] 수행평가 삭제: {del_act_name}")
                             st.success("삭제 완료"); st.rerun()
 
-           with menu_tabs[2]:
+          with menu_tabs[2]:
                 all_users = load_json(USERS_FILE, {})
                 pending_users = {k: v for k, v in all_users.items() if not v.get("approved", True) and v.get("role")=="학생"}
                 approved_users = {k: v for k, v in all_users.items() if v.get("approved", True) and v.get("role")=="학생"}
@@ -1833,7 +1833,7 @@ else:
                 
                 st.markdown("---")
                 
-                # 🌟 [신규 추가] 승인 완료된 전체 학생 목록 표출 영역 🌟
+                # 🌟 승인 완료된 전체 학생 목록 표출 영역 🌟
                 st.markdown("### ✅ 승인 완료 학생 목록 (전체 회원)")
                 if approved_users:
                     col_fa1, col_fa2 = st.columns(2)
