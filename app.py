@@ -1578,12 +1578,23 @@ else:
             with menu_tabs[4]:
                 st.markdown("### 💾 시스템 데이터베이스(DB) 수동 백업 및 복구")
                 
+                # 🌟 [세션 성공 메시지 출력 유지 적용]
                 if st.session_state.get("restore_success_manual", False):
                     st.balloons()
                     st.markdown("<div style='text-align:center; padding:30px; background-color:#e8f5e9; border-radius:8px; border:2px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 15px 0; font-size:26px; font-weight:900; color:#111;'>🎉 데이터 복구가 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:700; color:#111;'>업로드하신 파일로 시스템 데이터베이스가 안전하게 덮어쓰기 되었습니다.</p></div>", unsafe_allow_html=True)
                     st.session_state.restore_success_manual = False
 
                 st.error("🚨 **[주의]** 데이터 복구(업로드) 시 기존 데이터는 모두 지워지고 업로드한 파일로 완전히 덮어씌워집니다. 과거 자료 복원을 원하실 때만 신중하게 작업해 주세요!")
+
+                # 🌟 [만능 파일 파서 추가] 어떤 인코딩이든 자동으로 풀어서 읽어냅니다.
+                def parse_uploaded_json(uploaded_file):
+                    raw_bytes = uploaded_file.getvalue()
+                    for enc in ['utf-8-sig', 'utf-8', 'cp949', 'euc-kr']:
+                        try:
+                            return json.loads(raw_bytes.decode(enc))
+                        except:
+                            continue
+                    return None
 
                 col_bk1, col_bk2 = st.columns(2)
                 with col_bk1:
@@ -1602,34 +1613,40 @@ else:
                     up_data = st.file_uploader("learning_data.json 수동 복구", type="json", key="up_data", label_visibility="collapsed")
                     if st.button("학생 학습 데이터 복구 실행", use_container_width=True):
                         if up_data:
-                            try:
-                                save_json(DATA_FILE, json.load(up_data))
+                            parsed_data = parse_uploaded_json(up_data)
+                            if parsed_data is not None:
+                                save_json(DATA_FILE, parsed_data)
                                 create_auto_backup("수동 학습 데이터 복구")
-                                st.session_state.restore_success_manual = True; st.rerun()
-                            except: 
-                                st.error("❌ 올바른 json 파일이 아닙니다.")
+                                st.session_state.restore_success_manual = True
+                                st.rerun()
+                            else: 
+                                st.error("❌ 파일 형식이 잘못되었거나 인코딩이 깨졌습니다.")
 
                     st.write("📂 [2] 회원 정보 데이터 복구")
                     up_users = st.file_uploader("users.json 수동 복구", type="json", key="up_users", label_visibility="collapsed")
                     if st.button("회원 정보 복구 실행", use_container_width=True):
                         if up_users:
-                            try:
-                                save_json(USERS_FILE, json.load(up_users))
+                            parsed_users = parse_uploaded_json(up_users)
+                            if parsed_users is not None:
+                                save_json(USERS_FILE, parsed_users)
                                 create_auto_backup("수동 회원 정보 복구")
-                                st.session_state.restore_success_manual = True; st.rerun()
-                            except: 
-                                st.error("❌ 올바른 json 파일이 아닙니다.")
+                                st.session_state.restore_success_manual = True
+                                st.rerun()
+                            else: 
+                                st.error("❌ 파일 형식이 잘못되었거나 인코딩이 깨졌습니다.")
 
                     st.write("📂 [3] 시스템 설정 데이터 복구")
                     up_config = st.file_uploader("config.json 수동 복구", type="json", key="up_config", label_visibility="collapsed")
                     if st.button("시스템 설정 복구 실행", use_container_width=True):
                         if up_config:
-                            try:
-                                save_json(CONFIG_FILE, json.load(up_config))
+                            parsed_config = parse_uploaded_json(up_config)
+                            if parsed_config is not None:
+                                save_json(CONFIG_FILE, parsed_config)
                                 create_auto_backup("수동 시스템 설정 복구")
-                                st.session_state.restore_success_manual = True; st.rerun()
-                            except: 
-                                st.error("❌ 올바른 json 파일이 아닙니다.")
+                                st.session_state.restore_success_manual = True
+                                st.rerun()
+                            else: 
+                                st.error("❌ 파일 형식이 잘못되었거나 인코딩이 깨졌습니다.")
 
             # --- 🛡️ 탭 5: 자동 백업 센터 ---
             with menu_tabs[5]:
