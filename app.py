@@ -17,48 +17,14 @@ CONFIG_FILE = "config.json"
 UPLOAD_DIR = "uploads" 
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-
 CLASS_GROUPS = ["1반", "2반", "3반", "4반"]
 
-def _load_initial_config():
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except: pass
-    return {}
-
-_init_config = _load_initial_config()
-HUB_SCHOOLS = _init_config.get("hub_schools", ["호계고등학교", "함월고등학교", "성광여자고등학교"])
-
-ADMIN_ACCOUNTS = {
-    "admin": {"pw": "admin00", "name": "정현경", "school": "울산여자고등학교"},
-    "admin1": {"pw": "admin11", "name": "임종우", "school": "신선여자고등학교"},
-    "audskal": {"pw": "1847", "name": "김명남", "school": "신선여자고등학교"},
-    "admin3": {"pw": "admin33", "name": "김민성", "school": "매곡고등학교"},
-    "admin4": {"pw": "admin44", "name": "이학승", "school": "함월고등학교"}
-}
-
-ACTIVITIES = [
-    "[활동지1] 진학 희망 학과 조사하기",
-    "[활동지2] 나만의 탐구 설계하기",
-    "[활동지3] 주제 피드백에 따른 보완",
-    "[활동지4] 참고 자료 조사",
-    "[활동지5] 주제 탐구 보고서 양식",
-    "[활동지6] 주제 탐구 보고서 피드백에 따른 보완",
-    "[활동지7] 발표 피드백에 따른 보완",
-    "[활동지8] 자기평가서",
-    "[활동지9] 심화탐구 후속 활동 계획: 독서 연계 & 대입 로드맵"
-]
-
-INFO_BOX = "<div style='background-color: #f0f4f8; padding: 15px; border-radius: 8px; font-size: 18px; font-weight: 700; color: #111; margin-bottom: 15px; border-left: 5px solid #0056b3; line-height: 1.5;'>{}</div>"
-
 # ==============================================================
-# [핵심 수정 1] 데이터 유실 방지 및 서버 충돌(데드락) 방지를 위한 글로벌 락 시스템
+# 데이터 유실 방지 및 서버 충돌(데드락) 방지를 위한 글로벌 락 시스템
 # ==============================================================
 @st.cache_resource
 def get_db_lock():
-    return threading.RLock() # 여러 번 겹쳐 실행되어도 무한 대기에 빠지지 않도록 RLock 적용
+    return threading.RLock()
 
 db_lock = get_db_lock()
 
@@ -93,8 +59,6 @@ def save_json(file_path, data, allow_delete=False):
     """저장 시 임시 파일에 먼저 기록(원자적 쓰기)하여 서버가 뻗어도 파일이 깨지지 않게 보호합니다."""
     with db_lock:
         current_data = load_json(file_path, {})
-        
-        # 삭제가 명시적으로 허용된 경우(강제 탈퇴 등)가 아니면 무조건 병합(Merge)하여 데이터 증발 차단
         if not allow_delete and isinstance(current_data, dict) and isinstance(data, dict):
             data_to_save = deep_merge(current_data, data)
         else:
@@ -105,10 +69,43 @@ def save_json(file_path, data, allow_delete=False):
             with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(data_to_save, f, ensure_ascii=False, indent=4)
                 f.flush()
-                os.fsync(f.fileno()) # 디스크 물리적 기록 보장
-            os.replace(tmp_path, file_path) # 완벽히 쓰여졌을 때만 원본 교체
-        except Exception as e:
+                os.fsync(f.fileno())
+            os.replace(tmp_path, file_path)
+        except Exception:
             pass
+
+def _load_initial_config():
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except: pass
+    return {}
+
+_init_config = _load_initial_config()
+HUB_SCHOOLS = _init_config.get("hub_schools", ["호계고등학교", "함월고등학교", "성광여자고등학교"])
+
+ADMIN_ACCOUNTS = {
+    "admin": {"pw": "admin00", "name": "정현경", "school": "울산여자고등학교"},
+    "admin1": {"pw": "admin11", "name": "임종우", "school": "신선여자고등학교"},
+    "audskal": {"pw": "1847", "name": "김명남", "school": "신선여자고등학교"},
+    "admin3": {"pw": "admin33", "name": "김민성", "school": "매곡고등학교"},
+    "admin4": {"pw": "admin44", "name": "이학승", "school": "함월고등학교"}
+}
+
+ACTIVITIES = [
+    "[활동지1] 진학 희망 학과 조사하기",
+    "[활동지2] 나만의 탐구 설계하기",
+    "[활동지3] 주제 피드백에 따른 보완",
+    "[활동지4] 참고 자료 조사",
+    "[활동지5] 주제 탐구 보고서 양식",
+    "[활동지6] 주제 탐구 보고서 피드백에 따른 보완",
+    "[활동지7] 발표 피드백에 따른 보완",
+    "[활동지8] 자기평가서",
+    "[활동지9] 심화탐구 후속 활동 계획: 독서 연계 & 대입 로드맵"
+]
+
+INFO_BOX = "<div style='background-color: #f0f4f8; padding: 15px; border-radius: 8px; font-size: 18px; font-weight: 700; color: #111; margin-bottom: 15px; border-left: 5px solid #0056b3; line-height: 1.5;'>{}</div>"
 
 def show_success_message(title="🎉 화면 저장이 완료되었습니다!", desc="입력하신 내용이 데이터베이스에 안전하게 저장되었습니다."):
     st.balloons()
@@ -126,7 +123,10 @@ def encode_token(user_key, hub_school):
 def decode_token(token):
     try:
         decoded = base64.b64decode(token.encode('utf-8')).decode('utf-8')
-        return decoded.split("|")
+        parts = decoded.split("|")
+        if len(parts) >= 2:
+            return parts[0], parts[1]
+        return None, None
     except:
         return None, None
 
@@ -356,7 +356,7 @@ def generate_html_report(u_info, student_answers, target_act=None, app_config=No
 
 def render_pdf_link(label, html_content):
     b64_html = base64.b64encode(html_content.encode('utf-8')).decode('utf-8')
-    button_id = f"btn_{id(label)}"
+    button_id = f"btn_{abs(hash(label))}"
     
     js_code = f"""
     <script>
@@ -390,8 +390,8 @@ def render_download_button(user_key, category):
     if ans:
         st.markdown("<br>", unsafe_allow_html=True)
         col1, col2 = st.columns(2)
-        html_data = generate_html_report(st.session_state.user_info, current_data.get(user_key, {}), target_act=category)
-        pdf_data = generate_html_report(st.session_state.user_info, current_data.get(user_key, {}), target_act=category, auto_print=True)
+        html_data = generate_html_report(st.session_state.get('user_info', {}), current_data.get(user_key, {}), target_act=category)
+        pdf_data = generate_html_report(st.session_state.get('user_info', {}), current_data.get(user_key, {}), target_act=category, auto_print=True)
         
         with col1:
             st.download_button(label=f"📥 내 활동지 다운로드 (HTML)", 
@@ -600,10 +600,10 @@ def render_activity5_form(user_key):
     c1.markdown("**교과명(강의명)**"); info_course = c2.text_input("교과명", value=ans.get("info_course", def_course), label_visibility="collapsed")
     c3.markdown("**탐구 기간**"); info_date = c4.text_input("탐구 기간", value=ans.get("info_date", def_date), label_visibility="collapsed")
     c1, c2, c3, c4 = st.columns([1, 2, 1, 2])
-    c1.markdown("**소속학교**"); info_school = c2.text_input("소속학교", value=ans.get("info_school", st.session_state.user_info.get("school", "")), label_visibility="collapsed")
+    c1.markdown("**소속학교**"); info_school = c2.text_input("소속학교", value=ans.get("info_school", st.session_state.get('user_info', {}).get("school", "")), label_visibility="collapsed")
     c3.markdown("**진로 희망**"); info_career = c4.text_input("진로 희망", value=ans.get("info_career", ""), label_visibility="collapsed")
     c1, c2, c3, c4 = st.columns([1, 2, 1, 2])
-    c1.markdown("**학번/이름**"); default_id_name = f"{st.session_state.user_info.get('username', '')} {st.session_state.user_info.get('name', '')}"
+    c1.markdown("**학번/이름**"); default_id_name = f"{st.session_state.get('user_info', {}).get('username', '')} {st.session_state.get('user_info', {}).get('name', '')}"
     info_name = c2.text_input("학번/이름", value=ans.get("info_name", default_id_name), label_visibility="collapsed")
     c3.markdown("**관련 교과, 단원**"); info_subject = c4.text_input("관련 교과", value=ans.get("info_subject", ""), placeholder="(활동지2 2단계 참고)", label_visibility="collapsed")
     c1, c2, c3, c4 = st.columns([1, 2, 1, 2])
@@ -705,7 +705,7 @@ def render_activity9_form(user_key):
     
     guide_text = app_config.get("activity_guides", {}).get(category, "")
     if guide_text: st.markdown(INFO_BOX.format(guide_text), unsafe_allow_html=True)
-    
+        
     st.markdown("#### 1. 꼬리에 꼬리를 무는 독서")
     st.caption("※ 첫 번째 열(구분)은 양식 제목이므로 수정하지 마세요.")
     default_df1 = pd.DataFrame([
@@ -807,11 +807,11 @@ def render_camp_overview(current_role, current_hub, current_user_key=None):
         
         with col_sdl1:
             st.markdown("**📦 전체 활동 포트폴리오 다운로드**")
-            full_html = generate_html_report(st.session_state.user_info, student_answers, target_act=None, app_config=app_config)
-            full_pdf = generate_html_report(st.session_state.user_info, student_answers, target_act=None, app_config=app_config, auto_print=True)
+            full_html = generate_html_report(st.session_state.get('user_info', {}), student_answers, target_act=None, app_config=app_config)
+            full_pdf = generate_html_report(st.session_state.get('user_info', {}), student_answers, target_act=None, app_config=app_config, auto_print=True)
             st.download_button(label="📥 전체 활동 포트폴리오 다운로드 (HTML)",
                                data=full_html.encode('utf-8-sig'),
-                               file_name=f"{st.session_state.user_info['name']}_전체포트폴리오.html",
+                               file_name=f"{st.session_state.get('user_info', {}).get('name', '학생')}_전체포트폴리오.html",
                                mime="text/html",
                                type="primary",
                                use_container_width=True)
@@ -822,11 +822,11 @@ def render_camp_overview(current_role, current_hub, current_user_key=None):
             stu_sel_act = st.selectbox("다운로드할 활동지 선택", ACTIVITIES, key="stu_dl_sel", label_visibility="collapsed")
             s_ans = student_answers.get(stu_sel_act, {})
             if s_ans:
-                act_html = generate_html_report(st.session_state.user_info, student_answers, target_act=stu_sel_act, app_config=app_config)
-                act_pdf = generate_html_report(st.session_state.user_info, student_answers, target_act=stu_sel_act, app_config=app_config, auto_print=True)
+                act_html = generate_html_report(st.session_state.get('user_info', {}), student_answers, target_act=stu_sel_act, app_config=app_config)
+                act_pdf = generate_html_report(st.session_state.get('user_info', {}), student_answers, target_act=stu_sel_act, app_config=app_config, auto_print=True)
                 st.download_button(label=f"📥 {stu_sel_act[:6]} 다운로드 (HTML)",
                                    data=act_html.encode('utf-8-sig'),
-                                   file_name=f"{st.session_state.user_info['name']}_{stu_sel_act}.html",
+                                   file_name=f"{st.session_state.get('user_info', {}).get('name', '학생')}_{stu_sel_act}.html",
                                    mime="text/html",
                                    type="primary",
                                    use_container_width=True)
@@ -994,11 +994,28 @@ setInterval(initAutoSave, 2000);
 </script>
 """, height=0, width=0)
 
+# ==============================================================
+# [핵심 수정 2] 세션 및 URL 라우팅 에러(AttributeError) 원천 차단
+# ==============================================================
 if "logged_in" not in st.session_state: 
     st.session_state.logged_in = False
     st.session_state.user_info = None
 
-if not st.session_state.logged_in and "session_token" in st.query_params:
+if "current_page" not in st.session_state: 
+    st.session_state.current_page = st.query_params.get("page", "main")
+
+if "last_url_page" not in st.session_state:
+    st.session_state.last_url_page = st.session_state.get("current_page", "main")
+
+url_page = st.query_params.get("page", "main")
+if url_page != st.session_state.get("last_url_page", "main"):
+    st.session_state.current_page = url_page
+    st.session_state.last_url_page = url_page
+else:
+    st.query_params["page"] = st.session_state.get("current_page", "main")
+    st.session_state.last_url_page = st.session_state.get("current_page", "main")
+
+if not st.session_state.get("logged_in", False) and "session_token" in st.query_params:
     token = st.query_params["session_token"]
     user_key, login_hub = decode_token(token)
     
@@ -1013,23 +1030,11 @@ if not st.session_state.logged_in and "session_token" in st.query_params:
             st.session_state.logged_in = True
             st.session_state.user_info = {"user_key": user_key, "username": users[user_key].get("id", ""), "name": users[user_key].get("name", "이름없음"), "role": db_role, "school": users[user_key].get("school", "소속없음"), "class_group": users[user_key].get("class_group", "미배정"), "hub_school": login_hub}
 
-if "current_page" not in st.session_state: 
-    st.session_state.current_page = st.query_params.get("page", "main")
-    st.session_state.last_url_page = st.session_state.current_page
-
-url_page = st.query_params.get("page", "main")
-if url_page != st.session_state.last_url_page:
-    st.session_state.current_page = url_page
-    st.session_state.last_url_page = url_page
-else:
-    st.query_params["page"] = st.session_state.current_page
-    st.session_state.last_url_page = st.session_state.current_page
-    
-if st.session_state.logged_in:
+if st.session_state.get("logged_in", False):
     st.query_params["session_token"] = encode_token(st.session_state.user_info["user_key"], st.session_state.user_info.get("hub_school", "호계고등학교"))
 
 st.sidebar.title("🔒 인증 센터")
-if st.session_state.logged_in:
+if st.session_state.get("logged_in", False):
     u_info = st.session_state.user_info
     
     u_name = u_info['name']
@@ -1132,7 +1137,7 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("<div style='text-align: center; color: #222; font-size: 15px; font-weight: 900;'>🧑‍💻 만든 이:<br><span style='font-size: 20px; color: #000;'>Made by G.E.M.S</span><br><span style='font-size: 13px;'>(울산교육청 진학지원단)</span></div>", unsafe_allow_html=True)
 
 # --- [5] 화면 분기 로직 ---
-if not st.session_state.logged_in:
+if not st.session_state.get("logged_in", False):
     st.title("🏫 주제 탐구 캠프 학습 시스템")
     st.info("왼쪽 사이드바를 이용해 로그인해주세요.")
 
@@ -1143,7 +1148,7 @@ else:
     app_config = load_json(CONFIG_FILE, {})
     learning_data = load_json(DATA_FILE, {})
 
-    if st.session_state.current_page in ACTIVITIES:
+    if st.session_state.get("current_page", "main") in ACTIVITIES:
         act_name = st.session_state.current_page
         st.title(f"📄 {act_name}")
         st.markdown("---")
@@ -1168,7 +1173,7 @@ else:
         if st.button("⬅️ 메인 화면으로 돌아가기", key="btn_back_bottom", use_container_width=True):
             st.session_state.current_page = "main"; st.rerun()
 
-    elif st.session_state.current_page == "main":
+    elif st.session_state.get("current_page", "main") == "main":
         if current_role == "학생":
             
             tabs_list = ["📌 캠프 공지 및 자료실"] + app_config.get("tabs", [])
@@ -1222,7 +1227,7 @@ else:
                 st.subheader("⏳ 가입 승인 대기 목록")
                 
                 # ==============================================================
-                # [핵심 수정 2] 반별 필터링 기능 (요청 사항 반영 완벽 유지)
+                # [핵심 수정 3] 가입 승인 대기 목록 반별 필터링 기능
                 # ==============================================================
                 if pending_users:
                     col_pending_filter1, col_pending_filter2 = st.columns([1, 3])
@@ -1265,7 +1270,7 @@ else:
                         else:
                             st.info(f"현재 선택하신 '{pending_filter_class}'에 가입 승인을 대기 중인 회원이 없습니다.")
                             
-                    if st.session_state.get("msg_user_appr") or st.session_state.get("msg_user_appr_all"):
+                    if st.session_state.get("msg_user_appr", False) or st.session_state.get("msg_user_appr_all", False):
                         show_success_message("🎉 승인이 완료되었습니다!", "가입 승인이 성공적으로 처리되었습니다.")
                         st.session_state.msg_user_appr = False
                         st.session_state.msg_user_appr_all = False
@@ -1325,7 +1330,7 @@ else:
                                     st.session_state.msg_user_edit = True
                                     st.rerun()
 
-                    if st.session_state.get("msg_user_edit"):
+                    if st.session_state.get("msg_user_edit", False):
                         show_success_message("🎉 정보 수정 완료!", "학생의 회원 정보가 성공적으로 변경되었습니다. 이제 올바른 반에서 조회됩니다.")
                         st.session_state.msg_user_edit = False
 
@@ -1386,10 +1391,10 @@ else:
                                 st.session_state.msg_pw_change = True
                                 st.rerun()
 
-                    if st.session_state.get("msg_user_del"):
+                    if st.session_state.get("msg_user_del", False):
                         show_success_message("🎉 삭제가 완료되었습니다!", "선택한 회원이 시스템에서 완전히 삭제되었습니다.")
                         st.session_state.msg_user_del = False
-                    if st.session_state.get("msg_pw_change"):
+                    if st.session_state.get("msg_pw_change", False):
                         show_success_message("🎉 비밀번호 변경 완료!", "선택한 회원의 비밀번호가 성공적으로 변경되었습니다.")
                         st.session_state.msg_pw_change = False
 
@@ -1417,7 +1422,7 @@ else:
                             else:
                                 st.warning("학교 이름을 입력해주세요.")
                                 
-                        if st.session_state.get("msg_add_hub"):
+                        if st.session_state.get("msg_add_hub", False):
                             show_success_message("🎉 거점학교 추가 완료!", "새로운 거점학교가 시스템에 등록되었습니다.")
                             st.session_state.msg_add_hub = False
                             
@@ -1434,7 +1439,7 @@ else:
                             st.session_state.msg_del_hub = True
                             st.rerun()
                             
-                        if st.session_state.get("msg_del_hub"):
+                        if st.session_state.get("msg_del_hub", False):
                             show_success_message("🎉 거점학교 삭제 완료!", "선택하신 학교가 목록에서 제거되었습니다.")
                             st.session_state.msg_del_hub = False
                             
@@ -1458,7 +1463,7 @@ else:
                             st.session_state.msg_camp_info = True
                             st.rerun()
 
-                    if st.session_state.get("msg_camp_info"):
+                    if st.session_state.get("msg_camp_info", False):
                         show_success_message("🎉 기본 정보 변경 완료!", "활동지의 기본 날짜와 캠프명이 모든 학생의 화면에 즉시 업데이트되었습니다.")
                         st.session_state.msg_camp_info = False
                     
@@ -1482,7 +1487,7 @@ else:
                         st.session_state.msg_guide = True
                         st.rerun()
                         
-                    if st.session_state.get("msg_guide"):
+                    if st.session_state.get("msg_guide", False):
                         show_success_message("🎉 안내 문구가 저장되었습니다!", f"선택하신 활동지의 설명글이 성공적으로 수정되었습니다.")
                         st.session_state.msg_guide = False
                         
@@ -1504,7 +1509,7 @@ else:
                         st.session_state.msg_schedule = True
                         st.rerun()
                         
-                    if st.session_state.get("msg_schedule"):
+                    if st.session_state.get("msg_schedule", False):
                         show_success_message("🎉 일정표 저장이 완료되었습니다!", "새로운 캠프 일정이 학생들 화면에 즉각적으로 반영되었습니다.")
                         st.session_state.msg_schedule = False
                     
@@ -1531,7 +1536,7 @@ else:
                                 else:
                                     st.warning("제목과 내용을 모두 입력해주세요.")
                     
-                        if st.session_state.get("msg_add_block"):
+                        if st.session_state.get("msg_add_block", False):
                             show_success_message("🎉 블록 생성이 완료되었습니다!", "입력하신 공지 블록이 메인 화면에 성공적으로 추가되었습니다.")
                             st.session_state.msg_add_block = False
 
@@ -1550,7 +1555,7 @@ else:
                         else:
                             st.info("현재 등록된 커스텀 블록이 없습니다.")
                             
-                        if st.session_state.get("msg_del_block"):
+                        if st.session_state.get("msg_del_block", False):
                             show_success_message("🎉 블록 삭제가 완료되었습니다!", "선택하신 텍스트 블록이 메인 화면에서 지워졌습니다.")
                             st.session_state.msg_del_block = False
 
@@ -1593,7 +1598,7 @@ else:
                                 else:
                                     st.warning("모든 칸을 입력해주세요.")
                                     
-                        if st.session_state.get("msg_add_link"):
+                        if st.session_state.get("msg_add_link", False):
                             show_success_message("🎉 링크 추가가 완료되었습니다!", "새로운 바로가기 링크가 학생들 화면에 배포되었습니다.")
                             st.session_state.msg_add_link = False
                             
@@ -1611,7 +1616,7 @@ else:
                         else:
                             st.info("등록된 링크가 없습니다.")
                             
-                        if st.session_state.get("msg_del_link"):
+                        if st.session_state.get("msg_del_link", False):
                             show_success_message("🎉 링크 삭제가 완료되었습니다!", "선택하신 링크가 메인 화면에서 지워졌습니다.")
                             st.session_state.msg_del_link = False
                             
@@ -1643,7 +1648,7 @@ else:
                                 st.session_state.msg_add_mat = True
                                 st.rerun()
                                 
-                    if st.session_state.get("msg_add_mat"):
+                    if st.session_state.get("msg_add_mat", False):
                         show_success_message("🎉 특강 자료 등록이 완료되었습니다!", "업로드하신 자료가 교사용 자료실에 안전하게 보관되었습니다.")
                         st.session_state.msg_add_mat = False
 
@@ -1660,7 +1665,7 @@ else:
                             st.session_state.msg_del_mat = True
                             st.rerun()
                             
-                        if st.session_state.get("msg_del_mat"):
+                        if st.session_state.get("msg_del_mat", False):
                             show_success_message("🎉 자료 삭제가 완료되었습니다!", "선택하신 특강 자료가 삭제되었습니다.")
                             st.session_state.msg_del_mat = False
 
@@ -1685,7 +1690,7 @@ else:
                             st.session_state.msg_add_tab = True
                             st.rerun()
                             
-                        if st.session_state.get("msg_add_tab"):
+                        if st.session_state.get("msg_add_tab", False):
                             show_success_message("🎉 차시 개설이 완료되었습니다!", "새로운 학습 차시(탭)가 학생 화면에 열렸습니다.")
                             st.session_state.msg_add_tab = False
                             
@@ -1704,7 +1709,7 @@ else:
                                 st.session_state.msg_del_tab = True
                                 st.rerun()
                                 
-                        if st.session_state.get("msg_del_tab"):
+                        if st.session_state.get("msg_del_tab", False):
                             show_success_message("🎉 차시 삭제가 완료되었습니다!", "선택하신 차시와 관련된 질문들이 삭제되었습니다.")
                             st.session_state.msg_del_tab = False
 
@@ -1727,7 +1732,7 @@ else:
                                 st.session_state.msg_add_q = True
                                 st.rerun()
                                 
-                            if st.session_state.get("msg_add_q"):
+                            if st.session_state.get("msg_add_q", False):
                                 show_success_message("🎉 질문이 추가되었습니다!", "학생들이 입력할 수 있는 새로운 텍스트 칸이 만들어졌습니다.")
                                 st.session_state.msg_add_q = False
                                 
@@ -1744,7 +1749,7 @@ else:
                                     st.session_state.msg_del_q = True
                                     st.rerun()
                                     
-                            if st.session_state.get("msg_del_q"):
+                            if st.session_state.get("msg_del_q", False):
                                 show_success_message("🎉 문항 삭제가 완료되었습니다!", "선택하신 텍스트 입력칸이 시스템에서 삭제되었습니다.")
                                 st.session_state.msg_del_q = False
 
@@ -1783,7 +1788,7 @@ else:
                                 st.rerun()
                             except Exception:
                                 st.error("올바른 JSON 파일이 아닙니다.")
-                        if st.session_state.get("msg_restore_learning"):
+                        if st.session_state.get("msg_restore_learning", False):
                             show_success_message("🎉 학생 데이터 복구 완료!", "업로드하신 과거 파일로 학생들의 학습 데이터가 성공적으로 복원되었습니다.")
                             st.session_state.msg_restore_learning = False
                             
@@ -1798,7 +1803,7 @@ else:
                                 st.rerun()
                             except Exception:
                                 st.error("올바른 JSON 파일이 아닙니다.")
-                        if st.session_state.get("msg_restore_users"):
+                        if st.session_state.get("msg_restore_users", False):
                             show_success_message("🎉 회원 정보 복구 완료!", "회원 계정 데이터가 성공적으로 덮어씌워졌습니다.")
                             st.session_state.msg_restore_users = False
 
@@ -1813,7 +1818,7 @@ else:
                                 st.rerun()
                             except Exception:
                                 st.error("올바른 JSON 파일이 아닙니다.")
-                        if st.session_state.get("msg_restore_config"):
+                        if st.session_state.get("msg_restore_config", False):
                             show_success_message("🎉 시스템 설정 복구 완료!", "캠프 일정 및 링크 설정 등이 과거 상태로 복구되었습니다.")
                             st.session_state.msg_restore_config = False
 
