@@ -1909,8 +1909,7 @@ else:
                 search_edit = st.text_input("🔍 검색 (이름 또는 학번 입력)", key="search_edit")
                 filtered_for_edit = filter_students_admin(all_users, search_edit, approved_only=False)
                 options_edit = ["선택"] + list(filtered_for_edit.keys())
-                edit_target = st.selectbox("학생 선택", options_edit, index=1 if (search_edit.strip() and len(filtered_for_edit) > 0) else 0, format_func=lambda x: "선택" if x=="선택" else f"[{filtered_for_edit[x].get('class_group')}] {filtered_for_edit[x].get('name')} ({filtered_for_edit[x].get('id')})")
-                
+                edit_target = st.selectbox("학생 선택", options_edit, index=1 if (search_edit.strip() and len(filtered_for_edit) > 0) else 0, format_func=lambda x: "선택" if x=="선택" else f"[{filtered_for_edit[x].get('class_group')}] {filtered_for_edit[x].get('name')} ({filtered_for_edit[x].get('id')})", key="edit_target_tab2")
                 if edit_target != "선택":
                     target_info = filtered_for_edit[edit_target]
                     with st.form("edit_student_form"):
