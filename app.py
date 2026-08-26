@@ -1993,7 +1993,7 @@ else:
                         st.markdown("---")
                         search_student_tab4 = st.text_input("🔍 학생 검색", key="search_student_tab4")
                         filtered_student_list = [uid for uid in student_list if search_student_tab4.lower() in f"{all_users[uid].get('class_group')} {all_users[uid].get('name')} {all_users[uid].get('id')}".lower()]
-                        selected_student = st.selectbox("학생 선택", ["선택"] + filtered_student_list, format_func=lambda x: "선택" if x=="선택" else f"[{all_users[x].get('class_group')}] {all_users[x].get('name')} ({all_users[x].get('id')})")
+                        selected_student = st.selectbox("학생 선택", ["선택"] + filtered_student_list, format_func=lambda x: "선택" if x=="선택" else f"[{all_users[x].get('class_group')}] {all_users[x].get('name')} ({all_users[x].get('id')})", key="select_student_tab3")
                         if selected_student != "선택":
                             u_info_sel = all_users[selected_student]
                             acts_for_subj = load_json(CONFIG_FILE, {}).get("subject_activities", {}).get(view_subj, [])
