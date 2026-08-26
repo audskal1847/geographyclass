@@ -1,5 +1,3 @@
-각종 오류 메시지 관련 기능 개선 코드(+검색 기능 강화)
-
 import streamlit as st
 import streamlit.components.v1 as components
 import json
