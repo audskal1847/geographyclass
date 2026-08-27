@@ -1,17 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import json
-import os
-import base64
+import json, os, base64, datetime, threading, io, zipfile
 import pandas as pd
-import datetime
-import threading
-import io
-import zipfile
 
-# =====================================================================
 # 🚀 기본 설정 및 페이지 구성 (사이드바 강제 열림)
-# =====================================================================
 st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
@@ -21,56 +13,24 @@ st.markdown("""
 .stMarkdown h3 { font-size: 24px !important; font-weight: 800 !important; color: #111111 !important; margin-top: 25px !important; margin-bottom: 10px !important; }
 div[data-testid="stMarkdownContainer"] > p, div[data-testid="stMarkdownContainer"] > ul > li { font-size: 16px !important; font-weight: 500 !important; color: #333333 !important; line-height: 1.6 !important; }
 .stMarkdown strong, .stMarkdown b { font-weight: 700 !important; color: #000000 !important; }
-
-/* 🔴 Primary 버튼 (저장, 제출 등) */
-[data-testid="stFormSubmitButton"] button, button[kind="primary"] { 
-    background-color: #FF4B4B !important; border: none !important; border-radius: 8px !important; min-height: 50px !important; width: 100% !important; padding: 12px !important; 
-}
-[data-testid="stFormSubmitButton"] button p, button[kind="primary"] p, [data-testid="stFormSubmitButton"] button div, button[kind="primary"] div { 
-    color: #ffffff !important; font-size: 18px !important; font-weight: 800 !important; 
-}
-
-/* 🔵 Secondary 버튼 (다운로드, 백업 등) */
-button[kind="secondary"] { 
-    background-color: #3498db !important; border: none !important; border-radius: 8px !important; min-height: 50px !important; width: 100% !important; padding: 12px !important; 
-}
-button[kind="secondary"] p, button[kind="secondary"] div { 
-    color: #ffffff !important; font-size: 18px !important; font-weight: 800 !important; 
-}
-
+[data-testid="stFormSubmitButton"] button, button[kind="primary"] { background-color: #FF4B4B !important; border: none !important; border-radius: 8px !important; min-height: 50px !important; width: 100% !important; padding: 12px !important; }
+[data-testid="stFormSubmitButton"] button p, button[kind="primary"] p, [data-testid="stFormSubmitButton"] button div, button[kind="primary"] div { color: #ffffff !important; font-size: 18px !important; font-weight: 800 !important; }
+button[kind="secondary"] { background-color: #3498db !important; border: none !important; border-radius: 8px !important; min-height: 50px !important; width: 100% !important; padding: 12px !important; }
+button[kind="secondary"] p, button[kind="secondary"] div { color: #ffffff !important; font-size: 18px !important; font-weight: 800 !important; }
 [data-testid="stForm"] { border: none !important; box-shadow: none !important; padding: 0 !important; }
 .guide-box { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #3498db; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- [0] 서버 한국시간(KST) 보정 함수 ---
-def get_kst_now(): 
-    return datetime.datetime.utcnow() + datetime.timedelta(hours=9)
+def get_kst_now(): return datetime.datetime.utcnow() + datetime.timedelta(hours=9)
 
-# --- [1] 파일 경로 설정 및 상수 정의 ---
-USERS_FILE = "users.json"
-DATA_FILE = "learning_data.json"
-CONFIG_FILE = "config.json"
-UPLOAD_DIR = "uploads"
-BACKUP_DIR = "backups"
+USERS_FILE, DATA_FILE, CONFIG_FILE = "users.json", "learning_data.json", "config.json"
+UPLOAD_DIR, BACKUP_DIR = "uploads", "backups"
+os.makedirs(UPLOAD_DIR, exist_ok=True); os.makedirs(BACKUP_DIR, exist_ok=True)
 
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(BACKUP_DIR, exist_ok=True)
-
-# 📌 과목 및 반 목록 세팅
-SUBJECTS = [
-    "3학년 여행지리", 
-    "2학년 도시의 미래 탐구"
-]
-
-CLASSES_MAP = {
-    "3학년 여행지리": ["3B(3-6반)", "3A(3-8반)"],
-    "2학년 도시의 미래 탐구": ["2G(2-1반)", "2H(2-2반)", "2I(2-8반)"]
-}
-
-ADMIN_ACCOUNTS = {
-    "audskal": {"pw": "1847", "name": "김명남(관리자)"}
-}
+SUBJECTS = ["3학년 여행지리", "2학년 도시의 미래 탐구"]
+CLASSES_MAP = {"3학년 여행지리": ["3B(3-6반)", "3A(3-8반)"], "2학년 도시의 미래 탐구": ["2G(2-1반)", "2H(2-2반)", "2I(2-8반)"]}
+ADMIN_ACCOUNTS = {"audskal": {"pw": "1847", "name": "김명남(관리자)"}}
 
 ACT_3_1 = "[3학년] 수행평가 1 - 영상으로 떠나는 여행"
 ACT_3_2 = "[3학년] 수행평가 2 - 나를 성장시킨 장소 지도 만들기"
@@ -83,19 +43,11 @@ ACTIVITIES = [ACT_3_1, ACT_3_2, ACT_3_3, ACT_2_1, ACT_2_2, ACT_2_3]
 TIME_OPTIONS = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(24) for m in range(0, 60, 10)]
 db_lock = threading.RLock()
 
-def get_time_index(t_str): 
-    if t_str in TIME_OPTIONS: return TIME_OPTIONS.index(t_str)
-    return 0
-
-def encode_token(user_key): 
-    return base64.b64encode(user_key.encode('utf-8')).decode('utf-8')
-
+def get_time_index(t_str): return TIME_OPTIONS.index(t_str) if t_str in TIME_OPTIONS else 0
+def encode_token(user_key): return base64.b64encode(user_key.encode('utf-8')).decode('utf-8')
 def decode_token(token):
-    try: 
-        return base64.b64decode(token.encode('utf-8')).decode('utf-8')
-    except: 
-        return None
-
+    try: return base64.b64decode(token.encode('utf-8')).decode('utf-8')
+    except: return None
 def change_page(page_name):
     st.session_state.current_page = page_name
     st.query_params["current_page"] = page_name
@@ -105,64 +57,33 @@ def change_page(page_name):
 
 def render_privacy_policy():
     with st.expander("📜 개인정보 처리방침 (수업용 웹 앱)", expanded=False):
-        st.markdown("""
-        **[신선여자고등학교 수업용 웹 앱 개인정보 처리방침]**
-        **1. 개인정보 수집 목적**: 교과 수업 운영, 학생 수행평가 과제물 제출/취합, 피드백 제공 및 학교생활기록부 기재 증빙 자료 활용
-        **2. 수집 항목**: 필수 항목(과목, 반, 학번, 이름, 비밀번호, 과제물 데이터). ※ 주민등록번호 등 민감정보 일체 수집 불가
-        **3. 보유 및 이용 기간**: 해당 학년도 교육과정 종료 시(익년 2월 말) 데이터 일괄 파기
-        **4. 안전성 확보 조치**: 비밀번호 암호화/비노출, 교사-학생 권한 분리, 실시간 자동 스냅샷 백업 시스템 운영
-        **5. 권리 행사**: 학생은 언제든지 자신의 개인정보 열람/정정/삭제를 요구할 수 있으며 담당 교사가 즉시 처리함.
-        **6. 만 14세 미만 아동 보호**: 고등학교 재학생 전용 시스템으로 해당 없음.
-        **7. 책임자**: 교사 김명남 / 신선여자고등학교
-        **8. 제3자 제공**: 수집된 학생 정보를 외부에 절대 제공하거나 위탁하지 않음.
-        """)
+        st.markdown("**[신선여자고등학교 수업용 웹 앱 개인정보 처리방침]**\n**1. 개인정보 수집 목적**: 교과 수업 운영, 학생 수행평가 과제물 제출/취합, 피드백 제공 및 학교생활기록부 기재 증빙 자료 활용\n**2. 수집 항목**: 필수 항목(과목, 반, 학번, 이름, 비밀번호, 과제물 데이터). ※ 주민등록번호 등 민감정보 일체 수집 불가\n**3. 보유 및 이용 기간**: 해당 학년도 교육과정 종료 시(익년 2월 말) 데이터 일괄 파기\n**4. 안전성 확보 조치**: 비밀번호 암호화/비노출, 교사-학생 권한 분리, 실시간 자동 스냅샷 백업 시스템 운영\n**5. 권리 행사**: 학생은 언제든지 자신의 개인정보 열람/정정/삭제를 요구할 수 있으며 담당 교사가 즉시 처리함.\n**6. 제3자 제공**: 수집된 학생 정보를 외부에 절대 제공하거나 위탁하지 않음.")
 
-# --- [1] 권한 및 기한 제어 ---
 def check_active(act_name, class_group):
     config = load_json(CONFIG_FILE, {})
     deadlines = config.get("deadlines", {}).get(act_name, {}).get(class_group, {})
-    
-    if not deadlines:
-        return True, "💡 교사가 아직 수업 시간표를 설정하지 않았습니다. (현재 자유 입력 가능)"
-
+    if not deadlines: return True, "💡 교사가 아직 수업 시간표를 설정하지 않았습니다. (현재 자유 입력 가능)"
     final_dl_str = deadlines.get("final_dl", "2030-12-31 23:59")
-    try: 
-        final_dl = datetime.datetime.strptime(final_dl_str, "%Y-%m-%d %H:%M")
-    except: 
-        final_dl = datetime.datetime.max
-
+    try: final_dl = datetime.datetime.strptime(final_dl_str, "%Y-%m-%d %H:%M")
+    except: final_dl = datetime.datetime.max
     now = get_kst_now()
-
-    if now > final_dl: 
-        return False, f"🚫 최종 제출 기한({final_dl_str})이 마감되어 더 이상 작성하거나 수정할 수 없습니다."
-
+    if now > final_dl: return False, f"🚫 최종 제출 기한({final_dl_str})이 마감되어 더 이상 작성하거나 수정할 수 없습니다."
     slots = deadlines.get("slots", [])
     day_map = {0: "월", 1: "화", 2: "수", 3: "목", 4: "금", 5: "토", 6: "일"}
     current_day = day_map[now.weekday()]
     current_time = now.time()
-
-    schedule_strs = []
-    is_time_match = False
-    
+    schedule_strs, is_time_match = [], False
     for slot in slots:
         if slot['day'] != "선택안함":
             p_str = f" {slot.get('period', '')}" if slot.get('period', '') and slot.get('period') != "선택안함" else ""
             schedule_strs.append(f"{slot['day']}요일{p_str} {slot['start']} - {slot['end']}")
             if slot['day'] == current_day:
                 try:
-                    st_time = datetime.datetime.strptime(slot["start"], "%H:%M").time()
-                    en_time = datetime.datetime.strptime(slot["end"], "%H:%M").time()
-                    if st_time <= current_time <= en_time: 
-                        is_time_match = True
-                except: 
-                    continue
-
+                    if datetime.datetime.strptime(slot["start"], "%H:%M").time() <= current_time <= datetime.datetime.strptime(slot["end"], "%H:%M").time(): is_time_match = True
+                except: continue
     sched_display = ", ".join(schedule_strs) if schedule_strs else "설정된 수업 시간 없음"
-    
-    if is_time_match: 
-        return True, "✅ 현재 수업 시간입니다. 정상적으로 작성하고 저장(제출)할 수 있습니다."
-    else: 
-        return False, f"⏳ 현재는 정해진 수업 시간이 아닙니다. 지정된 수업 시간에만 입력할 수 있습니다.\n\n(나의 주간 수업 시간: {sched_display} / 최종 기한: {final_dl_str})"
+    if is_time_match: return True, "✅ 현재 수업 시간입니다. 정상적으로 작성하고 저장(제출)할 수 있습니다."
+    return False, f"⏳ 현재는 정해진 수업 시간이 아닙니다. 지정된 수업 시간에만 입력할 수 있습니다.\n\n(나의 주간 수업 시간: {sched_display} / 최종 기한: {final_dl_str})"
 
 def check_active_with_exception(act_name, class_group, user_key):
     config = load_json(CONFIG_FILE, {})
@@ -170,10 +91,8 @@ def check_active_with_exception(act_name, class_group, user_key):
     if user_key in exceptions:
         try:
             exc_dl = datetime.datetime.strptime(exceptions[user_key], "%Y-%m-%d %H:%M")
-            if get_kst_now() <= exc_dl: 
-                return True, f"✅ [개별 기한 연장] 특별 권한으로 정상 작성 및 제출이 가능합니다. (마감: {exceptions[user_key]})"
-            else: 
-                return False, f"🚫 [개별 연장 기한 마감] 연장된 기한({exceptions[user_key]})이 지났습니다."
+            if get_kst_now() <= exc_dl: return True, f"✅ [개별 기한 연장] 특별 권한으로 정상 작성 및 제출이 가능합니다. (마감: {exceptions[user_key]})"
+            else: return False, f"🚫 [개별 연장 기한 마감] 연장된 기한({exceptions[user_key]})이 지났습니다."
         except: pass
     return check_active(act_name, class_group)
 
@@ -187,12 +106,10 @@ def is_act_visible_for_user(act_name, class_group, user_key, config):
     exceptions = config.get("exceptions", {}).get(act_name, {})
     if user_key in exceptions:
         try:
-            if get_kst_now() <= datetime.datetime.strptime(exceptions[user_key], "%Y-%m-%d %H:%M"):
-                return True
+            if get_kst_now() <= datetime.datetime.strptime(exceptions[user_key], "%Y-%m-%d %H:%M"): return True
         except: pass
     return is_act_visible_for_class(act_name, class_group, config)
 
-# --- [2] 데이터베이스 입출력 처리 ---
 def load_json(file_path, default_value):
     with db_lock:
         if not os.path.exists(file_path):
@@ -201,9 +118,7 @@ def load_json(file_path, default_value):
         for _ in range(5):
             try:
                 with open(file_path, "r", encoding="utf-8") as f: return json.load(f)
-            except Exception:
-                import time
-                time.sleep(0.1)
+            except: import time; time.sleep(0.1)
         return default_value
 
 def save_json(file_path, data):
@@ -233,7 +148,6 @@ def init_system():
                 users_changed = True
         for k in [k for k in users.keys() if users[k].get("role") == "관리자" and k not in ADMIN_ACCOUNTS]: del users[k]; users_changed = True
         if users_changed: save_json(USERS_FILE, users)
-        
         cfg = load_json(CONFIG_FILE, {})
         needs_update = False
         for key in ["materials", "notices", "custom_blocks", "dynamic_links"]:
@@ -249,7 +163,6 @@ def init_system():
             if k in cfg: del cfg[k]; needs_update = True
         if needs_update: save_json(CONFIG_FILE, cfg)
 
-# --- [3] 활동지 데이터 공통 로직 ---
 def generate_points_html(df_records):
     if not df_records: return ""
     html = "<table style='width:100%; border-collapse:collapse; text-align:center;'><tr><th style='background-color:#ecf0f1; border:1px solid #bdc3c7; padding:10px;'>카테고리</th><th style='background-color:#ecf0f1; border:1px solid #bdc3c7; padding:10px;'>코드</th><th style='background-color:#ecf0f1; border:1px solid #bdc3c7; padding:10px;'>세부 개조 항목</th><th style='background-color:#ecf0f1; border:1px solid #bdc3c7; padding:10px;'>비용</th></tr>"
@@ -276,58 +189,55 @@ def get_user_activity_data(user_key, u_id, u_subj, u_class, act_name, learning_d
         if str(own_data.get("m1_id", "")).strip() == u_id_str: return user_key, own_data
         for k, acts in learning_data.items():
             if k.startswith(f"{u_subj}_{u_class}_"):
-                a_data = acts.get(act_name, {})
-                members = [str(a_data.get(f"m{i}_id", "")).strip() for i in range(1, 5)]
-                if u_id_str in members: return k, a_data
+                members = [str(acts.get(act_name, {}).get(f"m{i}_id", "")).strip() for i in range(1, 5)]
+                if u_id_str in members: return k, acts.get(act_name, {})
     return user_key, learning_data.get(user_key, {}).get(act_name, {})
 
 def get_act_csv_rows(selected_view, ans, config=None):
     csv_data = []
     if selected_view == ACT_3_1:
-        csv_data.extend([["1. 영상 제목", ans.get("a1_1", "")], ["2. 등장 국가/지역", ans.get("a1_2", "")], ["3. 선택 이유", ans.get("a1_3", "")], ["1. 첫 느낌", ans.get("a2_1", "")], ["2. 인상적 장소", ans.get("a2_2_1", "")], ["이유", ans.get("a2_2_2", "")], ["3. 누구에게 추천", ans.get("a2_3_1", "")], ["추천 이유", ans.get("a2_3_2", "")], ["4. 나만의 감상평", ans.get("a2_4", "")], ["1) 영상 제목", ans.get("a3_1", "")], ["2) 주요 컨셉/느낌", ans.get("a3_2", "")], ["3) 누구와 함께?", ans.get("a3_3", "")], ["4) 그 이유는?", ans.get("a3_4", "")], ["5) 가장 해보고 싶은 것", ans.get("a3_5", "")], ["6) 그 이유는?", ans.get("a3_6", "")], ["7) 꼭 넣고 싶은 장소", ans.get("a3_7", "")], ["8) 그 이유는?", ans.get("a3_8", "")], ["9) 썸네일 기획", ans.get("a3_9", "")], ["10) 어울리는 BGM", ans.get("a3_10", "")], ["11) BGM 선택 이유", ans.get("a3_11", "")]])
+        csv_data.extend([["[1. 첫번째 질문]", ""], ["영상 제목", ans.get("a1_1", "")], ["국가/지역", ans.get("a1_2", "")], ["이유", ans.get("a1_3", "")], ["[2. 두 번째 질문]", ""], ["첫 느낌", ans.get("a2_1", "")], ["장소/공간", ans.get("a2_2_1", "")], ["이유", ans.get("a2_2_2", "")], ["추천", ans.get("a2_3_1", "")], ["추천 이유", ans.get("a2_3_2", "")], ["감상평", ans.get("a2_4", "")], ["[5. 내가 찍는다면?]", ""], ["영상 제목", ans.get("a3_1", "")], ["주요 컨셉", ans.get("a3_2", "")], ["누구와?", ans.get("a3_3", "")], ["이유", ans.get("a3_4", "")], ["해보고 싶은 것", ans.get("a3_5", "")], ["이유", ans.get("a3_6", "")], ["장소/공간", ans.get("a3_7", "")], ["이유", ans.get("a3_8", "")], ["썸네일", ans.get("a3_9", "")], ["BGM", ans.get("a3_10", "")], ["이유", ans.get("a3_11", "")]])
     elif selected_view == ACT_3_2:
-        csv_data.extend([["1-1 편안한 장소", ans.get("q1_1", "")], ["1-2 편안한 이유", ans.get("q1_2", "")], ["2-1 성격", ans.get("q2_1", "")], ["2-2 성격형성 장소", ans.get("q2_2", "")], ["2-3 그 이유", ans.get("q2_3", "")], ["3-1 장점", ans.get("q3_1", "")], ["3-2 장점형성 장소", ans.get("q3_2", "")], ["3-3 그 이유", ans.get("q3_3", "")], ["4-1 성장영향 장소", ans.get("q4_1", "")], ["4-2 어떤면에서", ans.get("q4_2", "")], ["5-1 나의 목표", ans.get("q5_1", "")], ["5-2 목표영향 장소", ans.get("q5_2", "")], ["6-1 소개장소", ans.get("q6_1", "")], ["6-2 그 이유", ans.get("q6_2", "")], ["7-1 비밀장소", ans.get("q7_1", "")], ["7-2 그 이유", ans.get("q7_2", "")], ["8-1 과거로 간다면", ans.get("q8_1", "")], ["8-2 그 이유", ans.get("q8_2", "")]])
+        csv_data.extend([["편안한 장소", ans.get("q1_1", "")], ["이유", ans.get("q1_2", "")], ["성격", ans.get("q2_1", "")], ["성격 영향 장소", ans.get("q2_2", "")], ["이유", ans.get("q2_3", "")], ["장점", ans.get("q3_1", "")], ["장점 영향 장소", ans.get("q3_2", "")], ["이유", ans.get("q3_3", "")], ["성장 영향 장소", ans.get("q4_1", "")], ["어떤 면에서", ans.get("q4_2", "")], ["목표", ans.get("q5_1", "")], ["목표 영향 장소", ans.get("q5_2", "")], ["소개 장소", ans.get("q6_1", "")], ["이유", ans.get("q6_2", "")], ["비밀 장소", ans.get("q7_1", "")], ["이유", ans.get("q7_2", "")], ["과거 장소", ans.get("q8_1", "")], ["이유", ans.get("q8_2", "")]])
     elif selected_view == ACT_3_3:
-        for row in ans.get("s1_df", []): csv_data.append([row.get("대륙", ""), f"관심도: {row.get('관심도', '')} / 지식: {row.get('지식수준', '')}"])
-        for row in ans.get("direct_df", []): csv_data.append([row.get("여행해 본 국가", ""), row.get("기억/인상", "")])
-        csv_data.extend([["간접경험(영화/드라마)", ans.get("ind1", "")], ["간접경험(음악)", ans.get("ind2", "")], ["간접경험(음식)", ans.get("ind3", "")]])
-        for row in ans.get("top5_want", []): csv_data.append([row.get("가고싶은 국가", ""), row.get("이유", "")])
-        for row in ans.get("top5_notwant", []): csv_data.append([row.get("가기싫은 국가", ""), row.get("이유", "")])
-        for row in ans.get("label_df", []): csv_data.append([row.get("가고싶은 국가", ""), f"라벨: {row.get('한 단어 라벨', '')} / 싫은국가: {row.get('가고 싶지 않은 국가', '')} / 라벨(부정): {row.get('한 단어 라벨(부정)', '')}"])
-        for row in ans.get("prej_df", []): csv_data.append([row.get("국가명", ""), f"편견내용: {row.get('편견 내용', '')} / 형성과정: {row.get('편견 형성 과정 혹은 이유', '')}"])
-        csv_data.extend([["뉴스 빈도 국가", ans.get("media1_1", "")], ["뉴스 이미지", ans.get("media1_2", "")], ["영화 빈도 국가", ans.get("media2_1", "")], ["영화 이미지", ans.get("media2_2", "")], ["학교 배운 국가", ans.get("media3_1", "")], ["학교 지식", ans.get("media3_2", "")]])
-        for row in ans.get("fake_df", []): csv_data.append([row.get("국가명", ""), f"잘못알던내용: {row.get('잘못 알고 있었던 내용', '')} / 실제사실: {row.get('실제 사실', '')}"])
-        for row in ans.get("discrim_df", []): csv_data.append([row.get("어떤 국가?", ""), f"어떤측면: {row.get('어떤 측면에서', '')} / 이유: {row.get('그 이유', '')}"])
-        for row in ans.get("change_df", []): csv_data.append([row.get("어떤 국가?", ""), f"현재편견: {row.get('현재의 편견', '')} / 수집계획: {row.get('올바른 정보를 찾기 위한 계획', '')}"])
-        for row in ans.get("ignore_df", []): csv_data.append([row.get("대륙/국가", ""), f"무관심이유: {row.get('무관심 이유', '')} / 확장방법: {row.get('관심 확장을 위한 정보 수집 방법', '')}"])
-        for row in ans.get("western_df", []): csv_data.append([row.get("서구중심적 시각", ""), f"개선방법: {row.get('개선 방법', '')}"])
-        csv_data.extend([["되고싶은 사람", ans.get("goal_1", "")], ["갖고싶은 세계관", ans.get("goal_2", "")]])
+        for r in ans.get("s1_df", []): csv_data.append([r.get("대륙", ""), f"관심도:{r.get('관심도','')} 지식:{r.get('지식수준','')}"])
+        for r in ans.get("direct_df", []): csv_data.append([r.get("여행해 본 국가", ""), r.get("기억/인상", "")])
+        csv_data.extend([["영화/드라마", ans.get("ind1", "")], ["음악/연예인", ans.get("ind2", "")], ["음식", ans.get("ind3", "")]])
+        for r in ans.get("top5_want", []): csv_data.append([r.get("국가 혹은 지역", ""), r.get("이유", "")])
+        for r in ans.get("top5_notwant", []): csv_data.append([r.get("국가 혹은 지역", ""), r.get("이유", "")])
+        for r in ans.get("label_df", []): csv_data.append([r.get("가 보고 싶은 국가", ""), f"라벨:{r.get('한 단어 라벨','')} 싫은국가:{r.get('가고 싶지 않은 국가','')} 라벨(부정):{r.get('한 단어 라벨(부정)','')}"])
+        for r in ans.get("prej_df", []): csv_data.append([r.get("국가명", ""), f"편견:{r.get('편견 내용','')} 이유:{r.get('편견 형성 과정 혹은 이유','')}"])
+        csv_data.extend([["뉴스국가", ans.get("media1_1", "")], ["뉴스이미지", ans.get("media1_2", "")], ["영화국가", ans.get("media2_1", "")], ["영화이미지", ans.get("media2_2", "")], ["학교국가", ans.get("media3_1", "")], ["학교지식", ans.get("media3_2", "")]])
+        for r in ans.get("fake_df", []): csv_data.append([r.get("국가명", ""), f"오해:{r.get('잘못 알고 있었던 내용','')} 진실:{r.get('실제 사실','')}"])
+        for r in ans.get("discrim_df", []): csv_data.append([r.get("어떤 국가에 대해?", ""), f"측면:{r.get('어떤 측면에서','')} 이유:{r.get('그 이유','')}"])
+        for r in ans.get("change_df", []): csv_data.append([r.get("어떤 국가에 대해?", ""), f"편견:{r.get('현재의 편견','')} 계획:{r.get('올바른 정보를 찾기 위한 계획','')}"])
+        for r in ans.get("ignore_df", []): csv_data.append([r.get("선택 대륙/국가", ""), f"이유:{r.get('무관심 이유','')} 확장:{r.get('관심 확장을 위한 정보 수집 방법','')}"])
+        for r in ans.get("western_df", []): csv_data.append([r.get("현재 가지고 있는 서구 중심적 시각", ""), r.get('개선 방법', '')])
+        csv_data.extend([["목표인물", ans.get("goal_1", "")], ["목표세계관", ans.get("goal_2", "")]])
     elif selected_view == ACT_2_1:
-        csv_data.append(["모둠원", f"{ans.get('m1_id','')} {ans.get('m1_name','')} / {ans.get('m2_id','')} {ans.get('m2_name','')} / {ans.get('m3_id','')} {ans.get('m3_name','')} / {ans.get('m4_id','')} {ans.get('m4_name','')}"])
+        csv_data.extend([["모둠원", f"1:{ans.get('m1_id','')} {ans.get('m1_name','')} / 2:{ans.get('m2_id','')} {ans.get('m2_name','')} / 3:{ans.get('m3_id','')} {ans.get('m3_name','')} / 4:{ans.get('m4_id','')} {ans.get('m4_name','')}"]])
         csv_data.extend([["밈 수집", ans.get("step1_1", "")], ["주관적 이미지", ans.get("step1_2", "")], ["특별한 장소", ans.get("step1_3", "")], ["감정/생각", ans.get("step1_4", "")], ["탐구 시기", ans.get("step2_1_period", "")], ["핵심 공간", ans.get("step2_1_space", "")], ["객관적 특징", ans.get("step2_1_feat", "")], ["객관적 지표", ans.get("step2_3", "")]])
-        for row in ans.get("step3_df", []): csv_data.append([row.get("거주 적합성 요인", ""), f"별점: {row.get('만족도 점수', '')} / 평가: {row.get('한 줄 평가', '')}"])
+        for r in ans.get("step3_df", []): csv_data.append([r.get("거주 적합성 요인", ""), f"별점:{r.get('만족도 점수','')} 평가:{r.get('한 줄 평가','')}"])
         csv_data.extend([["기존 프레임", ans.get("step4_1", "")], ["지리적 본질", ans.get("step4_2", "")], ["슬로건", ans.get("step4_3", "")], ["개선 아이디어", ans.get("step4_4", "")]])
     elif selected_view == ACT_2_2:
-        csv_data.append(["모둠원", f"{ans.get('m1_id','')} {ans.get('m1_name','')} / {ans.get('m2_id','')} {ans.get('m2_name','')} / {ans.get('m3_id','')} {ans.get('m3_name','')} / {ans.get('m4_id','')} {ans.get('m4_name','')}"])
+        csv_data.extend([["모둠원", f"1:{ans.get('m1_id','')} {ans.get('m1_name','')} / 2:{ans.get('m2_id','')} {ans.get('m2_name','')} / 3:{ans.get('m3_id','')} {ans.get('m3_name','')} / 4:{ans.get('m4_id','')} {ans.get('m4_name','')}"]])
         csv_data.append(["대상 지역", ans.get("step1_1", "")])
-        for row in ans.get("step1_2_df", []): csv_data.append([row.get("구분", ""), f"항목: {row.get('필수 서비스 항목', '')} / 충분: {row.get('충분', '')} / 부족: {row.get('부족 or 없음', '')}"])
+        for r in ans.get("step1_2_df", []): csv_data.append([r.get("구분", ""), f"항목:{r.get('필수 서비스 항목','')} 충분:{r.get('충분','')} 부족:{r.get('부족 or 없음','')}"])
         csv_data.extend([["문제점 1", ans.get("step1_3_1", "")], ["문제점 2", ans.get("step1_3_2", "")], ["문제점 3", ans.get("step1_3_3", "")]])
-        for row in ans.get("step2_point_df", []): csv_data.append([row.get("카테고리", ""), f"코드: {row.get('코드', '')}, 내용: {row.get('세부 개조 항목', '')}, 비용: {row.get('비용', '')}"])
-        for row in ans.get("step2_df", []): csv_data.append([f"순번 {row.get('순번', '')}", f"코드: {row.get('선택 코드', '')} / 버릴공간: {row.get('버릴 공간', '')} / 포인트: {row.get('사용 포인트', '')} / 재설계: {row.get('공간 재설계 이유 및 기대효과', '')}"])
-        if ans.get("file_before_data") or ans.get("img_before"): csv_data.append(["변경 전 자료", f"제출 완료 ({ans.get('file_before_name', '스케치.png')})"])
-        if ans.get("file_after_data") or ans.get("img_after"): csv_data.append(["변경 후 자료", f"제출 완료 ({ans.get('file_after_name', '스케치.png')})"])
-        csv_data.extend([["슬로건", ans.get("step4_1", "")], ["공간 문제", ans.get("step4_2", "")], ["버리고 채운 것", ans.get("step4_3", "")], ["일상 변화", ans.get("step4_4", "")]])
+        for r in ans.get("step2_point_df", []): csv_data.append([r.get("카테고리", ""), f"코드:{r.get('코드','')} 내용:{r.get('세부 개조 항목','')} 비용:{r.get('비용','')}"])
+        for r in ans.get("step2_df", []): csv_data.append([f"순번 {r.get('순번', '')}", f"코드:{r.get('선택 코드','')} 버릴공간:{r.get('버릴 공간','')} 포인트:{r.get('사용 포인트','')} 재설계:{r.get('공간 재설계 이유 및 기대효과','')}"])
+        csv_data.extend([["변경 전", ans.get("file_before_name", "")], ["변경 후", ans.get("file_after_name", "")], ["슬로건", ans.get("step4_1", "")], ["공간 문제", ans.get("step4_2", "")], ["버리고 채운 것", ans.get("step4_3", "")], ["일상 변화", ans.get("step4_4", "")]])
     elif selected_view == ACT_2_3:
-        csv_data.extend([["학번", ans.get('ind_id', '')], ["이름", ans.get('ind_name', '')], ["희망 진로", ans.get("ind_career", "")]])
-        for row in ans.get("step1_df", []): csv_data.append([row.get("구분", ""), f"키워드: {row.get('내가 찾은 정체성 키워드 혹은 문장', '')} / 근거: {row.get('근거가 되는 사실·통계·사건', '')} / 출처: {row.get('출처(기관명/자료명/연도)', '')}"])
-        csv_data.extend([["최종 선택 키워드", ans.get("step1_keyword", "")], ["단 하나의 메시지", ans.get("step1_message", "")]])
-        for row in ans.get("step2_df", []): csv_data.append([row.get("건물명", ""), f"벽면: {row.get('벽면 조건', '')} / 관람: {row.get('관람 조건', '')} / 접근: {row.get('접근성', '')} / 제약: {row.get('예상 제약', '')} / 연관성: {row.get('정체성 연관성', '')} / 별점: {row.get('적합도(별점)', '')}"])
-        csv_data.extend([["최종 선정 건물", ans.get("step2_final_building", "")], ["선정 이유", ans.get("step2_reason", "")]])
-        for row in ans.get("step3_df", []): csv_data.append([row.get("조건 영역", ""), f"실제조건: {row.get('현장의 실제 조건 (확인한 사실)', '')} / 미치는 영향: {row.get('작품에 미치는 영향', '')} / 대응 방안: {row.get('나의 대응 방안', '')}"])
-        for i in range(1, 5): csv_data.append([f"컷 {i} 설명", ans.get(f'cut_{i}_desc', '')])
-        csv_data.extend([["작품 제목", ans.get("step5_title", "")], ["전시 장소", ans.get("step5_place", "")], ["작품 개요", ans.get("step5_summary", "")], ["지역 정체성 반영", ans.get("step5_identity", "")], ["현장 조건 반영", ans.get("step5_condition", "")], ["남길 변화", ans.get("step5_change", "")]])
-        for row in ans.get("step6_chk_df", []): csv_data.append([row.get("점검 항목", ""), "확인됨" if row.get("확인") else "미확인"])
-        for row in ans.get("step6_ai_df", []): csv_data.append([row.get("사용한 도구명", ""), f"프롬프트: {row.get('입력한 프롬프트', '')} / 수정내용: {row.get('AI 결과물을 내가 수정·판단한 내용', '')}"])
+        csv_data.extend([["학번/이름", f"{ans.get('ind_id', '')} / {ans.get('ind_name', '')}"], ["희망 진로", ans.get("ind_career", "")]])
+        for r in ans.get("step1_df", []): csv_data.append([r.get("구분", ""), f"키워드:{r.get('내가 찾은 정체성 키워드 혹은 문장','')} 근거:{r.get('근거가 되는 사실·통계·사건','')} 출처:{r.get('출처(기관명/자료명/연도)','')}"])
+        csv_data.extend([["선택 키워드", ans.get("step1_keyword", "")], ["메시지", ans.get("step1_message", "")]])
+        for r in ans.get("step2_df", []): csv_data.append([r.get("건물명", ""), f"벽면:{r.get('벽면 조건','')} 관람:{r.get('관람 조건','')} 접근:{r.get('접근성','')} 제약:{r.get('예상 제약','')} 연관성:{r.get('정체성 연관성','')} 적합도:{r.get('적합도(별점)','')}"])
+        csv_data.extend([["선정 건물", ans.get("step2_final_building", "")], ["선정 이유", ans.get("step2_reason", "")]])
+        for r in ans.get("step3_df", []): csv_data.append([r.get("조건 영역", ""), f"실제조건:{r.get('현장의 실제 조건 (확인한 사실)','')} 영향:{r.get('작품에 미치는 영향','')} 대응:{r.get('나의 대응 방안','')}"])
+        for i in range(1, 5): csv_data.append([f"컷 {i}", f"설명: {ans.get(f'cut_{i}_desc', '')} / 첨부: {ans.get(f'cut_{i}_file_name', '')}"])
+        csv_data.extend([["작품 제목", ans.get("step5_title", "")], ["전시 장소", ans.get("step5_place", "")], ["개요", ans.get("step5_summary", "")], ["정체성 반영", ans.get("step5_identity", "")], ["조건 반영", ans.get("step5_condition", "")], ["변화", ans.get("step5_change", "")]])
+        for r in ans.get("step6_chk_df", []): csv_data.append([r.get("점검 항목", ""), "O" if r.get("확인") else "X"])
+        for r in ans.get("step6_ai_df", []): csv_data.append([r.get("사용한 도구명", ""), f"프롬프트:{r.get('입력한 프롬프트','')} 수정내용:{r.get('AI 결과물을 내가 수정·판단한 내용','')}"])
         csv_data.append(["활동 성찰", ans.get("step6_reflection", "")])
     else:
         for q in (config.get("custom_forms", {}).get(selected_view, []) if config else []): csv_data.append([q["label"], ans.get(q["id"], "")])
@@ -377,34 +287,7 @@ def generate_activity_html(act_name, ans, u_name):
     return html + generate_html_content(act_name, ans) + "</body></html>"
 
 def inject_custom_scripts():
-    components.html("""
-    <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const parentDoc = window.parent.document;
-        function initAutoSave() {
-            const elements = parentDoc.querySelectorAll('input[type="text"], textarea');
-            elements.forEach(el => {
-                const ariaLabel = el.getAttribute('aria-label') || '';
-                const key = 'autosave_' + window.parent.location.pathname + '_' + ariaLabel;
-                if (!el.dataset.autosaveAttached && ariaLabel !== '') {
-                    el.dataset.autosaveAttached = "true";
-                    el.addEventListener('input', () => { window.localStorage.setItem(key, el.value); });
-                    el.addEventListener('focus', () => {
-                        const savedVal = window.localStorage.getItem(key);
-                        if (savedVal && el.value === "") {
-                            let setter = Object.getOwnPropertyDescriptor(window.parent.HTMLInputElement.prototype, "value")?.set;
-                            if(el.tagName === 'TEXTAREA') setter = Object.getOwnPropertyDescriptor(window.parent.HTMLTextAreaElement.prototype, "value")?.set;
-                            if(setter) { setter.call(el, savedVal); el.dispatchEvent(new Event('input', { bubbles: true })); }
-                            else { el.value = savedVal; }
-                        }
-                    });
-                }
-            });
-        }
-        setInterval(initAutoSave, 1500);
-    });
-    </script>
-    """, height=0, width=0)
+    components.html("""<script>document.addEventListener("DOMContentLoaded", function() { const parentDoc = window.parent.document; function initAutoSave() { const elements = parentDoc.querySelectorAll('input[type="text"], textarea'); elements.forEach(el => { const ariaLabel = el.getAttribute('aria-label') || ''; const key = 'autosave_' + window.parent.location.pathname + '_' + ariaLabel; if (!el.dataset.autosaveAttached && ariaLabel !== '') { el.dataset.autosaveAttached = "true"; el.addEventListener('input', () => { window.localStorage.setItem(key, el.value); }); el.addEventListener('focus', () => { const savedVal = window.localStorage.getItem(key); if (savedVal && el.value === "") { let setter = Object.getOwnPropertyDescriptor(window.parent.HTMLInputElement.prototype, "value")?.set; if(el.tagName === 'TEXTAREA') setter = Object.getOwnPropertyDescriptor(window.parent.HTMLTextAreaElement.prototype, "value")?.set; if(setter) { setter.call(el, savedVal); el.dispatchEvent(new Event('input', { bubbles: true })); } else { el.value = savedVal; } } }); } }); } setInterval(initAutoSave, 1500); });</script>""", height=0, width=0)
 
 # --- [4] 활동지 화면 구성 함수 ---
 def render_group_members(ans, disabled_flag, category=""):
@@ -486,7 +369,7 @@ def render_activity2_3th(user_key, u_info, current_role):
     q2_3 = st.text_area("2-3) 그 이유는 무엇 때문인가?", value=ans.get("q2_3", ""), disabled=disabled_flag, key=f"q2_3_{category}")
     q3_1 = st.text_input("3-1) 자신의 장점은?", value=ans.get("q3_1", ""), disabled=disabled_flag, key=f"q3_1_{category}")
     q3_2 = st.text_input("3-2) 장점 형성에 영향을 준 장소가 있는가?", value=ans.get("q3_2", ""), disabled=disabled_flag, key=f"q3_2_{category}")
-    q3_3 = st.text_area("3-3) 그 이유는 무엇 때문인가?", value=ans.get("q3_3", ""), disabled=disabled_flag, key=f"q3_3_{category}")
+    q3_3 = st.text_area("3-3) 그 이유는 무엇 때문인가?", value=ans.get("q3_3", ""), disabled=disabled_flag, key=f"q3_3_{category}") 
     q4_1 = st.text_input("4-1) 성장함에 있어 영향을 준 장소가 있는가?", value=ans.get("q4_1", ""), disabled=disabled_flag, key=f"q4_1_{category}")
     q4_2 = st.text_area("4-2) 어떤 면에서 영향을 주었는가?", value=ans.get("q4_2", ""), disabled=disabled_flag, key=f"q4_2_{category}")
     q5_1 = st.text_input("5-1) 지금 나의 목표는?", value=ans.get("q5_1", ""), disabled=disabled_flag, key=f"q5_1_{category}")
@@ -532,7 +415,6 @@ def render_activity3_3th(user_key, u_info, current_role):
     edited_top5_want = st.data_editor(top5_want, num_rows="fixed", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"top5_want_{category}")
     top5_notwant = pd.DataFrame(ans.get("top5_notwant", [{"국가 혹은 지역": "", "이유": ""} for _ in range(5)]))
     edited_top5_notwant = st.data_editor(top5_notwant, num_rows="fixed", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"top5_notwant_{category}")
-    
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>2. 특정 대륙/국가에 대한 자신의 편견과 고정관념</h3>", unsafe_allow_html=True)
     label_df = pd.DataFrame(ans.get("label_df", [{"가 보고 싶은 국가": "", "한 단어 라벨": "", "가고 싶지 않은 국가": "", "한 단어 라벨(부정)": ""} for _ in range(3)]))
     edited_label_df = st.data_editor(label_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"label_df_{category}")
@@ -549,7 +431,6 @@ def render_activity3_3th(user_key, u_info, current_role):
     edited_fake_df = st.data_editor(fake_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"fake_df_{category}")
     discrim_df = pd.DataFrame(ans.get("discrim_df", [{"어떤 국가에 대해?": "", "어떤 측면에서": "", "그 이유": ""} for _ in range(2)]))
     edited_discrim_df = st.data_editor(discrim_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"discrim_df_{category}")
-
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>3. 포용적이고 균형잡힌 세계관을 위한 노력</h3>", unsafe_allow_html=True)
     change_df = pd.DataFrame(ans.get("change_df", [{"어떤 국가에 대해?": "", "현재의 편견": "", "올바른 정보를 찾기 위한 계획": ""} for _ in range(2)]))
     edited_change_df = st.data_editor(change_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"change_df_{category}")
@@ -557,7 +438,6 @@ def render_activity3_3th(user_key, u_info, current_role):
     edited_ignore_df = st.data_editor(ignore_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"ignore_df_{category}")
     western_df = pd.DataFrame(ans.get("western_df", [{"현재 가지고 있는 서구 중심적 시각": "", "개선 방법": ""} for _ in range(2)]))
     edited_western_df = st.data_editor(western_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"western_df_{category}")
-
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>4. 목표로 하는 세계관</h3>", unsafe_allow_html=True)
     goal_1 = st.text_area("▶ 어떤 사람이 되고 싶은가?", value=ans.get("goal_1", ""), height=100, disabled=disabled_flag, key=f"goal_1_{category}")
     goal_2 = st.text_area("▶ 어떤 세계관을 갖고 싶은가?", value=ans.get("goal_2", ""), height=100, disabled=disabled_flag, key=f"goal_2_{category}")
@@ -576,12 +456,10 @@ def render_activity1_2nd(user_key, u_info, current_role):
     owner_key, ans = get_user_activity_data(user_key, u_id, u_subj, user_class, category, learning_data)
     is_active, status_msg = check_active_with_exception(category, user_class, user_key)
     disabled_flag = (current_role == "학생" and not is_active)
-    
     is_member_view = False
     if current_role == "학생" and owner_key != user_key:
         is_member_view = True; disabled_flag = True
     if current_role == "관리자": disabled_flag = False; st.info("💡 교사/관리자 모드입니다.")
-        
     st.markdown(f"<h2 style='font-size: 28px; font-weight: 900; color: #000;'>♣ {category}</h2>", unsafe_allow_html=True)
     if is_member_view: st.info("💡 **[조회 전용]** 모둠장(대표)이 작성 및 저장한 화면을 연동하여 조회 중입니다.")
     elif current_role == "학생":
@@ -589,66 +467,30 @@ def render_activity1_2nd(user_key, u_info, current_role):
         else: st.success(status_msg, icon="✅")
 
     m1_id, m1_name, m2_id, m2_name, m3_id, m3_name, m4_id, m4_name = render_group_members(ans, disabled_flag, category)
-    
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 1. 우리 지역에 대한 '밈' 수집 및 지리 정보 팩트 체크 일지</h3>", unsafe_allow_html=True)
-    st.markdown("""
-    <div class='guide-box'>
-    <strong>▶ 교과서 13쪽 내용 中</strong><br>
-    개인이 여러 장소에서 경험을 쌓으며 형성하는 주관적인 감정을 장소감이라 합니다. 이 장소감이 여러 사람에게 공유되면서 형성된 독특한 이미지가 바로 장소성이며, 이것이 확장되어 그 도시만의 독특한 특성인 도시 정체성을 만듭니다.<br><br>
-    <strong>* 나만의 주관적 장소감 성찰</strong><br>
-    타 지역 사람들의 선입견과 달리, '우리 지역에서 나를 성장시킨 장소'나 '우리가 가장 애착을 느끼는 장소'를 적고 그에 대한 우리의 감정이나 생각을 적어 보세요.
-    </div>
-    """, unsafe_allow_html=True)
-    
+    st.markdown("<div class='guide-box'><strong>▶ 교과서 13쪽 내용 中</strong><br>개인이 여러 장소에서 경험을 쌓으며 형성하는 주관적인 감정을 장소감이라 합니다. 이 장소감이 여러 사람에게 공유되면서 형성된 독특한 이미지가 바로 장소성이며, 이것이 확장되어 그 도시만의 독특한 특성인 도시 정체성을 만듭니다.<br><br><strong>* 나만의 주관적 장소감 성찰</strong><br>타 지역 사람들의 선입견과 달리, '우리 지역에서 나를 성장시킨 장소'나 '우리가 가장 애착을 느끼는 장소'를 적고 그에 대한 우리의 감정이나 생각을 적어 보세요.</div>", unsafe_allow_html=True)
     step1_1 = st.text_input("1. 우리가 선택한 우리 지역의 밈", value=ans.get("step1_1", ""), disabled=disabled_flag, key=f"step1_1_{category}")
-    step1_2 = text_input_with_label = st.text_input("2. 이 밈이 대중에게 심어준 주관적 이미지 (편견 혹은 선입견)", value=ans.get("step1_2", ""), disabled=disabled_flag, key=f"step1_2_{category}")
+    step1_2 = st.text_input("2. 이 밈이 대중에게 심어준 주관적 이미지 (편견 혹은 선입견)", value=ans.get("step1_2", ""), disabled=disabled_flag, key=f"step1_2_{category}")
     step1_3 = st.text_input("3. 우리 모둠에게 특별한 장소감을 주는 장소", value=ans.get("step1_3", ""), disabled=disabled_flag, key=f"step1_3_{category}")
     step1_4 = st.text_area("4. 그 장소에서 느끼는 감정이나 생각", value=ans.get("step1_4", ""), disabled=disabled_flag, key=f"step1_4_{category}")
     
     st.markdown("---")
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 2. 도시 발달 과정과 객관적 지표</h3>", unsafe_allow_html=True)
-    st.markdown("""
-    <div class='guide-box'>
-    <strong>▶ 교과서 14~15, 31~32쪽 내용 中</strong><br>
-    객관적 의미의 도시는 시가지로 구성되며 2·3차 산업 비율이 높은 공간입니다. 도시는 살아있는 생명체처럼 탄생, 성장, 정체, 쇠퇴, 전환의 도시 발달 과정을 겪습니다. 울산은 시대별로 역동적인 변화를 거쳐왔습니다.<br><br>
-    <strong>* 울산의 역사적 발달 과정 추적</strong><br>
-    다음 제시된 울산의 발달 역사 중 우리 조가 탐구할 시기를 선택하고, 당시 울산의 핵심 공간과 객관적 특징을 매칭해 보세요.<br><br>
-    <strong>* 지리 데이터 기반 분석</strong><br>
-    우리 모둠이 선택한 시기 울산의 객관적 지표를 지리 정보 서비스나 통계 자료를 통해 확인해 보세요.<br>
-    - 추천 검색어: '울산광역시 통계포털', 'KOSIS 지역별 고용조사', '카카오맵/네이버맵 지적편집도'<br>
-    - 조사한 구체적 사실/통계: 예) 현재 울산의 제조업 종사자 비율이 약 40% 이상으로 전국 최고 수준이라는 점 / 태화강 수질이 생태 등급으로 회복된 지표 등
-    </div>
-    """, unsafe_allow_html=True)
-    
-    step2_1_period = st.radio("1. 우리 모둠이 탐구할 시기", ["조선시대", "1960~70년대", "1980~90년대", "2000년대~현재"], index=["조선시대", "1960~70년대", "1980~90년대", "2000년대~현재"].index(ans.get("step2_1_period", "조선시대")) if ans.get("step2_1_period") in ["조선시대", "1960~70년대", "1980~90년대", "2000년대~현재"] else 0, disabled=disabled_flag, horizontal=True, key=f"step2_1_period_{category}")
-    step2_1_space = st.text_input("2-1. 선택한 시기의 핵심 공간", value=ans.get("step2_1_space", ""), disabled=disabled_flag, key=f"step2_1_space_{category}")
+    st.markdown("<div class='guide-box'><strong>▶ 교과서 14~15, 31~32쪽 내용 中</strong><br>객관적 의미의 도시는 시가지로 구성되며 2·3차 산업 비율이 높은 공간입니다. 도시는 살아있는 생명체처럼 탄생, 성장, 정체, 쇠퇴, 전환의 도시 발달 과정을 겪습니다. 울산은 시대별로 역동적인 변화를 거쳐왔습니다.<br><br><strong>* 울산의 역사적 발달 과정 추적</strong><br>다음 제시된 울산의 발달 역사 중 우리 조가 탐구할 시기를 선택하고, 당시 울산의 핵심 공간과 객관적 특징을 매칭해 보세요.<br><br><strong>* 지리 데이터 기반 분석</strong><br>우리 모둠이 선택한 시기 울산의 객관적 지표를 지리 정보 서비스나 통계 자료를 통해 확인해 보세요.<br>- 추천 검색어: '울산광역시 통계포털', 'KOSIS 지역별 고용조사', '카카오맵/네이버맵 지적편집도'<br>- 조사한 구체적 사실/통계: 예) 현재 울산의 제조업 종사자 비율이 약 40% 이상으로 전국 최고 수준이라는 점 / 태화강 수질이 생태 등급으로 회복된 지표 등</div>", unsafe_allow_html=True)
+    step2_1_period = st.radio("1. 탐구할 시기", ["조선시대", "1960~70년대", "1980~90년대", "2000년대~현재"], index=["조선시대", "1960~70년대", "1980~90년대", "2000년대~현재"].index(ans.get("step2_1_period", "조선시대")) if ans.get("step2_1_period") in ["조선시대", "1960~70년대", "1980~90년대", "2000년대~현재"] else 0, disabled=disabled_flag, horizontal=True, key=f"step2_1_period_{category}")
+    step2_1_space = st.text_input("2-1. 핵심 공간", value=ans.get("step2_1_space", ""), disabled=disabled_flag, key=f"step2_1_space_{category}")
     step2_1_feat = st.text_input("2-2. 객관적 특징", value=ans.get("step2_1_feat", ""), disabled=disabled_flag, key=f"step2_1_feat_{category}")
-    step2_3 = st.text_area("3. 선택한 시기의 객관적 지리 데이터 혹은 지표", value=ans.get("step2_3", ""), disabled=disabled_flag, key=f"step2_3_{category}")
+    step2_3 = st.text_area("3. 객관적 지리 데이터 혹은 지표", value=ans.get("step2_3", ""), disabled=disabled_flag, key=f"step2_3_{category}")
 
     st.markdown("---")
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 3. 살기 좋은 울산의 조건: 거주 적합성 진단</h3>", unsafe_allow_html=True)
-    st.markdown("""
-    <div class='guide-box'>
-    <strong>▶ 교과서 38쪽 내용 中</strong><br>
-    일정한 곳에 머물러 살기 알맞은 조건이나 성질을 거주 적합성이라고 합니다. 이는 지속가능성, 이동성, 안전 및 보안, 서비스 효율성, 경제 성장, 도시 평판 등 삶의 질과 관련된 6대 요소로 이루어집니다. 개인의 연령, 직업, 가치관에 따라 선호하는 거주 적합성은 각기 다르게 나타납니다.<br><br>
-    <strong>* 우리의 시선으로 본 울산의 거주 적합성 스코어보드</strong><br>
-    울산에서 살아가는 10대 고등학생인 여러분의 관점에서, 현재 울산의 거주 적합성 요소를 5점 만점으로 평가하고 그 까닭을 서술해 보세요.
-    </div>
-    """, unsafe_allow_html=True)
-    
-    stars = ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"]
-    default_step3 = [{"거주 적합성 요인": "경제 성장", "만족도 점수": "⭐⭐⭐⭐", "한 줄 평가": ""}] + [{"거주 적합성 요인": "", "만족도 점수": "⭐⭐⭐", "한 줄 평가": ""} for _ in range(4)]
-    step3_df = pd.DataFrame(ans.get("step3_df", default_step3))
-    edited_step3_df = st.data_editor(step3_df, column_config={"만족도 점수": st.column_config.SelectboxColumn("만족도 점수", options=stars, required=True)}, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"step3_df_{category}")
+    st.markdown("<div class='guide-box'><strong>▶ 교과서 38쪽 내용 中</strong><br>일정한 곳에 머물러 살기 알맞은 조건이나 성질을 거주 적합성이라고 합니다. 이는 지속가능성, 이동성, 안전 및 보안, 서비스 효율성, 경제 성장, 도시 평판 등 삶의 질과 관련된 6대 요소로 이루어집니다. 개인의 연령, 직업, 가치관에 따라 선호하는 거주 적합성은 각기 다르게 나타납니다.<br><br><strong>* 우리의 시선으로 본 울산의 거주 적합성 스코어보드</strong><br>울산에서 살아가는 10대 고등학생인 여러분의 관점에서, 현재 울산의 거주 적합성 요소를 5점 만점으로 평가하고 그 까닭을 서술해 보세요.</div>", unsafe_allow_html=True)
+    step3_df = pd.DataFrame(ans.get("step3_df", [{"거주 적합성 요인": "경제 성장", "만족도 점수": "⭐⭐⭐⭐", "한 줄 평가": ""}] + [{"거주 적합성 요인": "", "만족도 점수": "⭐⭐⭐", "한 줄 평가": ""} for _ in range(4)]))
+    edited_step3_df = st.data_editor(step3_df, column_config={"만족도 점수": st.column_config.SelectboxColumn("만족도 점수", options=["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"])}, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"step3_df_{category}")
 
     st.markdown("---")
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 4. 우리의 방식으로 해 보는 울산 브랜딩: 정체성 리뉴얼</h3>", unsafe_allow_html=True)
-    st.markdown("""
-    <div class='guide-box'>
-    <strong>밈과 지리적 사실의 융합을 통한 '울산성(Ulsan-ity)' 재정의</strong><br>
-    STEP 1~3의 탐구 결과를 바탕으로, 울산의 프레임을 위트 있게 깨부수는 우리 모둠만의 울산 브랜딩 슬로건과 간단한 정책(시설)을 제안해 봅시다.
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("<div class='guide-box'><strong>밈과 지리적 사실의 융합을 통한 '울산성(Ulsan-ity)' 재정의</strong><br>STEP 1~3의 탐구 결과를 바탕으로, 울산의 프레임을 위트 있게 깨부수는 우리 모둠만의 울산 브랜딩 슬로건과 간단한 정책(시설)을 제안해 봅시다.</div>", unsafe_allow_html=True)
     step4_1 = st.text_input("1. 기존 프레임(대중의 오해)", value=ans.get("step4_1", ""), disabled=disabled_flag, key=f"step4_1_{category}")
     step4_2 = st.text_input("2. 우리 모둠이 도출한 지리적 본질", value=ans.get("step4_2", ""), disabled=disabled_flag, key=f"step4_2_{category}")
     step4_3 = st.text_input("3. 우리 모둠의 반전 광고 슬로건", value=ans.get("step4_3", ""), disabled=disabled_flag, key=f"step4_3_{category}")
@@ -668,7 +510,6 @@ def render_activity2_2nd(user_key, u_info, current_role):
     owner_key, ans = get_user_activity_data(user_key, u_id, u_subj, user_class, category, learning_data)
     is_active, status_msg = check_active_with_exception(category, user_class, user_key)
     disabled_flag = (current_role == "학생" and not is_active)
-    
     is_member_view = False
     if current_role == "학생" and owner_key != user_key:
         is_member_view = True; disabled_flag = True
@@ -682,12 +523,7 @@ def render_activity2_2nd(user_key, u_info, current_role):
 
     m1_id, m1_name, m2_id, m2_name, m3_id, m3_name, m4_id, m4_name = render_group_members(ans, disabled_flag, category)
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 1. 우리 동네 현황 진단</h3>", unsafe_allow_html=True)
-    st.markdown("""
-    <div class='guide-box'>
-    <strong>도보 15분 / 반경 1km 생활권 분석</strong><br>
-    : 실제 답사와 지도 앱 내용을 통한 필수 서비스 결손 현황 체크
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("<div class='guide-box'><strong>도보 15분 / 반경 1km 생활권 분석</strong><br>: 실제 답사와 지도 앱 내용을 통한 필수 서비스 결손 현황 체크</div>", unsafe_allow_html=True)
     
     step1_1 = st.text_input("1. 대상 지역 (예: 학교 주변 인근 00아파트 00단지 일대)", value=ans.get("step1_1", ""), disabled=disabled_flag, key=f"step1_1_{category}")
     default_step1_2 = [{"구분": "주거 및 생활", "필수 서비스 항목": "생필품 마트", "충분": False, "부족 or 없음": False}, {"구분": "의료 및 돌봄", "필수 서비스 항목": "병원, 약국", "충분": False, "부족 or 없음": False}, {"구분": "노동 및 학습", "필수 서비스 항목": "무료 학습 공간", "충분": False, "부족 or 없음": False}, {"구분": "여가 및 녹지", "필수 서비스 항목": "공원, 휴식 공간", "충분": False, "부족 or 없음": False}, {"구분": "교육 및 문화", "필수 서비스 항목": "문화 시설", "충분": False, "부족 or 없음": False}, {"구분": "이동 및 보행", "필수 서비스 항목": "보행자 전용 도로", "충분": False, "부족 or 없음": False}]
@@ -700,17 +536,7 @@ def render_activity2_2nd(user_key, u_info, current_role):
 
     st.markdown("---")
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 2. 도시 개조 포인트를 활용한 트레이드오프 설계</h3>", unsafe_allow_html=True)
-    st.markdown("""
-    <div class='guide-box'>
-    <strong>▶ 트레이드오프 설계</strong><br>
-    : 두 개 이상의 상충되는 요구사항(예: 성능 대 비용, 유연성 대 단순성) 사이에서 최선의 선택을 하기 위해 장단점을 저울질하고 조율하는 과정. 완벽한 설계는 존재하지 않으며, 모든 설계는 무엇인가를 얻는 대신 다른 것을 포기하는 구조를 가질 수 밖에 없음<br><br>
-    <strong>▶ 도시 개조 포인트</strong><br>
-    : 기본 100포인트 부여, 포인트를 활용하여 기존의 비효율적, 차량 중심 공간을 보행자를 위한 친환경 인프라로!!<br>
-    : 새롭게 추가하는 카테고리/코드/세부 개조 항목 관련한 포인트는 최소 10pt, 최대 20pt(10~20pt)<br>
-    : 포인트는 남김 없이 모두 사용해야 함<br>
-    : 최소한의 현실 가능성은 충족할 것 예) 지하철 개통, 공항 건설... ㅠ.ㅠ
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("<div class='guide-box'><strong>▶ 트레이드오프 설계</strong><br>: 두 개 이상의 상충되는 요구사항(예: 성능 대 비용, 유연성 대 단순성) 사이에서 최선의 선택을 하기 위해 장단점을 저울질하고 조율하는 과정. 완벽한 설계는 존재하지 않으며, 모든 설계는 무엇인가를 얻는 대신 다른 것을 포기하는 구조를 가질 수 밖에 없음<br><br><strong>▶ 도시 개조 포인트</strong><br>: 기본 100포인트 부여, 포인트를 활용하여 기존의 비효율적, 차량 중심 공간을 보행자를 위한 친환경 인프라로!!<br>: 새롭게 추가하는 카테고리/코드/세부 개조 항목 관련한 포인트는 최소 10pt, 최대 20pt(10~20pt)<br>: 포인트는 남김 없이 모두 사용해야 함<br>: 최소한의 현실 가능성은 충족할 것 예) 지하철 개통, 공항 건설... ㅠ.ㅠ</div>", unsafe_allow_html=True)
     
     cat_names = ["안전한 보행 환경", "녹지 및 생태공간 구축", "문화와 교육을 위한 공간", "효율적인 교통과 모빌리티 구축"]
     default_point_table = [{"카테고리": "안전한 보행 환경", "코드": "A-1", "세부 개조 항목": "여고생 안심 귀가 스마트 로드 (CCTV 연동)", "비용": "-15pt"}]
@@ -738,7 +564,7 @@ def render_activity2_2nd(user_key, u_info, current_role):
 
     st.markdown("---")
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 3. N분 도시 공간 개조 자료 스케치/기획안 업로드</h3>", unsafe_allow_html=True)
-    st.markdown("""<div class='guide-box'>변경 전과 변경 후의 지도 스케치(변경 인프라 및 보행선 관련 내용 표시)</div>""", unsafe_allow_html=True)
+    st.markdown("<div class='guide-box'>변경 전과 변경 후의 지도 스케치(변경 인프라 및 보행선 관련 내용 표시)</div>", unsafe_allow_html=True)
     
     col_img1, col_img2 = st.columns(2)
     with col_img1:
@@ -771,14 +597,7 @@ def render_activity2_2nd(user_key, u_info, current_role):
 
     st.markdown("---")
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 4. 3분 공청회 발표를 위한 준비</h3>", unsafe_allow_html=True)
-    st.markdown("""
-    <div class='guide-box'>
-    <strong>핵심 정책 슬로건과 발표 내용 요약</strong><br>
-    STEP 1~3의 탐구 결과를 바탕으로, 발표 자료를 만들어 봅시다.<br>
-    * 핵심 정책 슬로건에는 버릴공간과 문제점 + 채울 인프라와 미래 가치에 대한 내용이 반드시 들어가야 함.
-    </div>
-    """, unsafe_allow_html=True)
-    
+    st.markdown("<div class='guide-box'><strong>핵심 정책 슬로건과 발표 내용 요약</strong><br>STEP 1~3의 탐구 결과를 바탕으로, 발표 자료를 만들어 봅시다.<br>* 핵심 정책 슬로건에는 버릴공간과 문제점 + 채울 인프라와 미래 가치에 대한 내용이 반드시 들어가야 함.</div>", unsafe_allow_html=True)
     step4_1 = st.text_input("1. 핵심 정책 슬로건", value=ans.get("step4_1", ""), disabled=disabled_flag, key=f"step4_1_{category}")
     step4_2 = st.text_area("2. 심각한 공간 문제", value=ans.get("step4_2", ""), disabled=disabled_flag, key=f"step4_2_{category}")
     step4_3 = st.text_area("3. 버리고 채운 것과 이유", value=ans.get("step4_3", ""), disabled=disabled_flag, key=f"step4_3_{category}")
@@ -812,17 +631,7 @@ def render_activity3_2nd(user_key, u_info, current_role):
     ind_career = col_i3.text_input("희망 진로", value=ans.get("ind_career", ""), disabled=disabled_flag, key=f"ind_career_{category}")
     
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 1. 우리 지역 정체성 자원 발굴 및 팩트 체크</h3>", unsafe_allow_html=True)
-    st.markdown("""
-    <div class='guide-box'>
-    <strong>▶ 교과서 13쪽 / 20쪽 내용 中</strong><br>
-    개인이 여러 장소에서 경험을 쌓으며 형성하는 주관적인 감정을 장소감이라 하고, 이것이 공유되어 형성된 독특한 이미지가 장소성이며, 확장되면 그 도시만의 특성인 도시 정체성이 됩니다.<br>
-    미디어 파사드 디자이너는 건물의 형태와 주변 환경을 고려하여 특정 주제나 전달하고자 하는 메시지에 맞춘 디자인을 구상하고, 건축물 외벽에 프로젝션·LED 스크린·조명 등 다양한 기술을 활용하여 작품을 구현합니다.<br><br>
-    ▶ 우리 지역의 정체성은 '느낌'이 아니라 <strong>'근거'</strong>에서 출발합니다. 아래 세 개의 축에서 키워드를 뽑고, 반드시 출처가 있는 자료로 뒷받침하세요.<br>
-    ▶ 내 작품의 소재가 될 지역 정체성을 세 개의 축에서 찾고, 반드시 근거 자료와 출처를 함께 적습니다.<br>
-    ▶ <strong>추천 검색어</strong>: '울산광역시 통계포털', 'KOSIS 지역별 고용조사', '국가문화유산포털', '카카오맵/네이버맵 지적편집도'<br>
-    <span style='color: #d35400; font-weight: bold;'>※ 근거 자료와 출처가 비어 있는 칸은 점수로 인정되지 않습니다.</span>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("""<div class='guide-box'><strong>▶ 교과서 13쪽 / 20쪽 내용 中</strong><br>개인이 여러 장소에서 경험을 쌓으며 형성하는 주관적인 감정을 장소감이라 하고, 이것이 공유되어 형성된 독특한 이미지가 장소성이며, 확장되면 그 도시만의 특성인 도시 정체성이 됩니다.<br>미디어 파사드 디자이너는 건물의 형태와 주변 환경을 고려하여 특정 주제나 전달하고자 하는 메시지에 맞춘 디자인을 구상하고, 건축물 외벽에 프로젝션·LED 스크린·조명 등 다양한 기술을 활용하여 작품을 구현합니다.<br><br>▶ 우리 지역의 정체성은 '느낌'이 아니라 <strong>'근거'</strong>에서 출발합니다. 아래 세 개의 축에서 키워드를 뽑고, 반드시 출처가 있는 자료로 뒷받침하세요.<br>▶ 내 작품의 소재가 될 지역 정체성을 세 개의 축에서 찾고, 반드시 근거 자료와 출처를 함께 적습니다.<br>▶ <strong>추천 검색어</strong>: '울산광역시 통계포털', 'KOSIS 지역별 고용조사', '국가문화유산포털', '카카오맵/네이버맵 지적편집도'<br><span style='color: #d35400; font-weight: bold;'>※ 근거 자료와 출처가 비어 있는 칸은 점수로 인정되지 않습니다.</span></div>""", unsafe_allow_html=True)
     
     default_step1 = [{"구분": "1. 자연/생태", "내가 찾은 정체성 키워드 혹은 문장": "", "근거가 되는 사실·통계·사건": "", "출처(기관명/자료명/연도)": ""}]
     step1_df = pd.DataFrame(ans.get("step1_df", default_step1))
@@ -831,13 +640,7 @@ def render_activity3_2nd(user_key, u_info, current_role):
     step1_message = st.text_area("▶ 단 하나의 메시지", value=ans.get("step1_message", ""), disabled=disabled_flag, key=f"step1_msg_{category}")
     
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 2. 캔버스 선정</h3>", unsafe_allow_html=True)
-    st.markdown("""
-    <div class='guide-box'>
-    ▶ 우리 지역의 실제 건축물·구조물 3곳을 후보로 조사하고 비교한 뒤 최종 1곳을 선정합니다.<br>
-    ▶ 직접 답사하거나 지도 로드뷰로 확인한 내용을 적습니다. <strong>상상으로 쓴 내용은 인정되지 않습니다.</strong><br>
-    (현장 답사가 어려운 경우 지도 앱의 로드뷰·위성사진으로 대체하되, 캡처 화면을 반드시 첨부할 것)
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("""<div class='guide-box'>▶ 우리 지역의 실제 건축물·구조물 3곳을 후보로 조사하고 비교한 뒤 최종 1곳을 선정합니다.<br>▶ 직접 답사하거나 지도 로드뷰로 확인한 내용을 적습니다. <strong>상상으로 쓴 내용은 인정되지 않습니다.</strong><br>(현장 답사가 어려운 경우 지도 앱의 로드뷰·위성사진으로 대체하되, 캡처 화면을 반드시 첨부할 것)</div>""", unsafe_allow_html=True)
     
     stars = ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"]
     default_step2 = [{"건물명": "후보 1: ", "벽면 조건": "", "관람 조건": "", "접근성": "", "예상 제약": "", "정체성 연관성": "", "적합도(별점)": "⭐⭐⭐"}]
@@ -847,26 +650,14 @@ def render_activity3_2nd(user_key, u_info, current_role):
     step2_reason = st.text_area("▶ 이유", value=ans.get("step2_reason", ""), disabled=disabled_flag, key=f"step2_rsn_{category}")
     
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 3. 주어진 조건 진단 및 대응 설계</h3>", unsafe_allow_html=True)
-    st.markdown("""
-    <div class='guide-box'>
-    ▶ 내가 선정한 건물과 그 주변에는 내가 바꿀 수 없는 조건들이 이미 존재합니다.<br>
-    ▶ 조건을 없애거나 무시하는 것이 아니라, 그 조건을 그대로 받아들인 상태에서 어떻게 작품을 성립시킬지 설계합니다.<br>
-    <span style='color: #d35400; font-weight: bold;'>※ 중요: 조건을 '문제점'으로만 적고 끝내면 점수를 받지 못합니다. 반드시 「나의 대응 방안」까지 채워야 합니다.</span><br>
-    ※ 제약을 오히려 작품의 조형 요소로 뒤집어 활용한 경우 가장 높은 평가를 받습니다.
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("""<div class='guide-box'>▶ 내가 선정한 건물과 그 주변에는 내가 바꿀 수 없는 조건들이 이미 존재합니다.<br>▶ 조건을 없애거나 무시하는 것이 아니라, 그 조건을 그대로 받아들인 상태에서 어떻게 작품을 성립시킬지 설계합니다.<br><span style='color: #d35400; font-weight: bold;'>※ 중요: 조건을 '문제점'으로만 적고 끝내면 점수를 받지 못합니다. 반드시 「나의 대응 방안」까지 채워야 합니다.</span><br>※ 제약을 오히려 작품의 조형 요소로 뒤집어 활용한 경우 가장 높은 평가를 받습니다.</div>""", unsafe_allow_html=True)
     
     default_step3 = [{"조건 영역": "1. 물리적 조건", "현장의 실제 조건 (확인한 사실)": "", "작품에 미치는 영향": "", "나의 대응 방안": ""}]
     step3_df = pd.DataFrame(ans.get("step3_df", default_step3))
     edited_step3_df = st.data_editor(step3_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"step3_df_{category}")
     
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 4. 작품 스토리보드 4컷</h3>", unsafe_allow_html=True)
-    st.markdown("""
-    <div class='guide-box'>
-    ▶ Step 1의 메시지를 Step 2의 벽면 위에, Step 3의 조건을 지키면서 어떻게 펼칠지 4컷으로 구성합니다.<br>
-    ▶ 그림 실력은 평가하지 않습니다. 도형과 화살표로 표현해도 됩니다. 대신 설명은 구체적으로 씁니다.
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("""<div class='guide-box'>▶ Step 1의 메시지를 Step 2의 벽면 위에, Step 3의 조건을 지키면서 어떻게 펼칠지 4컷으로 구성합니다.<br>▶ 그림 실력은 평가하지 않습니다. 도형과 화살표로 표현해도 됩니다. 대신 설명은 구체적으로 씁니다.</div>""", unsafe_allow_html=True)
     
     new_cuts = {}
     for i in range(1, 5):
@@ -877,30 +668,23 @@ def render_activity3_2nd(user_key, u_info, current_role):
             file_name = ans.get(f"cut_{i}_file_name", "")
             if b64_file:
                 st.success(f"📎 등록된 파일: {file_name}")
-                if file_name.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')): 
-                    st.image(base64.b64decode(b64_file), use_container_width=True)
+                if file_name.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')): st.image(base64.b64decode(b64_file), use_container_width=True)
                 if not disabled_flag and st.button(f"🗑️ 컷 {i} 자료 삭제", key=f"del_cut_{i}_{category}"):
                     current_data = load_json(DATA_FILE, {}) 
                     if user_key in current_data and category in current_data[user_key]:
-                        current_data[user_key][category][f"cut_{i}_file_data"] = ""
-                        current_data[user_key][category][f"cut_{i}_file_name"] = ""
+                        current_data[user_key][category][f"cut_{i}_file_data"] = ""; current_data[user_key][category][f"cut_{i}_file_name"] = ""
                         save_json(DATA_FILE, current_data); st.rerun()
             file_cut = st.file_uploader(f"컷 {i} 파일 첨부", key=f"up_cut_{i}_{category}", disabled=disabled_flag)
             if file_cut and not disabled_flag:
                 b64_file = base64.b64encode(file_cut.getvalue()).decode("utf-8")
                 file_name = file_cut.name
-            new_cuts[f"cut_{i}_file_data"] = b64_file
-            new_cuts[f"cut_{i}_file_name"] = file_name
+            new_cuts[f"cut_{i}_file_data"] = b64_file; new_cuts[f"cut_{i}_file_name"] = file_name
         with col_c2:
             new_cuts[f"cut_{i}_desc"] = st.text_area(f"컷 {i} 설명", value=ans.get(f"cut_{i}_desc", ""), height=100, disabled=disabled_flag, key=f"desc_cut_{i}_{category}")
         st.write("---")
 
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 5. 작품 설명 카드 작성</h3>", unsafe_allow_html=True)
-    st.markdown("""
-    <div class='guide-box'>
-    ▶ 완성한 작품을 전시장에 걸 때 옆에 붙는 캡션 패널을 직접 씁니다. 교실 벽에 게시하여 서로 감상합니다.
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("""<div class='guide-box'>▶ 완성한 작품을 전시장에 걸 때 옆에 붙는 캡션 패널을 직접 씁니다. 교실 벽에 게시하여 서로 감상합니다.</div>""", unsafe_allow_html=True)
     
     step5_title = st.text_input("▶ 작품 제목", value=ans.get("step5_title", ""), disabled=disabled_flag, key=f"step5_title_{category}")
     step5_place = st.text_input("▶ 전시 장소", value=ans.get("step5_place", ""), disabled=disabled_flag, key=f"step5_place_{category}")
@@ -1045,9 +829,113 @@ def render_class_overview(current_role, u_info, view_subj):
         if current_role == "학생": st.info("현재 공개되어 진행 중인 수행평가가 없습니다. (선생님의 수업 시간 공개 설정을 기다려주세요.)")
         else: st.info("아직 이 과목에 할당된 수행평가 목록이 없습니다.")
 
+# 🌟 [해결됨] 누락되었던 세션 초기화 블록 완벽 복원
+if "logged_in" not in st.session_state: 
+    st.session_state.logged_in = False
+    st.session_state.user_info = None
+
+if "session_token" in st.query_params and not st.session_state.logged_in:
+    token = st.query_params["session_token"]
+    user_key = decode_token(token)
+    if user_key:
+        users = load_json(USERS_FILE, {})
+        if user_key in ADMIN_ACCOUNTS:
+            st.session_state.logged_in = True
+            st.session_state.user_info = {"user_key": user_key, "id": user_key, "name": ADMIN_ACCOUNTS[user_key]["name"], "role": "관리자", "subject": "전체", "class_group": "관리자"}
+        elif user_key in users and users[user_key].get("approved", True):
+            st.session_state.logged_in = True
+            st.session_state.user_info = users[user_key]
+            st.session_state.user_info["user_key"] = user_key
+
+if st.session_state.logged_in and st.session_state.user_info:
+    st.query_params["session_token"] = encode_token(st.session_state.user_info["user_key"])
+
+if "current_page" in st.query_params: st.session_state.current_page = st.query_params["current_page"]
+elif "current_page" not in st.session_state: st.session_state.current_page = "main"
+
 # =====================================================================
-# 🚀 메인 실행부 및 교사 대시보드 로직
+# 🚀 메인 실행부 및 사이드바 (UI 구성)
 # =====================================================================
+
+init_system()
+
+st.sidebar.title("🔒 인증 센터")
+
+if st.session_state.logged_in:
+    u_info = st.session_state.user_info
+    if u_info['role'] == "관리자": 
+        st.sidebar.markdown(f"<div style='background-color:#e8f4f8; padding:10px; border-radius:5px; margin-bottom:15px;'><div style='font-size:16px; font-weight:bold; color:#0056b3;'>🟢 {u_info['name']} 님 로그인 중</div><div>📘 과목: {u_info.get('subject', '전체')}</div><div>🛡️ 권한: {u_info['role']}</div></div>", unsafe_allow_html=True)
+        st.session_state.admin_view_subject = st.sidebar.selectbox("👀 관리 및 미리보기 과목", ["전체 공지"] + SUBJECTS)
+    else: 
+        st.sidebar.markdown(f"<div style='background-color:#e8f4f8; padding:10px; border-radius:5px; margin-bottom:15px;'><div style='font-size:16px; font-weight:bold; color:#0056b3;'>🟢 {u_info['name']} 님 로그인 중</div><div>📘 과목: {u_info.get('subject', '전체')}</div><div>🏫 소속: {u_info.get('class_group', '')}</div><div>🛡️ 권한: {u_info['role']}</div></div>", unsafe_allow_html=True)
+        
+    if st.sidebar.button("로그아웃", type="primary", use_container_width=True):
+        st.session_state.logged_in = False
+        st.session_state.user_info = None
+        st.session_state.current_page = "main"
+        st.query_params.clear()
+        st.rerun()
+else:
+    auth_choice = st.sidebar.radio("원하는 작업을 선택하세요", ["회원가입", "로그인"])
+    users = load_json(USERS_FILE, {})
+    if auth_choice == "회원가입":
+        st.sidebar.subheader("📝 회원가입")
+        reg_subject = st.sidebar.selectbox("과목", SUBJECTS)
+        reg_class = st.sidebar.selectbox("반", CLASSES_MAP[reg_subject])
+        with st.sidebar.form("register_form"):
+            reg_id = st.text_input("학번 입력")
+            reg_name = st.text_input("이름 입력")
+            reg_pw = st.text_input("비밀번호", type="password")
+            if st.form_submit_button("가입 신청", type="primary", use_container_width=True):
+                if reg_subject and reg_class and reg_id and reg_name and reg_pw:
+                    user_key = f"{reg_subject.strip()}_{reg_class.strip()}_{reg_id.strip()}"
+                    fresh_users = load_json(USERS_FILE, {}) 
+                    if user_key in fresh_users: st.error("❌ 해당 학번이 이미 가입되어 있습니다.")
+                    else:
+                        fresh_users[user_key] = {"id": reg_id.strip(), "password": reg_pw.strip(), "name": reg_name.strip(), "role": "학생", "subject": reg_subject.strip(), "class_group": reg_class.strip(), "approved": False}
+                        save_json(USERS_FILE, fresh_users)
+                        create_auto_backup(f"[{reg_name}] 회원가입 신청")
+                        st.success("🎉 가입 완료! 선생님의 승인을 기다려주세요.")
+                else: st.warning("⚠️ 모든 빈칸을 빠짐없이 입력해주세요.")
+                
+    elif auth_choice == "로그인":
+        login_type = st.sidebar.radio("계정 유형", ["학생", "교사(관리자)"], horizontal=True)
+        if login_type == "학생":
+            login_subject = st.sidebar.selectbox("과목", SUBJECTS)
+            login_class = st.sidebar.selectbox("반", CLASSES_MAP[login_subject])
+            with st.sidebar.form("student_login_form"):
+                input_id = st.text_input("학번")
+                input_pw = st.text_input("비밀번호", type="password")
+                if st.form_submit_button("로그인", type="primary", use_container_width=True):
+                    user_key = f"{login_subject.strip()}_{login_class.strip()}_{input_id.strip()}"
+                    if user_key in users and users[user_key].get("password") == input_pw.strip():
+                        if users[user_key].get("approved", True):
+                            st.session_state.logged_in = True
+                            st.session_state.user_info = users[user_key]
+                            st.session_state.user_info["user_key"] = user_key
+                            st.query_params["session_token"] = encode_token(user_key)
+                            st.rerun()
+                        else: st.warning("⏳ 선생님의 가입 승인을 대기 중입니다.")
+                    else: st.error("❌ 과목, 반, 학번 또는 비밀번호가 틀렸습니다.")
+        else:
+            with st.sidebar.form("admin_login_form"):
+                input_id = st.text_input("관리자 ID")
+                input_pw = st.text_input("비밀번호", type="password")
+                if st.form_submit_button("로그인", type="primary", use_container_width=True):
+                    if input_id in ADMIN_ACCOUNTS and input_pw == ADMIN_ACCOUNTS[input_id]["pw"]:
+                        st.session_state.logged_in = True
+                        st.session_state.user_info = {"user_key": input_id, "id": input_id, "name": ADMIN_ACCOUNTS[input_id]["name"], "role": "관리자", "subject": "전체", "class_group": "관리자"}
+                        st.query_params["session_token"] = encode_token(input_id)
+                        st.rerun()
+                    else: st.error("❌ 관리자 정보가 틀렸습니다.")
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("<div style='text-align: center; color: #222; font-size: 18px; font-weight: 900;'>Made by<br><span style='font-size: 24px; color: #000;'>신선여자고등학교 김명남</span></div><br>", unsafe_allow_html=True)
+
+with st.sidebar: render_privacy_policy()
+
+components.html("""<script>document.addEventListener("DOMContentLoaded", function() { const parentDoc = window.parent.document; function initAutoSave() { const elements = parentDoc.querySelectorAll('input[type="text"], textarea'); elements.forEach(el => { const ariaLabel = el.getAttribute('aria-label') || ''; const key = 'autosave_' + window.parent.location.pathname + '_' + ariaLabel; if (!el.dataset.autosaveAttached && ariaLabel !== '') { el.dataset.autosaveAttached = "true"; el.addEventListener('input', () => { window.localStorage.setItem(key, el.value); }); el.addEventListener('focus', () => { const savedVal = window.localStorage.getItem(key); if (savedVal && el.value === "") { let setter = Object.getOwnPropertyDescriptor(window.parent.HTMLInputElement.prototype, "value")?.set; if(el.tagName === 'TEXTAREA') setter = Object.getOwnPropertyDescriptor(window.parent.HTMLTextAreaElement.prototype, "value")?.set; if(setter) { setter.call(el, savedVal); el.dispatchEvent(new Event('input', { bubbles: true })); } else { el.value = savedVal; } } }); } }); } setInterval(initAutoSave, 1500); });</script>""", height=0, width=0)
+
 if not st.session_state.logged_in:
     st.markdown("<h1 style='font-size:36px; font-weight:900; color:#000;'>🏫 수업 및 활동 어시스트 프로그램</h1>", unsafe_allow_html=True)
     st.info("왼쪽 사이드바를 이용해 로그인해주세요.")
@@ -1091,8 +979,7 @@ else:
                     has_individual_dl = True
                     act_html = generate_activity_html(act, ans, u_info['name'])
                     st.download_button(label=f"📥 [{act}] 결과물 다운로드", data=act_html.encode('utf-8-sig'), file_name=f"{u_info['name']}_{act}.html", mime="text/html", key=f"stu_dl_{act}")
-            if not has_individual_dl: 
-                st.info("아직 제출한 활동지가 없습니다.")
+            if not has_individual_dl: st.info("아직 제출한 활동지가 없습니다.")
             st.markdown("---")
             html_content_all = generate_portfolio_html(current_user_key, u_info, u_info['subject'], app_config, learning_data)
             st.download_button(label=f"📦 {u_info['name']} 학생 전체 포트폴리오 일괄 다운로드 (웹문서)", data=html_content_all.encode('utf-8-sig'), file_name=f"{u_info['name']}_전체_포트폴리오.html", mime="text/html", type="primary")
@@ -1103,8 +990,7 @@ else:
             
             with menu_tabs[0]:
                 if st.session_state.get("admin_save_success", False):
-                    st.balloons()
-                    st.markdown("<div style='text-align:center; padding:30px; background-color:#e8f5e9; border-radius:8px; border:2px solid #4CAF50; margin:20px 0;'><h2 style='margin:0 0 15px 0; font-size:26px; font-weight:900; color:#111;'>🎉 화면 저장이 완료되었습니다!</h2><p style='margin:0; font-size:18px; font-weight:700; color:#111;'>변경하신 내용이 안전하게 저장되어 즉시 반영됩니다.</p></div>", unsafe_allow_html=True)
+                    st.balloons(); st.success("🎉 저장/반영이 완료되었습니다!")
                     st.session_state.admin_save_success = False
 
                 admin_view_subj = st.session_state.get("admin_view_subject", "전체 공지")
@@ -1140,8 +1026,7 @@ else:
                                 save_json(CONFIG_FILE, fresh_config)
                                 create_auto_backup(f"[{admin_view_subj}] 반별 공개 설정 변경")
                                 st.session_state.admin_save_success = True; st.rerun()
-                else: 
-                    st.info("🔒 반별 공개 설정은 왼쪽 사이드바에서 특정 과목을 선택해주세요.")
+                else: st.info("🔒 반별 공개 설정은 왼쪽 사이드바에서 특정 과목을 선택해주세요.")
 
                 st.markdown("---")
                 st.markdown("#### ⏳ 특정 학생 개별 기한 연장 (결석생/추가 제출자)")
@@ -1166,7 +1051,7 @@ else:
                                     if "exceptions" not in fresh_config: fresh_config["exceptions"] = {}
                                     if exc_act not in fresh_config["exceptions"]: fresh_config["exceptions"][exc_act] = {}
                                     fresh_config["exceptions"][exc_act][sel_stu] = f"{exc_date} {exc_time}"
-                                    save_json(CONFIG_FILE, fresh_config); create_auto_backup(f"[{filt_stu[sel_stu].get('name')}] 예외 연장 부여"); st.session_state.admin_save_success = True; st.rerun()
+                                    save_json(CONFIG_FILE, fresh_config); create_auto_backup(f"[{filt_stu[sel_stu].get('name')}] 예외 연장"); st.session_state.admin_save_success = True; st.rerun()
                                 else: st.warning("학생을 선택해주세요.")
                         with col_ex2:
                             st.markdown("**부여된 연장 기한 목록**")
@@ -1195,8 +1080,7 @@ else:
                         t_cls = str(row.get("대상 학급(반)", target_class_options[0])).strip()
                         t_title = str(row.get("제목", "")).strip()
                         t_content = str(row.get("내용", "")).strip()
-                        if t_title or t_content: 
-                            new_notices.append({"id": f"not_{datetime.datetime.now().strftime('%d%H%M%S')}_{len(new_notices)}", "subject": admin_view_subj, "target_class": t_cls, "제목": t_title, "내용": t_content})
+                        if t_title or t_content: new_notices.append({"id": f"not_{datetime.datetime.now().strftime('%d%H%M%S')}_{len(new_notices)}", "subject": admin_view_subj, "target_class": t_cls, "제목": t_title, "내용": t_content})
                     other_notices = [n for n in all_notices if n.get("subject", "전체 공지") != admin_view_subj]
                     fresh_config["notices"] = other_notices + new_notices
                     save_json(CONFIG_FILE, fresh_config)
@@ -1244,10 +1128,8 @@ else:
                                     except: cf_dt = get_kst_now() + datetime.timedelta(days=30)
                                     col_f1, col_f2 = st.columns(2)
                                     f_date = col_f1.date_input(f"[{c_group}] 최종 마감일", value=cf_dt.date(), key=f"f_date_{c_group}")
-                                    if time_input_mode == "🔘 드롭다운 선택 (10분 단위)":
-                                        f_time_str = col_f2.selectbox(f"[{c_group}] 최종 마감 시간", TIME_OPTIONS, index=get_time_index(cf_dt.strftime("%H:%M")), key=f"f_time_sel_{c_group}")
-                                    else:
-                                        f_time_str = col_f2.text_input(f"[{c_group}] 최종 마감 시간", value=cf_dt.strftime("%H:%M"), key=f"f_time_txt_{c_group}")
+                                    if time_input_mode == "🔘 드롭다운 선택 (10분 단위)": f_time_str = col_f2.selectbox(f"[{c_group}] 최종 마감 시간", TIME_OPTIONS, index=get_time_index(cf_dt.strftime("%H:%M")), key=f"f_time_sel_{c_group}")
+                                    else: f_time_str = col_f2.text_input(f"[{c_group}] 최종 마감 시간", value=cf_dt.strftime("%H:%M"), key=f"f_time_txt_{c_group}")
                                     c_slots = c_data.get("slots", [{"day": "선택안함", "period": "선택안함", "start": "00:00", "end": "00:00"}] * 3)
                                     while len(c_slots) < 3: c_slots.append({"day": "선택안함", "period": "선택안함", "start": "00:00", "end": "00:00"})
                                     updated_slots = []
@@ -1345,7 +1227,6 @@ else:
                 
                 st.markdown("---")
                 
-                # 🌟 [승인 완료 회원 목록 복원]
                 st.markdown("### ✅ 승인 완료 학생 목록 (전체 회원)")
                 approved_users = {k: v for k, v in all_users.items() if v.get("approved", True) and v.get("role")=="학생"}
                 if approved_users:
@@ -1382,7 +1263,6 @@ else:
                 
                 st.markdown("---")
 
-                # 🌟 [학생 계정 정보 수정 및 삭제 기능 통합]
                 st.markdown("### 📝 학생 회원 정보 수정 및 계정 삭제")
                 search_edit = st.text_input("🔍 검색 (이름 또는 학번 입력)", key="search_edit")
                 filtered_for_edit = filter_students_admin(all_users, search_edit, approved_only=False)
@@ -1434,7 +1314,6 @@ else:
                             create_auto_backup(f"[{e_name}] 정보 수정")
                             st.success("수정 완료"); st.rerun()
                             
-                        # 계정 삭제 실행 로직
                         if btn_delete:
                             fresh_users = load_json(USERS_FILE, {})
                             fresh_data = load_json(DATA_FILE, {})
@@ -1654,7 +1533,7 @@ else:
                 
                 st.markdown("<hr style='margin:25px 0;'>", unsafe_allow_html=True)
                 st.markdown("#### 🕒 백업 스냅샷 선택 및 원클릭 복원 (Rollback)")
-                st.info("💡 학생들의 데이터가 제출되거나 관리자 설정이 변경될 때마다 안전한 스냅샷이 실시간으로 생성됩니다. 과거 특정 시점으로 되돌리려면 아래 목록에서 선택 후 복원 버튼을 누르세요.")
+                st.info("💡 학생들의 데이터가 제출되거나 관리자 설정이 변경될 때마다 안전한 스냅샷이 실시간으로 생성됩니다. 과거 특정 시점으로 되돌리려면 아래 목록에서 선택 후 복원 버튼 누르세요.")
                 
                 if bk_files:
                     bk_options = {}
