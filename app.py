@@ -260,13 +260,56 @@ def generate_html_content(act_name, ans, config=None):
     if config is None: config = load_json(CONFIG_FILE, {})
     html = ""
     if act_name == ACT_3_1:
-        html += f"<h3>1. 자신이 선택한 영상에 대한 첫번째 질문</h3><table><tr><th>1. 영상의 제목</th><td>{ans.get('a1_1','')}</td></tr><tr><th>2. 영상에 등장하는 국가 혹은 지역</th><td>{ans.get('a1_2','')}</td></tr><tr><th>3. 해당 영상을 선택하게 된 이유</th><td>{ans.get('a1_3','')}</td></tr></table><h3>2. 자신이 선택한 영상에 대한 두 번째 질문</h3><table><tr><th>1. 첫 느낌</th><td>{ans.get('a2_1','')}</td></tr><tr><th>▶ 인상적이었던 장소 혹은 공간:</th><td>{ans.get('a2_2_1','')}</td></tr><tr><th>▶ 이유:</th><td>{ans.get('a2_2_2','')}</td></tr><tr><th>▶ 누구에게 추천:</th><td>{ans.get('a2_3_1','')}</td></tr><tr><th>▶ 추천하는 이유:</th><td>{ans.get('a2_3_2','')}</td></tr><tr><th>4. 영상에 대한 나만의 감상평</th><td>{ans.get('a2_4','')}</td></tr></table><h3>5. 만일 내가 영상 속 지역을 배경으로 영상을 찍는다면?</h3><table><tr><th>1) 영상의 제목:</th><td>{ans.get('a3_1','')}</td></tr><tr><th>2) 영상의 주요 컨셉 혹은 느낌:</th><td>{ans.get('a3_2','')}</td></tr><tr><th>3) 누구와 함께 가고 싶은가?:</th><td>{ans.get('a3_3','')}</td></tr><tr><th>4) 그 이유는?:</th><td>{ans.get('a3_4','')}</td></tr><tr><th>5) 그곳에서 가장 해 보고 싶은 것:</th><td>{ans.get('a3_5','')}</td></tr><tr><th>6) 그 이유는?:</th><td>{ans.get('a3_6','')}</td></tr><tr><th>7) 영상에 꼭 넣고 싶은 장소 혹은 공간:</th><td>{ans.get('a3_7','')}</td></tr><tr><th>8) 그 이유는?:</th><td>{ans.get('a3_8','')}</td></tr><tr><th>9) 만일 내가 썸네일 영상을 만든다면?:</th><td>{ans.get('a3_9','')}</td></tr><tr><th>10) 어울리는 BGM:</th><td>{ans.get('a3_10','')}</td></tr><tr><th>11) 그 이유는?:</th><td>{ans.get('a3_11','')}</td></tr></table>"
+        html += "<h3>1. 자신이 선택한 영상에 대한 첫번째 질문</h3><table>"
+        html += f"<tr><th>1. 영상의 제목</th><td>{ans.get('a1_1','')}</td></tr>"
+        html += f"<tr><th>2. 영상에 등장하는 국가 혹은 지역</th><td>{ans.get('a1_2','')}</td></tr>"
+        html += f"<tr><th>3. 해당 영상을 선택하게 된 이유</th><td>{ans.get('a1_3','')}</td></tr></table>"
+        html += "<h3>2. 자신이 선택한 영상에 대한 두 번째 질문</h3><table>"
+        html += f"<tr><th>1. 첫 느낌</th><td>{ans.get('a2_1','')}</td></tr>"
+        html += f"<tr><th>▶ 인상적이었던 장소 혹은 공간:</th><td>{ans.get('a2_2_1','')}</td></tr>"
+        html += f"<tr><th>▶ 이유:</th><td>{ans.get('a2_2_2','')}</td></tr>"
+        html += f"<tr><th>▶ 누구에게 추천:</th><td>{ans.get('a2_3_1','')}</td></tr>"
+        html += f"<tr><th>▶ 추천하는 이유:</th><td>{ans.get('a2_3_2','')}</td></tr>"
+        html += f"<tr><th>4. 영상에 대한 나만의 감상평</th><td>{ans.get('a2_4','')}</td></tr></table>"
+        html += "<h3>5. 만일 내가 영상 속 지역을 배경으로 영상을 찍는다면?</h3><table>"
+        html += f"<tr><th>1) 영상의 제목:</th><td>{ans.get('a3_1','')}</td></tr>"
+        html += f"<tr><th>2) 영상의 주요 컨셉 혹은 느낌:</th><td>{ans.get('a3_2','')}</td></tr>"
+        html += f"<tr><th>3) 누구와 함께 가고 싶은가?:</th><td>{ans.get('a3_3','')}</td></tr>"
+        html += f"<tr><th>4) 그 이유는?:</th><td>{ans.get('a3_4','')}</td></tr>"
+        html += f"<tr><th>5) 그곳에서 가장 해 보고 싶은 것:</th><td>{ans.get('a3_5','')}</td></tr>"
+        html += f"<tr><th>6) 그 이유는?:</th><td>{ans.get('a3_6','')}</td></tr>"
+        html += f"<tr><th>7) 영상에 꼭 넣고 싶은 장소 혹은 공간:</th><td>{ans.get('a3_7','')}</td></tr>"
+        html += f"<tr><th>8) 그 이유는?:</th><td>{ans.get('a3_8','')}</td></tr>"
+        html += f"<tr><th>9) 만일 내가 썸네일 영상을 만든다면?:</th><td>{ans.get('a3_9','')}</td></tr>"
+        html += f"<tr><th>10) 어울리는 BGM:</th><td>{ans.get('a3_10','')}</td></tr>"
+        html += f"<tr><th>11) 그 이유는?:</th><td>{ans.get('a3_11','')}</td></tr></table>"
+
     elif act_name == ACT_3_2:
-        html += f"<table><tr><th>1-1) 나에게 편안함을 주는 장소(공간)이/가 있는가?</th><td>{ans.get('q1_1','')}</td></tr><tr><th>1-2) 그 장소(공간)이/가 어떤 면에서 나에게 편안함을 주는 것 같은가?</th><td>{ans.get('q1_2','')}</td></tr><tr><th>2-1) 자신이 생각하기에 자신의 성격은?</th><td>{ans.get('q2_1','')}</td></tr><tr><th>2-2) 자신이 성격 형성에 있어 영향을 준 장소(공간)이/가 있는가?</th><td>{ans.get('q2_2','')}</td></tr><tr><th>2-3) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?</th><td>{ans.get('q2_3','')}</td></tr><tr><th>3-1) 자신이 생각하기에 자신의 장점은?</th><td>{ans.get('q3_1','')}</td></tr><tr><th>3-2) 자신이 장점 형성에 있어 영향을 준 장소(공간)이/가 있는가?</th><td>{ans.get('q3_2','')}</td></tr><tr><th>3-3) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?</th><td>{ans.get('q3_3','')}</td></tr><tr><th>4-1) 내가 성장함에 있어 영향을 준 장소(공간)이/가 있는가?</th><td>{ans.get('q4_1','')}</td></tr><tr><th>4-2) 그런 장소(공간)이/가 있다면 어떤 면에서 영향을 준 것 같은가?</th><td>{ans.get('q4_2','')}</td></tr><tr><th>5-1) 지금 나의 목표는 무엇인가?</th><td>{ans.get('q5_1','')}</td></tr><tr><th>5-2) 그런 목표를 설정함에 있어 영향을 준 장소(공간)이/가 있는가?</th><td>{ans.get('q5_2','')}</td></tr><tr><th>6-1) 훗날 소중한 사람에게 소개해 주고 싶은 장소(공간)이/가 있는가?</th><td>{ans.get('q6_1','')}</td></tr><tr><th>6-2) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?</th><td>{ans.get('q6_2','')}</td></tr><tr><th>7-1) 나만의 비밀 장소(공간)이/가 있는가?</th><td>{ans.get('q7_1','')}</td></tr><tr><th>7-2) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?</th><td>{ans.get('q7_2','')}</td></tr><tr><th>8-1) 시간을 돌려 과거로 돌아갈 수 있다면 다시 가 보고 싶은 장소(공간)이/가 있는가?</th><td>{ans.get('q8_1','')}</td></tr><tr><th>8-2) 장소(공간)로/으로 다시 가 보고 싶은 이유는 무엇 때문인가?</th><td>{ans.get('q8_2','')}</td></tr></table>"
+        html += "<table>"
+        html += f"<tr><th>1-1) 나에게 편안함을 주는 장소(공간)이/가 있는가?</th><td>{ans.get('q1_1','')}</td></tr>"
+        html += f"<tr><th>1-2) 그 장소(공간)이/가 어떤 면에서 나에게 편안함을 주는 것 같은가?</th><td>{ans.get('q1_2','')}</td></tr>"
+        html += f"<tr><th>2-1) 자신이 생각하기에 자신의 성격은?</th><td>{ans.get('q2_1','')}</td></tr>"
+        html += f"<tr><th>2-2) 자신이 성격 형성에 있어 영향을 준 장소(공간)이/가 있는가?</th><td>{ans.get('q2_2','')}</td></tr>"
+        html += f"<tr><th>2-3) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?</th><td>{ans.get('q2_3','')}</td></tr>"
+        html += f"<tr><th>3-1) 자신이 생각하기에 자신의 장점은?</th><td>{ans.get('q3_1','')}</td></tr>"
+        html += f"<tr><th>3-2) 자신이 장점 형성에 있어 영향을 준 장소(공간)이/가 있는가?</th><td>{ans.get('q3_2','')}</td></tr>"
+        html += f"<tr><th>3-3) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?</th><td>{ans.get('q3_3','')}</td></tr>"
+        html += f"<tr><th>4-1) 내가 성장함에 있어 영향을 준 장소(공간)이/가 있는가?</th><td>{ans.get('q4_1','')}</td></tr>"
+        html += f"<tr><th>4-2) 그런 장소(공간)이/가 있다면 어떤 면에서 영향을 준 것 같은가?</th><td>{ans.get('q4_2','')}</td></tr>"
+        html += f"<tr><th>5-1) 지금 나의 목표는 무엇인가?</th><td>{ans.get('q5_1','')}</td></tr>"
+        html += f"<tr><th>5-2) 그런 목표를 설정함에 있어 영향을 준 장소(공간)이/가 있는가?</th><td>{ans.get('q5_2','')}</td></tr>"
+        html += f"<tr><th>6-1) 훗날 소중한 사람에게 소개해 주고 싶은 장소(공간)이/가 있는가?</th><td>{ans.get('q6_1','')}</td></tr>"
+        html += f"<tr><th>6-2) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?</th><td>{ans.get('q6_2','')}</td></tr>"
+        html += f"<tr><th>7-1) 나만의 비밀 장소(공간)이/가 있는가?</th><td>{ans.get('q7_1','')}</td></tr>"
+        html += f"<tr><th>7-2) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?</th><td>{ans.get('q7_2','')}</td></tr>"
+        html += f"<tr><th>8-1) 시간을 돌려 과거로 돌아갈 수 있다면 다시 가 보고 싶은 장소(공간)이/가 있는가?</th><td>{ans.get('q8_1','')}</td></tr>"
+        html += f"<tr><th>8-2) 장소(공간)로/으로 다시 가 보고 싶은 이유는 무엇 때문인가?</th><td>{ans.get('q8_2','')}</td></tr></table>"
+        
     elif act_name == ACT_3_3:
-        html += "<h3>1. 세계 인식 수준에 대한 확인</h3><h4>1) 대륙별 관심도 및 지식 수준 체크</h4><table><tr><th>대륙</th><th>관심도</th><th>지식수준</th></tr>"
+        html += "<h3>1. 세계 인식 수준에 대한 확인</h3>"
+        html += "<h4>1) 대륙별 관심도 및 지식 수준 체크</h4><table><tr><th>대륙</th><th>관심도</th><th>지식수준</th></tr>"
         for row in ans.get("s1_df", []): html += f"<tr><td>{row.get('대륙','')}</td><td>{row.get('관심도','')}</td><td>{row.get('지식수준','')}</td></tr>"
-        html += f"</table><h4>2) 특정 국가에 대한 기억과 인상 분석</h4><h5>[직접 경험]</h5><table><tr><th>여행해 본 국가</th><th>해당 국가에 대한 구체적인 기억 혹은 인상</th></tr>"
+        html += "</table><h4>2) 특정 국가에 대한 기억과 인상 분석</h4><h5>[직접 경험]</h5><table><tr><th>여행해 본 국가</th><th>해당 국가에 대한 구체적인 기억 혹은 인상</th></tr>"
         for row in ans.get("direct_df", []): html += f"<tr><td>{row.get('여행해 본 국가','')}</td><td>{row.get('해당 국가에 대한 구체적인 기억 혹은 인상','')}</td></tr>"
         html += f"</table><h5>[간접 경험]</h5><ul><li>즐겨 보는 외국 영화/드라마는 어느 나라 작품? : {ans.get('ind1','')}</li><li>좋아하는 음악가나 연예인이 있다면 어느 나라? : {ans.get('ind2','')}</li><li>자주 먹는 외국 음식이 있다면 어느 나라? : {ans.get('ind3','')}</li></ul>"
         html += "<h4>3) 꼭 가 보고 싶은 Top 5 국가와 그 이유</h4><table><tr><th>국가 혹은 지역</th><th>이유</th></tr>"
@@ -294,39 +337,57 @@ def generate_html_content(act_name, ans, config=None):
         html += "</table><h3>4. 목표로 하는 세계관</h3>"
         html += f"<p><b>▶ 어떤 사람이 되고 싶은가?</b></p><div class='content-box'>{ans.get('goal_1','')}</div>"
         html += f"<p><b>▶ 어떤 세계관을 갖고 싶은가?</b></p><div class='content-box'>{ans.get('goal_2','')}</div>"
+
     elif act_name == ACT_2_1:
         html += f"<h4>👥 모둠 구성원</h4><ul><li>1: {ans.get('m1_id','')} {ans.get('m1_name','')}</li><li>2: {ans.get('m2_id','')} {ans.get('m2_name','')}</li><li>3: {ans.get('m3_id','')} {ans.get('m3_name','')}</li><li>4: {ans.get('m4_id','')} {ans.get('m4_name','')}</li></ul>"
         html += "<h3>Step 1. 우리 지역에 대한 '밈' 수집 및 지리 정보 팩트 체크 일지</h3>"
-        html += f"<p><b>1. 우리가 선택한 우리 지역의 인터넷, SNS, 혹은 타 지역 친구들에게 들었던 우리 지역에 대한 유쾌한 편견이나 밈을 하나 선정 '밈':</b> {ans.get('step1_1','')}</p>"
-        html += f"<p><b>2. 이 밈이 대중에게 심어준 주관적 이미지 (편견 혹은 선입견):</b> {ans.get('step1_2','')}</p>"
-        html += f"<p><b>3. 우리 모둠에게 특별한 장소감을 주는 장소:</b> {ans.get('step1_3','')}</p>"
-        html += f"<p><b>4. 그 장소에서 느끼는 감정이나 생각:</b> {ans.get('step1_4','')}</p>"
+        html += "<div class='guide-box'><strong>▶ 교과서 13쪽 내용 中</strong><br>개인이 여러 장소에서 경험을 쌓으며 형성하는 주관적인 감정을 장소감이라 합니다. 이 장소감이 여러 사람에게 공유되면서 형성된 독특한 이미지가 바로 장소성이며, 이것이 확장되어 그 도시만의 독특한 특성인 도시 정체성을 만듭니다.<br><br><strong>* 나만의 주관적 장소감 성찰</strong><br>타 지역 사람들의 선입견과 달리, '우리 지역에서 나를 성장시킨 장소'나 '우리가 가장 애착을 느끼는 장소'를 적고 그에 대한 우리의 감정이나 생각을 적어 보세요.</div>"
+        html += f"<p><b>1. 우리가 선택한 우리 지역의 인터넷, SNS, 혹은 타 지역 친구들에게 들었던 우리 지역에 대한 유쾌한 편견이나 밈을 하나 선정 '밈':</b><br>{ans.get('step1_1','')}</p>"
+        html += f"<p><b>2. 이 밈이 대중에게 심어준 주관적 이미지 (편견 혹은 선입견):</b><br>{ans.get('step1_2','')}</p>"
+        html += f"<p><b>3. 우리 모둠에게 특별한 장소감을 주는 장소:</b><br>{ans.get('step1_3','')}</p>"
+        html += f"<p><b>4. 그 장소에서 느끼는 감정이나 생각:</b><br>{ans.get('step1_4','')}</p>"
+        
         html += "<h3>Step 2. 도시 발달 과정과 객관적 지표</h3>"
+        html += "<div class='guide-box'><strong>▶ 교과서 14~15, 31~32쪽 내용 中</strong><br>객관적 의미의 도시는 시가지로 구성되며 2·3차 산업 비율이 높은 공간입니다. 도시는 살아있는 생명체처럼 탄생, 성장, 정체, 쇠퇴, 전환의 도시 발달 과정을 겪습니다. 울산은 시대별로 역동적인 변화를 거쳐왔습니다.<br><br><strong>* 울산의 역사적 발달 과정 추적</strong><br>다음 제시된 울산의 발달 역사 중 우리 조가 탐구할 시기를 선택하고, 당시 울산의 핵심 공간과 객관적 특징을 매칭해 보세요.<br><br><strong>* 지리 데이터 기반 분석</strong><br>우리 모둠이 선택한 시기 울산의 객관적 지표를 지리 정보 서비스나 통계 자료를 통해 확인해 보세요.<br>- 추천 검색어: '울산광역시 통계포털', 'KOSIS 지역별 고용조사', '카카오맵/네이버맵 지적편집도'<br>- 조사한 구체적 사실/통계: 예) 현재 울산의 제조업 종사자 비율이 약 40% 이상으로 전국 최고 수준이라는 점 / 태화강 수질이 생태 등급으로 회복된 지표 등</div>"
         html += f"<p><b>1. 우리 모둠이 탐구할 시기:</b> {ans.get('step2_1_period','')}</p>"
-        html += f"<p><b>2-1. 선택한 시기의 핵심 공간:</b> {ans.get('step2_1_space','')}</p>"
-        html += f"<p><b>2-2. 객관적 특징:</b> {ans.get('step2_1_feat','')}</p>"
-        html += f"<p><b>3. 선택한 시기의 객관적 지리 데이터 혹은 지표:</b> {ans.get('step2_3','')}</p>"
-        html += "<h3>Step 3. 살기 좋은 울산의 조건: 거주 적합성 진단</h3><table><tr><th>거주 적합성 요인</th><th>만족도 점수</th><th>한 줄 평가</th></tr>"
+        html += f"<p><b>2-1. 선택한 시기의 핵심 공간:</b><br>{ans.get('step2_1_space','')}</p>"
+        html += f"<p><b>2-2. 객관적 특징:</b><br>{ans.get('step2_1_feat','')}</p>"
+        html += f"<p><b>3. 선택한 시기의 객관적 지리 데이터 혹은 지표:</b><br>{ans.get('step2_3','')}</p>"
+        
+        html += "<h3>Step 3. 살기 좋은 울산의 조건: 거주 적합성 진단</h3>"
+        html += "<div class='guide-box'><strong>▶ 교과서 38쪽 내용 中</strong><br>일정한 곳에 머물러 살기 알맞은 조건이나 성질을 거주 적합성이라고 합니다. 이는 지속가능성, 이동성, 안전 및 보안, 서비스 효율성, 경제 성장, 도시 평판 등 삶의 질과 관련된 6대 요소로 이루어집니다. 개인의 연령, 직업, 가치관에 따라 선호하는 거주 적합성은 각기 다르게 나타납니다.<br><br><strong>* 우리의 시선으로 본 울산의 거주 적합성 스코어보드</strong><br>울산에서 살아가는 10대 고등학생인 여러분의 관점에서, 현재 울산의 거주 적합성 요소를 5점 만점으로 평가하고 그 까닭을 서술해 보세요.</div>"
+        html += "<table><tr><th>거주 적합성 요인</th><th>만족도 점수</th><th>한 줄 평가</th></tr>"
         for row in ans.get("step3_df", []): html += f"<tr><td>{row.get('거주 적합성 요인','')}</td><td>{row.get('만족도 점수','')}</td><td>{row.get('한 줄 평가','')}</td></tr>"
-        html += "</table><h3>Step 4. 우리의 방식으로 해 보는 울산 브랜딩: 정체성 리뉴얼</h3>"
-        html += f"<p><b>1. 기존 프레임(대중의 오해):</b> {ans.get('step4_1','')}</p>"
-        html += f"<p><b>2. 우리 모둠이 도출한 지리적 본질:</b> {ans.get('step4_2','')}</p>"
-        html += f"<p><b>3. 우리 모둠의 반전 광고 슬로건:</b> {ans.get('step4_3','')}</p>"
-        html += f"<p><b>4. 우리 모둠이 제안하는 울산의 거주 적합성 개선 아이디어:</b> {ans.get('step4_4','')}</p>"
+        html += "</table>"
+        
+        html += "<h3>Step 4. 우리의 방식으로 해 보는 울산 브랜딩: 정체성 리뉴얼</h3>"
+        html += "<div class='guide-box'><strong>밈과 지리적 사실의 융합을 통한 '울산성(Ulsan-ity)' 재정의</strong><br>STEP 1~3의 탐구 결과를 바탕으로, 울산의 프레임을 위트 있게 깨부수는 우리 모둠만의 울산 브랜딩 슬로건과 간단한 정책(시설)을 제안해 봅시다.</div>"
+        html += f"<p><b>1. 기존 프레임(대중의 오해):</b><br>{ans.get('step4_1','')}</p>"
+        html += f"<p><b>2. 우리 모둠이 도출한 지리적 본질:</b><br>{ans.get('step4_2','')}</p>"
+        html += f"<p><b>3. 우리 모둠의 반전 광고 슬로건:</b><br>{ans.get('step4_3','')}</p>"
+        html += f"<p><b>4. 우리 모둠이 제안하는 울산의 거주 적합성 개선 아이디어:</b><br>{ans.get('step4_4','')}</p>"
+
     elif act_name == ACT_2_2:
         html += f"<h4>👥 모둠 구성원</h4><ul><li>1: {ans.get('m1_id','')} {ans.get('m1_name','')}</li><li>2: {ans.get('m2_id','')} {ans.get('m2_name','')}</li><li>3: {ans.get('m3_id','')} {ans.get('m3_name','')}</li><li>4: {ans.get('m4_id','')} {ans.get('m4_name','')}</li></ul>"
+        
         html += "<h3>Step 1. 우리 동네 현황 진단</h3>"
-        html += f"<p><b>1. 대상 지역 (예: 학교 주변 인근 00아파트 00단지 일대):</b> {ans.get('step1_1','')}</p>"
+        html += "<div class='guide-box'><strong>도보 15분 / 반경 1km 생활권 분석</strong><br>: 실제 답사와 지도 앱 내용을 통한 필수 서비스 결손 현황 체크</div>"
+        html += f"<p><b>1. 대상 지역 (예: 학교 주변 인근 00아파트 00단지 일대):</b><br>{ans.get('step1_1','')}</p>"
         html += "<h4>2. 15분 생활권 반경 내 필수 서비스 체크리스트</h4><table><tr><th>구분</th><th>필수 서비스 항목</th><th>충분</th><th>부족 or 없음</th></tr>"
         for row in ans.get("step1_2_df", []): html += f"<tr><td>{row.get('구분','')}</td><td>{row.get('필수 서비스 항목','')}</td><td>{row.get('충분','')}</td><td>{row.get('부족 or 없음','')}</td></tr>"
         html += "</table><h4>3. 선택한 지역의 핵심 문제점</h4>"
-        html += f"<p><b>문제점 1 / 데이터::</b> {ans.get('step1_3_1','')}</p><p><b>문제점 2 / 데이터::</b> {ans.get('step1_3_2','')}</p><p><b>문제점 3 / 데이터::</b> {ans.get('step1_3_3','')}</p>"
+        html += "<p style='color: #d35400; font-weight: bold;'>※ 선택한 지역의 핵심 문제점 (반드시 실제 현장 답사 및 데이터에 기반한 내용을 작성할 것)</p>"
+        html += f"<p><b>문제점 1 / 데이터:</b><br>{ans.get('step1_3_1','')}</p><p><b>문제점 2 / 데이터:</b><br>{ans.get('step1_3_2','')}</p><p><b>문제점 3 / 데이터:</b><br>{ans.get('step1_3_3','')}</p>"
+        
         html += "<h3>Step 2. 도시 개조 포인트를 활용한 트레이드오프 설계</h3>"
+        html += "<div class='guide-box'><strong>▶ 트레이드오프 설계</strong><br>: 두 개 이상의 상충되는 요구사항(예: 성능 대 비용, 유연성 대 단순성) 사이에서 최선의 선택을 하기 위해 장단점을 저울질하고 조율하는 과정. 완벽한 설계는 존재하지 않으며, 모든 설계는 무엇인가를 얻는 대신 다른 것을 포기하는 구조를 가질 수 밖에 없음<br><br><strong>▶ 도시 개조 포인트</strong><br>: 기본 100포인트 부여, 포인트를 활용하여 기존의 비효율적, 차량 중심 공간을 보행자를 위한 친환경 인프라로!!<br>: 새롭게 추가하는 카테고리/코드/세부 개조 항목 관련한 포인트는 최소 10pt, 최대 20pt(10~20pt)<br>: 포인트는 남김 없이 모두 사용해야 함<br>: 최소한의 현실 가능성은 충족할 것 예) 지하철 개통, 공항 건설... ㅠ.ㅠ</div>"
         html += "<h4>[도시 개조 포인트 (학생 추가 포함)]</h4>" + generate_points_html(ans.get("step2_point_df", []))
         html += "<h4>[트레이드오프 설계표]</h4><table><tr><th>순번</th><th>선택 코드</th><th>버릴 공간</th><th>사용 포인트</th><th>공간 재설계 이유 및 기대효과</th></tr>"
         for row in ans.get("step2_df", []): html += f"<tr><td>{row.get('순번','')}</td><td>{row.get('선택 코드','')}</td><td>{row.get('버릴 공간','')}</td><td>{row.get('사용 포인트','')}</td><td>{row.get('공간 재설계 이유 및 기대효과','')}</td></tr>"
         html += "</table>"
-        html += "<h3>Step 3. N분 도시 공간 개조 자료</h3>"
+        
+        html += "<h3>Step 3. N분 도시 공간 개조 자료 스케치/기획안 업로드</h3>"
+        html += "<div class='guide-box'>변경 전과 변경 후의 지도 스케치(변경 인프라 및 보행선 관련 내용 표시)</div>"
         b64_before = ans.get("file_before_data", ans.get("img_before", ""))
         name_before = ans.get("file_before_name", "변경전_스케치.png" if ans.get("img_before") else "")
         if b64_before:
@@ -337,35 +398,49 @@ def generate_html_content(act_name, ans, config=None):
         if b64_after:
             html += f"<h4>변경 후 지도 스케치 자료: {name_after}</h4>"
             if name_after.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')): html += f"<img src='data:image/png;base64,{b64_after}' style='max-width:100%; border:1px solid #ccc;'/>"
+            
         html += "<h3>Step 4. 3분 공청회 발표를 위한 준비</h3>"
-        html += f"<p><b>1. 핵심 정책 슬로건:</b> {ans.get('step4_1','')}</p><p><b>2. 심각한 공간 문제:</b> {ans.get('step4_2','')}</p><p><b>3. 버리고 채운 것과 이유:</b> {ans.get('step4_3','')}</p><p><b>4. 일상의 변화:</b> {ans.get('step4_4','')}</p>"
+        html += "<div class='guide-box'><strong>핵심 정책 슬로건과 발표 내용 요약</strong><br>STEP 1~3의 탐구 결과를 바탕으로, 발표 자료를 만들어 봅시다.<br>* 핵심 정책 슬로건에는 버릴공간과 문제점 + 채울 인프라와 미래 가치에 대한 내용이 반드시 들어가야 함.</div>"
+        html += f"<p><b>1. 핵심 정책 슬로건:</b><br>{ans.get('step4_1','')}</p><p><b>2. 심각한 공간 문제:</b><br>{ans.get('step4_2','')}</p><p><b>3. 버리고 채운 것과 이유:</b><br>{ans.get('step4_3','')}</p><p><b>4. 일상의 변화:</b><br>{ans.get('step4_4','')}</p>"
+        
     elif act_name == ACT_2_3:
         html += f"<h4>👤 개별 정보</h4><ul><li>학번: {ans.get('ind_id','')}</li><li>이름: {ans.get('ind_name','')}</li><li>희망 진로: {ans.get('ind_career','')}</li></ul>"
+        
         html += "<h3>Step 1. 우리 지역 정체성 자원 발굴 및 팩트 체크</h3>"
+        html += "<div class='guide-box'><strong>▶ 교과서 13쪽 / 20쪽 내용 中</strong><br>개인이 여러 장소에서 경험을 쌓으며 형성하는 주관적인 감정을 장소감이라 하고, 이것이 공유되어 형성된 독특한 이미지가 장소성이며, 확장되면 그 도시만의 특성인 도시 정체성이 됩니다.<br>미디어 파사드 디자이너는 건물의 형태와 주변 환경을 고려하여 특정 주제나 전달하고자 하는 메시지에 맞춘 디자인을 구상하고, 건축물 외벽에 프로젝션·LED 스크린·조명 등 다양한 기술을 활용하여 작품을 구현합니다.<br><br>▶ 우리 지역의 정체성은 '느낌'이 아니라 <strong>'근거'</strong>에서 출발합니다. 아래 세 개의 축에서 키워드를 뽑고, 반드시 출처가 있는 자료로 뒷받침하세요.<br>▶ 내 작품의 소재가 될 지역 정체성을 세 개의 축에서 찾고, 반드시 근거 자료와 출처를 함께 적습니다.<br>▶ <strong>추천 검색어</strong>: '울산광역시 통계포털', 'KOSIS 지역별 고용조사', '국가문화유산포털', '카카오맵/네이버맵 지적편집도'<br><span style='color: #d35400; font-weight: bold;'>※ 근거 자료와 출처가 비어 있는 칸은 점수로 인정되지 않습니다.</span></div>"
         html += "<table><tr><th>구분</th><th>내가 찾은 정체성 키워드 혹은 문장</th><th>근거가 되는 사실·통계·사건</th><th>출처(기관명/자료명/연도)</th></tr>"
         for row in ans.get("step1_df", []): html += f"<tr><td>{row.get('구분','')}</td><td>{row.get('내가 찾은 정체성 키워드 혹은 문장','')}</td><td>{row.get('근거가 되는 사실·통계·사건','')}</td><td>{row.get('출처(기관명/자료명/연도)','')}</td></tr>"
         html += "</table>"
-        html += f"<p><b>▶ 최종 선택 키워드:</b> {ans.get('step1_keyword','')}</p><p><b>▶ 단 하나의 메시지:</b> {ans.get('step1_message','')}</p>"
+        html += f"<p><b>▶ 최종 선택 키워드:</b><br>{ans.get('step1_keyword','')}</p><p><b>▶ 단 하나의 메시지:</b><br>{ans.get('step1_message','')}</p>"
+        
         html += "<h3>Step 2. 캔버스 선정</h3>"
+        html += "<div class='guide-box'>▶ 우리 지역의 실제 건축물·구조물 3곳을 후보로 조사하고 비교한 뒤 최종 1곳을 선정합니다.<br>▶ 직접 답사하거나 지도 로드뷰로 확인한 내용을 적습니다. <strong>상상으로 쓴 내용은 인정되지 않습니다.</strong><br>(현장 답사가 어려운 경우 지도 앱의 로드뷰·위성사진으로 대체하되, 캡처 화면을 반드시 첨부할 것)</div>"
         html += "<table><tr><th>후보(건물명)</th><th>벽면 조건</th><th>관람 조건</th><th>접근성</th><th>예상 제약</th><th>지역 정체성 연관성</th><th>적합도(별점)</th></tr>"
         for row in ans.get("step2_df", []): html += f"<tr><td>{row.get('건물명','')}</td><td>{row.get('벽면 조건','')}</td><td>{row.get('관람 조건','')}</td><td>{row.get('접근성','')}</td><td>{row.get('예상 제약','')}</td><td>{row.get('정체성 연관성','')}</td><td>{row.get('적합도(별점)','')}</td></tr>"
         html += "</table>"
-        html += f"<p><b>▶ 최종 선정 건물:</b> {ans.get('step2_final_building','')}</p><p><b>▶ 이유:</b> {ans.get('step2_reason','')}</p>"
+        html += f"<p><b>▶ 최종 선정 건물:</b><br>{ans.get('step2_final_building','')}</p><p><b>▶ 이유:</b><br>{ans.get('step2_reason','')}</p>"
+        
         html += "<h3>Step 3. 주어진 조건 진단 및 대응 설계</h3>"
+        html += "<div class='guide-box'>▶ 내가 선정한 건물과 그 주변에는 내가 바꿀 수 없는 조건들이 이미 존재합니다.<br>▶ 조건을 없애거나 무시하는 것이 아니라, 그 조건을 그대로 받아들인 상태에서 어떻게 작품을 성립시킬지 설계합니다.<br><span style='color: #d35400; font-weight: bold;'>※ 중요: 조건을 '문제점'으로만 적고 끝내면 점수를 받지 못합니다. 반드시 「나의 대응 방안」까지 채워야 합니다.</span><br>※ 제약을 오히려 작품의 조형 요소로 뒤집어 활용한 경우 가장 높은 평가를 받습니다.</div>"
         html += "<table><tr><th>조건 영역</th><th>현장의 실제 조건 (확인한 사실)</th><th>작품에 미치는 영향</th><th>나의 대응 방안</th></tr>"
         for row in ans.get("step3_df", []): html += f"<tr><td>{row.get('조건 영역','')}</td><td>{row.get('현장의 실제 조건 (확인한 사실)','')}</td><td>{row.get('작품에 미치는 영향','')}</td><td>{row.get('나의 대응 방안','')}</td></tr>"
         html += "</table>"
+        
         html += "<h3>Step 4. 작품 스토리보드 4컷</h3>"
+        html += "<div class='guide-box'>▶ Step 1의 메시지를 Step 2의 벽면 위에, Step 3의 조건을 지키면서 어떻게 펼칠지 4컷으로 구성합니다.<br>▶ 그림 실력은 평가하지 않습니다. 도형과 화살표로 표현해도 됩니다. 대신 설명은 구체적으로 씁니다.</div>"
         for i in range(1, 5):
             c_desc = ans.get(f'cut_{i}_desc', '')
             c_name = ans.get(f'cut_{i}_file_name', '')
-            html += f"<h4>컷 {i}</h4><p><b>장면 설명·사용 기술·소요 시간:</b> {c_desc}</p>"
+            html += f"<h4>컷 {i}</h4><p><b>장면 설명·사용 기술·소요 시간:</b><br>{c_desc}</p>"
             b64_file = ans.get(f"cut_{i}_file_data", "")
             if b64_file:
                 html += f"<p>첨부된 파일: {c_name}</p>"
                 if str(c_name).lower().endswith(('.png', '.jpg', '.jpeg', '.gif')): html += f"<img src='data:image/png;base64,{b64_file}' style='max-width:100%; border:1px solid #ccc;'/>"
+        
         html += "<h3>Step 5. 작품 설명 카드 작성 및 갤러리 워크</h3>"
-        html += f"<p><b>▶ 작품 제목:</b> {ans.get('step5_title','')}</p><p><b>▶ 전시 장소:</b> {ans.get('step5_place','')}</p><p><b>▶ 작품 개요:</b> {ans.get('step5_summary','')}</p><p><b>▶ 지역 정체성 반영:</b> {ans.get('step5_identity','')}</p><p><b>▶ 현장 조건 반영:</b> {ans.get('step5_condition','')}</p><p><b>▶ 남길 변화:</b> {ans.get('step5_change','')}</p>"
+        html += "<div class='guide-box'>▶ 완성한 작품을 전시장에 걸 때 옆에 붙는 캡션 패널을 직접 씁니다. 교실 벽에 게시하여 서로 감상합니다.</div>"
+        html += f"<p><b>▶ 작품 제목:</b><br>{ans.get('step5_title','')}</p><p><b>▶ 전시 장소:</b><br>{ans.get('step5_place','')}</p><p><b>▶ 작품 개요:</b><br>{ans.get('step5_summary','')}</p><p><b>▶ 지역 정체성 반영:</b><br>{ans.get('step5_identity','')}</p><p><b>▶ 현장 조건 반영:</b><br>{ans.get('step5_condition','')}</p><p><b>▶ 남길 변화:</b><br>{ans.get('step5_change','')}</p>"
+        
         html += "<h3>Step 6. 제출 전 자기 점검 및 활용 기록</h3>"
         html += "<h4>점검 항목 체크리스트</h4><table><tr><th>No</th><th>점검 항목</th><th>확인 여부</th></tr>"
         for row in ans.get("step6_chk_df", []): html += f"<tr><td>{row.get('No','')}</td><td>{row.get('점검 항목','')}</td><td>{'✅' if row.get('확인') else '❌'}</td></tr>"
@@ -373,25 +448,9 @@ def generate_html_content(act_name, ans, config=None):
         html += "<h4>생성형 AI 활용 기록</h4><table><tr><th>사용한 도구명</th><th>입력한 프롬프트</th><th>AI 결과물을 내가 수정·판단한 내용</th></tr>"
         for row in ans.get("step6_ai_df", []): html += f"<tr><td>{row.get('사용한 도구명','')}</td><td>{row.get('입력한 프롬프트','')}</td><td>{row.get('AI 결과물을 내가 수정·판단한 내용','')}</td></tr>"
         html += "</table>"
-        html += f"<p><b>▶ 활동 성찰:</b> {ans.get('step6_reflection','')}</p>"
+        html += f"<p><b>▶ 활동 성찰:</b><br>{ans.get('step6_reflection','')}</p>"
     else:
         for q in config.get("custom_forms", {}).get(act_name, []): html += f"<h3>{q['label']}</h3><div class='content-box'>{ans.get(q['id'], '')}</div>"
-    return html
-
-def generate_activity_html(act_name, ans, u_name):
-    html = f"""<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>{u_name} - {act_name}</title>
-    <style>
-        body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; }} 
-        h2 {{ color: #2c3e50; border-left: 5px solid #3498db; padding-left: 10px; }} 
-        h3 {{ color: #2980b9; }} 
-        table {{ width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; table-layout: fixed; }} 
-        th {{ background-color: #ecf0f1; width: 30%; border: 1px solid #bdc3c7; padding: 10px; text-align: left; }} 
-        td {{ border: 1px solid #bdc3c7; padding: 10px; text-align: left; white-space: pre-wrap; }} 
-        .content-box {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #e9ecef; white-space: pre-wrap; }}
-    </style></head><body>
-    <div style="text-align: right; margin-bottom: 20px;"><b>이름:</b> {u_name}</div><h2>▶ {act_name}</h2>"""
-    html += generate_html_content(act_name, ans)
-    html += "</body></html>"
     return html
 
 def generate_portfolio_html(user_key, u_info, view_subj, config, learning_data):
