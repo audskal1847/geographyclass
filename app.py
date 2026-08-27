@@ -1634,6 +1634,19 @@ else:
                                         q_t, a_t = str(row[0]), str(row[1])
                                         if not q_t and not a_t: continue
                                         
+                                        # 💡 대제목(Step 1 등)일 경우 파란색 글씨로 강제 출력
+                                        if not a_t and q_t.startswith("["): 
+                                            st.markdown(f"<h4 style='color:#2980b9; margin-top:25px; border-bottom:2px solid #ecf0f1; padding-bottom:8px;'>{q_t}</h4>", unsafe_allow_html=True)
+                                        elif a_t: 
+                                            st.markdown(f"<div style='background-color:#f8f9fa; padding:12px; border-radius:5px; margin-bottom:8px; border-left: 4px solid #bdc3c7;'><b>{q_t}</b><br><span style='color:#333;'>{a_t}</span></div>", unsafe_allow_html=True)
+                                            
+                                    # 🌟 [복구된 코드] 삭제되었던 HTML 파일 생성 변수 1줄 복구!
+                                    single_html = generate_activity_html(selected_view, ans, u_info_csv.get('name'))
+                                    
+                                    zf_item.writestr(f"{u_info_csv.get('class_group')}_{u_info_csv.get('name')}_{selected_view[:8]}.html", single_html.encode('utf-8-sig'))
+                                    has_html_item = True
+                                    csv_data.append(["---", "---"])
+                                        
                                         # 💡 핵심 수정: 답변(a_t)이 비어 있어도, 괄호 '[' 로 시작하는 대제목(Step 1 등)일 경우 파란색 글씨로 강제 출력!
                                         if not a_t and q_t.startswith("["): 
                                             st.markdown(f"<h4 style='color:#2980b9; margin-top:25px; border-bottom:2px solid #ecf0f1; padding-bottom:8px;'>{q_t}</h4>", unsafe_allow_html=True)
