@@ -196,49 +196,62 @@ def get_user_activity_data(user_key, u_id, u_subj, u_class, act_name, learning_d
 def get_act_csv_rows(selected_view, ans, config=None):
     csv_data = []
     if selected_view == ACT_3_1:
-        csv_data.extend([["[1. 첫번째 질문]", ""], ["영상 제목", ans.get("a1_1", "")], ["국가/지역", ans.get("a1_2", "")], ["이유", ans.get("a1_3", "")], ["[2. 두 번째 질문]", ""], ["첫 느낌", ans.get("a2_1", "")], ["장소/공간", ans.get("a2_2_1", "")], ["이유", ans.get("a2_2_2", "")], ["추천", ans.get("a2_3_1", "")], ["추천 이유", ans.get("a2_3_2", "")], ["감상평", ans.get("a2_4", "")], ["[5. 내가 찍는다면?]", ""], ["영상 제목", ans.get("a3_1", "")], ["주요 컨셉", ans.get("a3_2", "")], ["누구와?", ans.get("a3_3", "")], ["이유", ans.get("a3_4", "")], ["해보고 싶은 것", ans.get("a3_5", "")], ["이유", ans.get("a3_6", "")], ["장소/공간", ans.get("a3_7", "")], ["이유", ans.get("a3_8", "")], ["썸네일", ans.get("a3_9", "")], ["BGM", ans.get("a3_10", "")], ["이유", ans.get("a3_11", "")]])
+        csv_data.extend([["[1. 자신이 선택한 영상에 대한 첫번째 질문]", ""], ["1. 영상의 제목", ans.get("a1_1", "")], ["2. 영상에 등장하는 국가 혹은 지역", ans.get("a1_2", "")], ["3. 해당 영상을 선택하게 된 이유", ans.get("a1_3", "")], ["", ""], ["[2. 자신이 선택한 영상에 대한 두 번째 질문]", ""], ["1. 첫 느낌", ans.get("a2_1", "")], ["▶ 인상적이었던 장소 혹은 공간:", ans.get("a2_2_1", "")], ["▶ 이유:", ans.get("a2_2_2", "")], ["▶ 누구에게 추천:", ans.get("a2_3_1", "")], ["▶ 추천하는 이유:", ans.get("a2_3_2", "")], ["4. 영상에 대한 나만의 감상평", ans.get("a2_4", "")], ["", ""], ["[5. 만일 내가 영상 속 지역을 배경으로 영상을 찍는다면?]", ""], ["1) 영상의 제목:", ans.get("a3_1", "")], ["2) 영상의 주요 컨셉 혹은 느낌:", ans.get("a3_2", "")], ["3) 누구와 함께 가고 싶은가?:", ans.get("a3_3", "")], ["4) 그 이유는?:", ans.get("a3_4", "")], ["5) 그곳에서 가장 해 보고 싶은 것:", ans.get("a3_5", "")], ["6) 그 이유는?:", ans.get("a3_6", "")], ["7) 영상에 꼭 넣고 싶은 장소 혹은 공간:", ans.get("a3_7", "")], ["8) 그 이유는?:", ans.get("a3_8", "")], ["9) 만일 내가 썸네일 영상을 만든다면?:", ans.get("a3_9", "")], ["10) 어울리는 BGM:", ans.get("a3_10", "")], ["11) 그 이유는?:", ans.get("a3_11", "")]])
     elif selected_view == ACT_3_2:
-        csv_data.extend([["편안한 장소", ans.get("q1_1", "")], ["이유", ans.get("q1_2", "")], ["성격", ans.get("q2_1", "")], ["성격 영향 장소", ans.get("q2_2", "")], ["이유", ans.get("q2_3", "")], ["장점", ans.get("q3_1", "")], ["장점 영향 장소", ans.get("q3_2", "")], ["이유", ans.get("q3_3", "")], ["성장 영향 장소", ans.get("q4_1", "")], ["어떤 면에서", ans.get("q4_2", "")], ["목표", ans.get("q5_1", "")], ["목표 영향 장소", ans.get("q5_2", "")], ["소개 장소", ans.get("q6_1", "")], ["이유", ans.get("q6_2", "")], ["비밀 장소", ans.get("q7_1", "")], ["이유", ans.get("q7_2", "")], ["과거 장소", ans.get("q8_1", "")], ["이유", ans.get("q8_2", "")]])
+        csv_data.extend([["1-1) 나에게 편안함을 주는 장소(공간)이/가 있는가?", ans.get("q1_1", "")], ["1-2) 그 장소(공간)이/가 어떤 면에서 나에게 편안함을 주는 것 같은가?", ans.get("q1_2", "")], ["2-1) 자신이 생각하기에 자신의 성격은?", ans.get("q2_1", "")], ["2-2) 자신이 성격 형성에 있어 영향을 준 장소(공간)이/가 있는가?", ans.get("q2_2", "")], ["2-3) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", ans.get("q2_3", "")], ["3-1) 자신이 생각하기에 자신의 장점은?", ans.get("q3_1", "")], ["3-2) 자신이 장점 형성에 있어 영향을 준 장소(공간)이/가 있는가?", ans.get("q3_2", "")], ["3-3) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", ans.get("q3_3", "")], ["4-1) 내가 성장함에 있어 영향을 준 장소(공간)이/가 있는가?", ans.get("q4_1", "")], ["4-2) 그런 장소(공간)이/가 있다면 어떤 면에서 영향을 준 것 같은가?", ans.get("q4_2", "")], ["5-1) 지금 나의 목표는 무엇인가?", ans.get("q5_1", "")], ["5-2) 그런 목표를 설정함에 있어 영향을 준 장소(공간)이/가 있는가?", ans.get("q5_2", "")], ["6-1) 훗날 소중한 사람에게 소개해 주고 싶은 장소(공간)이/가 있는가?", ans.get("q6_1", "")], ["6-2) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", ans.get("q6_2", "")], ["7-1) 나만의 비밀 장소(공간)이/가 있는가?", ans.get("q7_1", "")], ["7-2) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", ans.get("q7_2", "")], ["8-1) 시간을 돌려 과거로 돌아갈 수 있다면 다시 가 보고 싶은 장소(공간)이/가 있는가?", ans.get("q8_1", "")], ["8-2) 장소(공간)로/으로 다시 가 보고 싶은 이유는 무엇 때문인가?", ans.get("q8_2", "")]])
     elif selected_view == ACT_3_3:
-        for r in ans.get("s1_df", []): csv_data.append([r.get("대륙", ""), f"관심도:{r.get('관심도','')} 지식:{r.get('지식수준','')}"])
-        for r in ans.get("direct_df", []): csv_data.append([r.get("여행해 본 국가", ""), r.get("기억/인상", "")])
-        csv_data.extend([["영화/드라마", ans.get("ind1", "")], ["음악/연예인", ans.get("ind2", "")], ["음식", ans.get("ind3", "")]])
-        for r in ans.get("top5_want", []): csv_data.append([r.get("국가 혹은 지역", ""), r.get("이유", "")])
-        for r in ans.get("top5_notwant", []): csv_data.append([r.get("국가 혹은 지역", ""), r.get("이유", "")])
-        for r in ans.get("label_df", []): csv_data.append([r.get("가 보고 싶은 국가", ""), f"라벨:{r.get('한 단어 라벨','')} 싫은국가:{r.get('가고 싶지 않은 국가','')} 라벨(부정):{r.get('한 단어 라벨(부정)','')}"])
-        for r in ans.get("prej_df", []): csv_data.append([r.get("국가명", ""), f"편견:{r.get('편견 내용','')} 이유:{r.get('편견 형성 과정 혹은 이유','')}"])
-        csv_data.extend([["뉴스국가", ans.get("media1_1", "")], ["뉴스이미지", ans.get("media1_2", "")], ["영화국가", ans.get("media2_1", "")], ["영화이미지", ans.get("media2_2", "")], ["학교국가", ans.get("media3_1", "")], ["학교지식", ans.get("media3_2", "")]])
-        for r in ans.get("fake_df", []): csv_data.append([r.get("국가명", ""), f"오해:{r.get('잘못 알고 있었던 내용','')} 진실:{r.get('실제 사실','')}"])
-        for r in ans.get("discrim_df", []): csv_data.append([r.get("어떤 국가에 대해?", ""), f"측면:{r.get('어떤 측면에서','')} 이유:{r.get('그 이유','')}"])
-        for r in ans.get("change_df", []): csv_data.append([r.get("어떤 국가에 대해?", ""), f"편견:{r.get('현재의 편견','')} 계획:{r.get('올바른 정보를 찾기 위한 계획','')}"])
-        for r in ans.get("ignore_df", []): csv_data.append([r.get("선택 대륙/국가", ""), f"이유:{r.get('무관심 이유','')} 확장:{r.get('관심 확장을 위한 정보 수집 방법','')}"])
-        for r in ans.get("western_df", []): csv_data.append([r.get("현재 가지고 있는 서구 중심적 시각", ""), r.get('개선 방법', '')])
-        csv_data.extend([["목표인물", ans.get("goal_1", "")], ["목표세계관", ans.get("goal_2", "")]])
+        csv_data.extend([["[1. 세계 인식 수준에 대한 확인]", ""], ["1) 대륙별 관심도 및 지식 수준 체크", ""]])
+        for row in ans.get("s1_df", []): csv_data.append([row.get("대륙", ""), f"관심도: {row.get('관심도', '')} / 지식수준: {row.get('지식수준', '')}"])
+        csv_data.append(["2) 특정 국가에 대한 기억과 인상 분석 (직접경험)", ""])
+        for row in ans.get("direct_df", []): csv_data.append([row.get("여행해 본 국가", ""), row.get("해당 국가에 대한 구체적인 기억 혹은 인상", "")])
+        csv_data.extend([["즐겨 보는 외국 영화/드라마는 어느 나라 작품?", ans.get("ind1", "")], ["좋아하는 음악가나 연예인이 있다면 어느 나라?", ans.get("ind2", "")], ["자주 먹는 외국 음식이 있다면 어느 나라?", ans.get("ind3", "")], ["3) 꼭 가 보고 싶은 Top 5 국가와 그 이유", ""]])
+        for row in ans.get("top5_want", []): csv_data.append([row.get("국가 혹은 지역", ""), row.get("이유", "")])
+        csv_data.append(["4) 절대 가고 싫은 Top 5 국가와 그 이유", ""])
+        for row in ans.get("top5_notwant", []): csv_data.append([row.get("국가 혹은 지역", ""), row.get("이유", "")])
+        csv_data.extend([["", ""], ["[2. 특정 대륙/국가에 대한 자신의 편견과 고정관념]", ""], ["1) 국가별 한 단어 라벨링", ""]])
+        for row in ans.get("label_df", []): csv_data.append([row.get("가 보고 싶은 국가", ""), f"라벨: {row.get('한 단어 라벨', '')} / 싫은 국가: {row.get('가고 싶지 않은 국가', '')} / 라벨(부정): {row.get('한 단어 라벨(부정)', '')}"])
+        csv_data.append(["2) 개인적으로 가장 강한 편견을 가진 국가", ""])
+        for row in ans.get("prej_df", []): csv_data.append([row.get("국가명", ""), f"편견 내용: {row.get('편견 내용', '')} / 형성 과정: {row.get('편견 형성 과정 혹은 이유', '')}"])
+        csv_data.extend([["3) 미디어와 교육의 영향으로 인한 인식 발견", ""], ["뉴스에서 자주 접하는 국가들", ans.get("media1_1", "")], ["그 나라들에 대한 이미지 (뉴스)", ans.get("media1_2", "")], ["영화/드라마에서 자주 접하는 국가들", ans.get("media2_1", "")], ["그 나라들에 대한 이미지 (영화/드라마)", ans.get("media2_2", "")], ["학교에서 많이 배운 국가들", ans.get("media3_1", "")], ["그 나라들에 대한 지식", ans.get("media3_2", "")], ["4) 부정확한 정보나 과장된 인식 발견", ""]])
+        for row in ans.get("fake_df", []): csv_data.append([row.get("국가명", ""), f"잘못 알고 있던 내용: {row.get('잘못 알고 있었던 내용', '')} / 실제 사실: {row.get('실제 사실', '')}"])
+        csv_data.append(["5) 우월감이나 차별 의식 점검", ""])
+        for row in ans.get("discrim_df", []): csv_data.append([row.get("어떤 국가에 대해?", ""), f"어떤 측면에서: {row.get('어떤 측면에서', '')} / 이유: {row.get('그 이유', '')}"])
+        csv_data.extend([["", ""], ["[3. 포용적이고 균형잡힌 세계관을 위한 노력]", ""]])
+        for row in ans.get("change_df", []): csv_data.append([row.get("어떤 국가에 대해?", ""), f"현재의 편견: {row.get('현재의 편견', '')} / 올바른 정보를 찾기 위한 계획: {row.get('올바른 정보를 찾기 위한 계획', '')}"])
+        csv_data.append(["가장 무관심했던 대륙 혹은 국가", ""])
+        for row in ans.get("ignore_df", []): csv_data.append([row.get("선택 대륙/국가", ""), f"무관심 이유: {row.get('무관심 이유', '')} / 관심 확장을 위한 정보 수집 방법: {row.get('관심 확장을 위한 정보 수집 방법', '')}"])
+        csv_data.append(["서구 중심적 시각에서 벗어나기", ""])
+        for row in ans.get("western_df", []): csv_data.append([row.get("현재 가지고 있는 서구 중심적 시각", ""), f"개선 방법: {row.get('개선 방법', '')}"])
+        csv_data.extend([["", ""], ["[4. 목표로 하는 세계관]", ""], ["▶ 어떤 사람이 되고 싶은가?", ans.get("goal_1", "")], ["▶ 어떤 세계관을 갖고 싶은가?", ans.get("goal_2", "")]])
     elif selected_view == ACT_2_1:
-        csv_data.extend([["모둠원", f"1:{ans.get('m1_id','')} {ans.get('m1_name','')} / 2:{ans.get('m2_id','')} {ans.get('m2_name','')} / 3:{ans.get('m3_id','')} {ans.get('m3_name','')} / 4:{ans.get('m4_id','')} {ans.get('m4_name','')}"]])
-        csv_data.extend([["밈 수집", ans.get("step1_1", "")], ["주관적 이미지", ans.get("step1_2", "")], ["특별한 장소", ans.get("step1_3", "")], ["감정/생각", ans.get("step1_4", "")], ["탐구 시기", ans.get("step2_1_period", "")], ["핵심 공간", ans.get("step2_1_space", "")], ["객관적 특징", ans.get("step2_1_feat", "")], ["객관적 지표", ans.get("step2_3", "")]])
-        for r in ans.get("step3_df", []): csv_data.append([r.get("거주 적합성 요인", ""), f"별점:{r.get('만족도 점수','')} 평가:{r.get('한 줄 평가','')}"])
-        csv_data.extend([["기존 프레임", ans.get("step4_1", "")], ["지리적 본질", ans.get("step4_2", "")], ["슬로건", ans.get("step4_3", "")], ["개선 아이디어", ans.get("step4_4", "")]])
+        csv_data.extend([["👥 모둠 구성원", f"1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}"]])
+        csv_data.extend([["1. 우리가 선택한 우리 지역의 인터넷, SNS, 혹은 타 지역 친구들에게 들었던 우리 지역에 대한 유쾌한 편견이나 밈을 하나 선정 '밈'", ans.get("step1_1", "")], ["2. 이 밈이 대중에게 심어준 주관적 이미지 (편견 혹은 선입견)", ans.get("step1_2", "")], ["3. 우리 모둠에게 특별한 장소감을 주는 장소", ans.get("step1_3", "")], ["4. 그 장소에서 느끼는 감정이나 생각", ans.get("step1_4", "")], ["1. 우리 모둠이 탐구할 시기", ans.get("step2_1_period", "")], ["2-1. 선택한 시기의 핵심 공간", ans.get("step2_1_space", "")], ["2-2. 객관적 특징", ans.get("step2_1_feat", "")], ["3. 선택한 시기의 객관적 지리 데이터 혹은 지표", ans.get("step2_3", "")]])
+        for row in ans.get("step3_df", []): csv_data.append([row.get("거주 적합성 요인", ""), f"만족도 점수: {row.get('만족도 점수', '')} / 한 줄 평가: {row.get('한 줄 평가', '')}"])
+        csv_data.extend([["1. 기존 프레임(대중의 오해)", ans.get("step4_1", "")], ["2. 우리 모둠이 도출한 지리적 본질", ans.get("step4_2", "")], ["3. 우리 모둠의 반전 광고 슬로건", ans.get("step4_3", "")], ["4. 우리 모둠이 제안하는 울산의 거주 적합성 개선 아이디어", ans.get("step4_4", "")]])
     elif selected_view == ACT_2_2:
-        csv_data.extend([["모둠원", f"1:{ans.get('m1_id','')} {ans.get('m1_name','')} / 2:{ans.get('m2_id','')} {ans.get('m2_name','')} / 3:{ans.get('m3_id','')} {ans.get('m3_name','')} / 4:{ans.get('m4_id','')} {ans.get('m4_name','')}"]])
-        csv_data.append(["대상 지역", ans.get("step1_1", "")])
-        for r in ans.get("step1_2_df", []): csv_data.append([r.get("구분", ""), f"항목:{r.get('필수 서비스 항목','')} 충분:{r.get('충분','')} 부족:{r.get('부족 or 없음','')}"])
-        csv_data.extend([["문제점 1", ans.get("step1_3_1", "")], ["문제점 2", ans.get("step1_3_2", "")], ["문제점 3", ans.get("step1_3_3", "")]])
-        for r in ans.get("step2_point_df", []): csv_data.append([r.get("카테고리", ""), f"코드:{r.get('코드','')} 내용:{r.get('세부 개조 항목','')} 비용:{r.get('비용','')}"])
-        for r in ans.get("step2_df", []): csv_data.append([f"순번 {r.get('순번', '')}", f"코드:{r.get('선택 코드','')} 버릴공간:{r.get('버릴 공간','')} 포인트:{r.get('사용 포인트','')} 재설계:{r.get('공간 재설계 이유 및 기대효과','')}"])
-        csv_data.extend([["변경 전", ans.get("file_before_name", "")], ["변경 후", ans.get("file_after_name", "")], ["슬로건", ans.get("step4_1", "")], ["공간 문제", ans.get("step4_2", "")], ["버리고 채운 것", ans.get("step4_3", "")], ["일상 변화", ans.get("step4_4", "")]])
+        csv_data.append(["👥 모둠 구성원", f"1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}"])
+        csv_data.append(["1. 대상 지역 (예: 학교 주변 인근 00아파트 00단지 일대)", ans.get("step1_1", "")])
+        for row in ans.get("step1_2_df", []): csv_data.append([row.get("구분", ""), f"필수 서비스 항목: {row.get('필수 서비스 항목', '')} / 충분: {row.get('충분', '')} / 부족 or 없음: {row.get('부족 or 없음', '')}"])
+        csv_data.extend([["문제점 1 / 데이터:", ans.get("step1_3_1", "")], ["문제점 2 / 데이터:", ans.get("step1_3_2", "")], ["문제점 3 / 데이터:", ans.get("step1_3_3", "")]])
+        csv_data.append(["[도시 개조 포인트]", ""])
+        for row in ans.get("step2_point_df", []): csv_data.append([row.get("카테고리", ""), f"코드: {row.get('코드', '')}, 세부 개조 항목: {row.get('세부 개조 항목', '')}, 비용: {row.get('비용', '')}"])
+        for row in ans.get("step2_df", []): csv_data.append([f"트레이드오프 순번 {row.get('순번', '')}", f"선택 코드: {row.get('선택 코드', '')} / 버릴 공간: {row.get('버릴 공간', '')} / 사용 포인트: {row.get('사용 포인트', '')} / 공간 재설계 이유 및 기대효과: {row.get('공간 재설계 이유 및 기대효과', '')}"])
+        if ans.get("file_before_data") or ans.get("img_before"): csv_data.append(["변경 전 지도 스케치 자료", f"제출 완료 ({ans.get('file_before_name', '스케치.png')})"])
+        if ans.get("file_after_data") or ans.get("img_after"): csv_data.append(["변경 후 지도 스케치 자료", f"제출 완료 ({ans.get('file_after_name', '스케치.png')})"])
+        csv_data.extend([["1. 핵심 정책 슬로건", ans.get("step4_1", "")], ["2. 심각한 공간 문제", ans.get("step4_2", "")], ["3. 버리고 채운 것과 이유", ans.get("step4_3", "")], ["4. 일상의 변화", ans.get("step4_4", "")]])
     elif selected_view == ACT_2_3:
-        csv_data.extend([["학번/이름", f"{ans.get('ind_id', '')} / {ans.get('ind_name', '')}"], ["희망 진로", ans.get("ind_career", "")]])
-        for r in ans.get("step1_df", []): csv_data.append([r.get("구분", ""), f"키워드:{r.get('내가 찾은 정체성 키워드 혹은 문장','')} 근거:{r.get('근거가 되는 사실·통계·사건','')} 출처:{r.get('출처(기관명/자료명/연도)','')}"])
-        csv_data.extend([["선택 키워드", ans.get("step1_keyword", "")], ["메시지", ans.get("step1_message", "")]])
-        for r in ans.get("step2_df", []): csv_data.append([r.get("건물명", ""), f"벽면:{r.get('벽면 조건','')} 관람:{r.get('관람 조건','')} 접근:{r.get('접근성','')} 제약:{r.get('예상 제약','')} 연관성:{r.get('정체성 연관성','')} 적합도:{r.get('적합도(별점)','')}"])
-        csv_data.extend([["선정 건물", ans.get("step2_final_building", "")], ["선정 이유", ans.get("step2_reason", "")]])
-        for r in ans.get("step3_df", []): csv_data.append([r.get("조건 영역", ""), f"실제조건:{r.get('현장의 실제 조건 (확인한 사실)','')} 영향:{r.get('작품에 미치는 영향','')} 대응:{r.get('나의 대응 방안','')}"])
-        for i in range(1, 5): csv_data.append([f"컷 {i}", f"설명: {ans.get(f'cut_{i}_desc', '')} / 첨부: {ans.get(f'cut_{i}_file_name', '')}"])
-        csv_data.extend([["작품 제목", ans.get("step5_title", "")], ["전시 장소", ans.get("step5_place", "")], ["개요", ans.get("step5_summary", "")], ["정체성 반영", ans.get("step5_identity", "")], ["조건 반영", ans.get("step5_condition", "")], ["변화", ans.get("step5_change", "")]])
-        for r in ans.get("step6_chk_df", []): csv_data.append([r.get("점검 항목", ""), "O" if r.get("확인") else "X"])
-        for r in ans.get("step6_ai_df", []): csv_data.append([r.get("사용한 도구명", ""), f"프롬프트:{r.get('입력한 프롬프트','')} 수정내용:{r.get('AI 결과물을 내가 수정·판단한 내용','')}"])
-        csv_data.append(["활동 성찰", ans.get("step6_reflection", "")])
+        csv_data.extend([["👤 개별 정보", f"학번: {ans.get('ind_id', '')} / 이름: {ans.get('ind_name', '')}"], ["희망 진로", ans.get("ind_career", "")], ["[Step 1. 우리 지역 정체성 자원 발굴 및 팩트 체크]", ""]])
+        for row in ans.get("step1_df", []): csv_data.append([row.get("구분", ""), f"내가 찾은 정체성 키워드 혹은 문장: {row.get('내가 찾은 정체성 키워드 혹은 문장', '')} / 근거가 되는 사실·통계·사건: {row.get('근거가 되는 사실·통계·사건', '')} / 출처(기관명/자료명/연도): {row.get('출처(기관명/자료명/연도)', '')}"])
+        csv_data.extend([["▶ 최종 선택 키워드", ans.get("step1_keyword", "")], ["▶ 단 하나의 메시지", ans.get("step1_message", "")], ["[Step 2. 캔버스 선정]", ""]])
+        for row in ans.get("step2_df", []): csv_data.append([row.get("건물명", ""), f"벽면 조건: {row.get('벽면 조건', '')} / 관람 조건: {row.get('관람 조건', '')} / 접근성: {row.get('접근성', '')} / 예상 제약: {row.get('예상 제약', '')} / 정체성 연관성: {row.get('정체성 연관성', '')} / 적합도(별점): {row.get('적합도(별점)', '')}"])
+        csv_data.extend([["▶ 최종 선정 건물", ans.get("step2_final_building", "")], ["▶ 이유", ans.get("step2_reason", "")], ["[Step 3. 주어진 조건 진단 및 대응 설계]", ""]])
+        for row in ans.get("step3_df", []): csv_data.append([row.get("조건 영역", ""), f"현장의 실제 조건 (확인한 사실): {row.get('현장의 실제 조건 (확인한 사실)', '')} / 작품에 미치는 영향: {row.get('작품에 미치는 영향', '')} / 나의 대응 방안: {row.get('나의 대응 방안', '')}"])
+        csv_data.append(["[Step 4. 작품 스토리보드 4컷]", ""])
+        for i in range(1, 5): csv_data.append([f"컷 {i}", f"장면 설명·사용 기술·소요 시간: {ans.get(f'cut_{i}_desc', '')} / 첨부파일: {ans.get(f'cut_{i}_file_name', '첨부없음')}"])
+        csv_data.extend([["[Step 5. 작품 설명 카드]", ""], ["▶ 작품 제목", ans.get("step5_title", "")], ["▶ 전시 장소", ans.get("step5_place", "")], ["▶ 작품 개요", ans.get("step5_summary", "")], ["▶ 지역 정체성 반영", ans.get("step5_identity", "")], ["▶ 현장 조건 반영", ans.get("step5_condition", "")], ["▶ 남길 변화", ans.get("step5_change", "")], ["[Step 6. 제출 전 자기 점검 및 활용 기록]", ""]])
+        for row in ans.get("step6_chk_df", []): csv_data.append([row.get("점검 항목", ""), "확인됨" if row.get("확인") else "미확인"])
+        for row in ans.get("step6_ai_df", []): csv_data.append([row.get("사용한 도구명", ""), f"입력한 프롬프트: {row.get('입력한 프롬프트', '')} / AI 결과물을 내가 수정·판단한 내용: {row.get('AI 결과물을 내가 수정·판단한 내용', '')}"])
+        csv_data.append(["▶ 활동 성찰", ans.get("step6_reflection", "")])
     else:
         for q in (config.get("custom_forms", {}).get(selected_view, []) if config else []): csv_data.append([q["label"], ans.get(q["id"], "")])
     return csv_data
@@ -247,44 +260,123 @@ def generate_html_content(act_name, ans, config=None):
     if config is None: config = load_json(CONFIG_FILE, {})
     html = ""
     if act_name == ACT_3_1:
-        html += f"<h3>1. 자신이 선택한 영상에 대한 첫번째 질문</h3><table><tr><th>영상의 제목</th><td>{ans.get('a1_1','')}</td></tr><tr><th>등장하는 국가/지역</th><td>{ans.get('a1_2','')}</td></tr><tr><th>선택 이유</th><td>{ans.get('a1_3','')}</td></tr></table><h3>2. 자신이 선택한 영상에 대한 두 번째 질문</h3><table><tr><th>첫 느낌</th><td>{ans.get('a2_1','')}</td></tr><tr><th>인상적이었던 장소/공간</th><td>{ans.get('a2_2_1','')}</td></tr><tr><th>그 이유</th><td>{ans.get('a2_2_2','')}</td></tr><tr><th>누구에게 추천?</th><td>{ans.get('a2_3_1','')}</td></tr><tr><th>추천 이유</th><td>{ans.get('a2_3_2','')}</td></tr><tr><th>나만의 감상평</th><td>{ans.get('a2_4','')}</td></tr></table><h3>5. 만일 내가 영상 속 지역을 배경으로 영상을 찍는다면?</h3><table><tr><th>1) 영상의 제목</th><td>{ans.get('a3_1','')}</td></tr><tr><th>2) 주요 컨셉/느낌</th><td>{ans.get('a3_2','')}</td></tr><tr><th>3) 누구와 함께?</th><td>{ans.get('a3_3','')}</td></tr><tr><th>4) 그 이유는?</th><td>{ans.get('a3_4','')}</td></tr><tr><th>5) 가장 해보고 싶은 것?</th><td>{ans.get('a3_5','')}</td></tr><tr><th>6) 그 이유는?</th><td>{ans.get('a3_6','')}</td></tr><tr><th>7) 꼭 넣고 싶은 장소/공간</th><td>{ans.get('a3_7','')}</td></tr><tr><th>8) 그 이유는?</th><td>{ans.get('a3_8','')}</td></tr><tr><th>9) 썸네일 영상 기획</th><td>{ans.get('a3_9','')}</td></tr><tr><th>10) 어울리는 BGM</th><td>{ans.get('a3_10','')}</td></tr><tr><th>11) BGM 선택 이유</th><td>{ans.get('a3_11','')}</td></tr></table>"
+        html += f"<h3>1. 자신이 선택한 영상에 대한 첫번째 질문</h3><table><tr><th>1. 영상의 제목</th><td>{ans.get('a1_1','')}</td></tr><tr><th>2. 영상에 등장하는 국가 혹은 지역</th><td>{ans.get('a1_2','')}</td></tr><tr><th>3. 해당 영상을 선택하게 된 이유</th><td>{ans.get('a1_3','')}</td></tr></table><h3>2. 자신이 선택한 영상에 대한 두 번째 질문</h3><table><tr><th>1. 첫 느낌</th><td>{ans.get('a2_1','')}</td></tr><tr><th>▶ 인상적이었던 장소 혹은 공간:</th><td>{ans.get('a2_2_1','')}</td></tr><tr><th>▶ 이유:</th><td>{ans.get('a2_2_2','')}</td></tr><tr><th>▶ 누구에게 추천:</th><td>{ans.get('a2_3_1','')}</td></tr><tr><th>▶ 추천하는 이유:</th><td>{ans.get('a2_3_2','')}</td></tr><tr><th>4. 영상에 대한 나만의 감상평</th><td>{ans.get('a2_4','')}</td></tr></table><h3>5. 만일 내가 영상 속 지역을 배경으로 영상을 찍는다면?</h3><table><tr><th>1) 영상의 제목:</th><td>{ans.get('a3_1','')}</td></tr><tr><th>2) 영상의 주요 컨셉 혹은 느낌:</th><td>{ans.get('a3_2','')}</td></tr><tr><th>3) 누구와 함께 가고 싶은가?:</th><td>{ans.get('a3_3','')}</td></tr><tr><th>4) 그 이유는?:</th><td>{ans.get('a3_4','')}</td></tr><tr><th>5) 그곳에서 가장 해 보고 싶은 것:</th><td>{ans.get('a3_5','')}</td></tr><tr><th>6) 그 이유는?:</th><td>{ans.get('a3_6','')}</td></tr><tr><th>7) 영상에 꼭 넣고 싶은 장소 혹은 공간:</th><td>{ans.get('a3_7','')}</td></tr><tr><th>8) 그 이유는?:</th><td>{ans.get('a3_8','')}</td></tr><tr><th>9) 만일 내가 썸네일 영상을 만든다면?:</th><td>{ans.get('a3_9','')}</td></tr><tr><th>10) 어울리는 BGM:</th><td>{ans.get('a3_10','')}</td></tr><tr><th>11) 그 이유는?:</th><td>{ans.get('a3_11','')}</td></tr></table>"
     elif act_name == ACT_3_2:
-        html += f"<table><tr><th>1-1) 편안함을 주는 장소</th><td>{ans.get('q1_1','')}</td></tr><tr><th>1-2) 편안함을 주는 이유</th><td>{ans.get('q1_2','')}</td></tr><tr><th>2-1) 성격</th><td>{ans.get('q2_1','')}</td></tr><tr><th>2-2) 성격에 영향 준 장소</th><td>{ans.get('q2_2','')}</td></tr><tr><th>2-3) 이유</th><td>{ans.get('q2_3','')}</td></tr><tr><th>3-1) 장점</th><td>{ans.get('q3_1','')}</td></tr><tr><th>3-2) 장점에 영향 준 장소</th><td>{ans.get('q3_2','')}</td></tr><tr><th>3-3) 이유</th><td>{ans.get('q3_3','')}</td></tr><tr><th>4-1) 성장 영향 장소</th><td>{ans.get('q4_1','')}</td></tr><tr><th>4-2) 영향 면</th><td>{ans.get('q4_2','')}</td></tr><tr><th>5-1) 목표</th><td>{ans.get('q5_1','')}</td></tr><tr><th>5-2) 목표 영향 장소</th><td>{ans.get('q5_2','')}</td></tr><tr><th>6-1) 소개하고 싶은 장소</th><td>{ans.get('q6_1','')}</td></tr><tr><th>6-2) 이유</th><td>{ans.get('q6_2','')}</td></tr><tr><th>7-1) 비밀 장소</th><td>{ans.get('q7_1','')}</td></tr><tr><th>7-2) 이유</th><td>{ans.get('q7_2','')}</td></tr><tr><th>8-1) 과거 가고픈 장소</th><td>{ans.get('q8_1','')}</td></tr><tr><th>8-2) 이유</th><td>{ans.get('q8_2','')}</td></tr></table>"
+        html += f"<table><tr><th>1-1) 나에게 편안함을 주는 장소(공간)이/가 있는가?</th><td>{ans.get('q1_1','')}</td></tr><tr><th>1-2) 그 장소(공간)이/가 어떤 면에서 나에게 편안함을 주는 것 같은가?</th><td>{ans.get('q1_2','')}</td></tr><tr><th>2-1) 자신이 생각하기에 자신의 성격은?</th><td>{ans.get('q2_1','')}</td></tr><tr><th>2-2) 자신이 성격 형성에 있어 영향을 준 장소(공간)이/가 있는가?</th><td>{ans.get('q2_2','')}</td></tr><tr><th>2-3) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?</th><td>{ans.get('q2_3','')}</td></tr><tr><th>3-1) 자신이 생각하기에 자신의 장점은?</th><td>{ans.get('q3_1','')}</td></tr><tr><th>3-2) 자신이 장점 형성에 있어 영향을 준 장소(공간)이/가 있는가?</th><td>{ans.get('q3_2','')}</td></tr><tr><th>3-3) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?</th><td>{ans.get('q3_3','')}</td></tr><tr><th>4-1) 내가 성장함에 있어 영향을 준 장소(공간)이/가 있는가?</th><td>{ans.get('q4_1','')}</td></tr><tr><th>4-2) 그런 장소(공간)이/가 있다면 어떤 면에서 영향을 준 것 같은가?</th><td>{ans.get('q4_2','')}</td></tr><tr><th>5-1) 지금 나의 목표는 무엇인가?</th><td>{ans.get('q5_1','')}</td></tr><tr><th>5-2) 그런 목표를 설정함에 있어 영향을 준 장소(공간)이/가 있는가?</th><td>{ans.get('q5_2','')}</td></tr><tr><th>6-1) 훗날 소중한 사람에게 소개해 주고 싶은 장소(공간)이/가 있는가?</th><td>{ans.get('q6_1','')}</td></tr><tr><th>6-2) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?</th><td>{ans.get('q6_2','')}</td></tr><tr><th>7-1) 나만의 비밀 장소(공간)이/가 있는가?</th><td>{ans.get('q7_1','')}</td></tr><tr><th>7-2) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?</th><td>{ans.get('q7_2','')}</td></tr><tr><th>8-1) 시간을 돌려 과거로 돌아갈 수 있다면 다시 가 보고 싶은 장소(공간)이/가 있는가?</th><td>{ans.get('q8_1','')}</td></tr><tr><th>8-2) 장소(공간)로/으로 다시 가 보고 싶은 이유는 무엇 때문인가?</th><td>{ans.get('q8_2','')}</td></tr></table>"
     elif act_name == ACT_3_3:
-        html += "<h3>1. 세계 인식 수준에 대한 확인</h3><h4>1) 대륙별 관심도/지식수준</h4><table><tr><th>대륙</th><th>관심도</th><th>지식수준</th></tr>"
+        html += "<h3>1. 세계 인식 수준에 대한 확인</h3><h4>1) 대륙별 관심도 및 지식 수준 체크</h4><table><tr><th>대륙</th><th>관심도</th><th>지식수준</th></tr>"
         for row in ans.get("s1_df", []): html += f"<tr><td>{row.get('대륙','')}</td><td>{row.get('관심도','')}</td><td>{row.get('지식수준','')}</td></tr>"
-        html += f"</table><h4>2) 경험</h4><h5>[간접 경험]</h5><ul><li>영화/드라마 : {ans.get('ind1','')}</li><li>음악/연예인 : {ans.get('ind2','')}</li><li>음식 : {ans.get('ind3','')}</li></ul>"
-        html += f"<h3>4. 목표로 하는 세계관</h3><p><b>▶ 되고 싶은 사람:</b> {ans.get('goal_1','')}</p><p><b>▶ 갖고 싶은 세계관:</b> {ans.get('goal_2','')}</p>"
+        html += f"</table><h4>2) 특정 국가에 대한 기억과 인상 분석</h4><h5>[직접 경험]</h5><table><tr><th>여행해 본 국가</th><th>해당 국가에 대한 구체적인 기억 혹은 인상</th></tr>"
+        for row in ans.get("direct_df", []): html += f"<tr><td>{row.get('여행해 본 국가','')}</td><td>{row.get('해당 국가에 대한 구체적인 기억 혹은 인상','')}</td></tr>"
+        html += f"</table><h5>[간접 경험]</h5><ul><li>즐겨 보는 외국 영화/드라마는 어느 나라 작품? : {ans.get('ind1','')}</li><li>좋아하는 음악가나 연예인이 있다면 어느 나라? : {ans.get('ind2','')}</li><li>자주 먹는 외국 음식이 있다면 어느 나라? : {ans.get('ind3','')}</li></ul>"
+        html += "<h4>3) 꼭 가 보고 싶은 Top 5 국가와 그 이유</h4><table><tr><th>국가 혹은 지역</th><th>이유</th></tr>"
+        for row in ans.get("top5_want", []): html += f"<tr><td>{row.get('국가 혹은 지역','')}</td><td>{row.get('이유','')}</td></tr>"
+        html += "</table><h4>4) 절대 가고 싫은 Top 5 국가와 그 이유</h4><table><tr><th>국가 혹은 지역</th><th>이유</th></tr>"
+        for row in ans.get("top5_notwant", []): html += f"<tr><td>{row.get('국가 혹은 지역','')}</td><td>{row.get('이유','')}</td></tr>"
+        html += "</table><h3>2. 특정 대륙/국가에 대한 자신의 편견과 고정관념</h3><h4>1) 국가별 한 단어 라벨링</h4><table><tr><th>가 보고 싶은 국가</th><th>한 단어 라벨</th><th>가고 싶지 않은 국가</th><th>한 단어 라벨(부정)</th></tr>"
+        for row in ans.get("label_df", []): html += f"<tr><td>{row.get('가 보고 싶은 국가','')}</td><td>{row.get('한 단어 라벨','')}</td><td>{row.get('가고 싶지 않은 국가','')}</td><td>{row.get('한 단어 라벨(부정)','')}</td></tr>"
+        html += "</table><h4>2) 개인적으로 가장 강한 편견을 가진 국가</h4><table><tr><th>국가명</th><th>편견 내용</th><th>편견 형성 과정 혹은 이유</th></tr>"
+        for row in ans.get("prej_df", []): html += f"<tr><td>{row.get('국가명','')}</td><td>{row.get('편견 내용','')}</td><td>{row.get('편견 형성 과정 혹은 이유','')}</td></tr>"
+        html += "</table><h4>3) 미디어와 교육의 영향으로 인한 인식 발견</h4><table>"
+        html += f"<tr><th>뉴스에서 자주 접하는 국가들</th><td>{ans.get('media1_1','')}</td><th>그 나라들에 대한 이미지 (뉴스)</th><td>{ans.get('media1_2','')}</td></tr>"
+        html += f"<tr><th>영화/드라마에서 자주 접하는 국가들</th><td>{ans.get('media2_1','')}</td><th>그 나라들에 대한 이미지 (영화/드라마)</th><td>{ans.get('media2_2','')}</td></tr>"
+        html += f"<tr><th>학교에서 많이 배운 국가들</th><td>{ans.get('media3_1','')}</td><th>그 나라들에 대한 지식</th><td>{ans.get('media3_2','')}</td></tr></table>"
+        html += "<h4>4) 부정확한 정보나 과장된 인식 발견 (사실과 다른 내용들)</h4><table><tr><th>국가명</th><th>잘못 알고 있었던 내용</th><th>실제 사실</th></tr>"
+        for row in ans.get("fake_df", []): html += f"<tr><td>{row.get('국가명','')}</td><td>{row.get('잘못 알고 있었던 내용','')}</td><td>{row.get('실제 사실','')}</td></tr>"
+        html += "</table><h4>5) 우월감이나 차별 의식 점검</h4><table><tr><th>어떤 국가에 대해?</th><th>어떤 측면에서</th><th>그 이유</th></tr>"
+        for row in ans.get("discrim_df", []): html += f"<tr><td>{row.get('어떤 국가에 대해?','')}</td><td>{row.get('어떤 측면에서','')}</td><td>{row.get('그 이유','')}</td></tr>"
+        html += "</table><h3>3. 포용적이고 균형잡힌 세계관을 위한 노력</h3><h4>1) 편견을 바꾸고 싶은 국가</h4><table><tr><th>어떤 국가에 대해?</th><th>현재의 편견</th><th>올바른 정보를 찾기 위한 계획</th></tr>"
+        for row in ans.get("change_df", []): html += f"<tr><td>{row.get('어떤 국가에 대해?','')}</td><td>{row.get('현재의 편견','')}</td><td>{row.get('올바른 정보를 찾기 위한 계획','')}</td></tr>"
+        html += "</table><h4>2) 가장 무관심했던 대륙 혹은 국가</h4><table><tr><th>선택 대륙/국가</th><th>무관심 이유</th><th>관심 확장을 위한 정보 수집 방법</th></tr>"
+        for row in ans.get("ignore_df", []): html += f"<tr><td>{row.get('선택 대륙/국가','')}</td><td>{row.get('무관심 이유','')}</td><td>{row.get('관심 확장을 위한 정보 수집 방법','')}</td></tr>"
+        html += "</table><h4>3) 서구 중심적 시각 벗어나기</h4><table><tr><th>현재 가지고 있는 서구 중심적 시각</th><th>개선 방법</th></tr>"
+        for row in ans.get("western_df", []): html += f"<tr><td>{row.get('현재 가지고 있는 서구 중심적 시각','')}</td><td>{row.get('개선 방법','')}</td></tr>"
+        html += "</table><h3>4. 목표로 하는 세계관</h3>"
+        html += f"<p><b>▶ 어떤 사람이 되고 싶은가?</b></p><div class='content-box'>{ans.get('goal_1','')}</div>"
+        html += f"<p><b>▶ 어떤 세계관을 갖고 싶은가?</b></p><div class='content-box'>{ans.get('goal_2','')}</div>"
     elif act_name == ACT_2_1:
         html += f"<h4>👥 모둠 구성원</h4><ul><li>1: {ans.get('m1_id','')} {ans.get('m1_name','')}</li><li>2: {ans.get('m2_id','')} {ans.get('m2_name','')}</li><li>3: {ans.get('m3_id','')} {ans.get('m3_name','')}</li><li>4: {ans.get('m4_id','')} {ans.get('m4_name','')}</li></ul>"
-        html += f"<p><b>1. 밈:</b> {ans.get('step1_1','')}</p><p><b>2. 주관적 이미지:</b> {ans.get('step1_2','')}</p><p><b>3. 특별한 장소:</b> {ans.get('step1_3','')}</p><p><b>4. 감정/생각:</b> {ans.get('step1_4','')}</p>"
-        html += f"<p><b>1. 탐구 시기:</b> {ans.get('step2_1_period','')}</p><p><b>2. 핵심 공간:</b> {ans.get('step2_1_space','')}</p><p><b>3. 객관적 지표:</b> {ans.get('step2_3','')}</p>"
-        html += f"<p><b>1. 기존 프레임:</b> {ans.get('step4_1','')}</p><p><b>2. 지리적 본질:</b> {ans.get('step4_2','')}</p><p><b>3. 광고 슬로건:</b> {ans.get('step4_3','')}</p><p><b>4. 개선 아이디어:</b> {ans.get('step4_4','')}</p>"
+        html += "<h3>Step 1. 우리 지역에 대한 '밈' 수집 및 지리 정보 팩트 체크 일지</h3>"
+        html += f"<p><b>1. 우리가 선택한 우리 지역의 인터넷, SNS, 혹은 타 지역 친구들에게 들었던 우리 지역에 대한 유쾌한 편견이나 밈을 하나 선정 '밈':</b> {ans.get('step1_1','')}</p>"
+        html += f"<p><b>2. 이 밈이 대중에게 심어준 주관적 이미지 (편견 혹은 선입견):</b> {ans.get('step1_2','')}</p>"
+        html += f"<p><b>3. 우리 모둠에게 특별한 장소감을 주는 장소:</b> {ans.get('step1_3','')}</p>"
+        html += f"<p><b>4. 그 장소에서 느끼는 감정이나 생각:</b> {ans.get('step1_4','')}</p>"
+        html += "<h3>Step 2. 도시 발달 과정과 객관적 지표</h3>"
+        html += f"<p><b>1. 우리 모둠이 탐구할 시기:</b> {ans.get('step2_1_period','')}</p>"
+        html += f"<p><b>2-1. 선택한 시기의 핵심 공간:</b> {ans.get('step2_1_space','')}</p>"
+        html += f"<p><b>2-2. 객관적 특징:</b> {ans.get('step2_1_feat','')}</p>"
+        html += f"<p><b>3. 선택한 시기의 객관적 지리 데이터 혹은 지표:</b> {ans.get('step2_3','')}</p>"
+        html += "<h3>Step 3. 살기 좋은 울산의 조건: 거주 적합성 진단</h3><table><tr><th>거주 적합성 요인</th><th>만족도 점수</th><th>한 줄 평가</th></tr>"
+        for row in ans.get("step3_df", []): html += f"<tr><td>{row.get('거주 적합성 요인','')}</td><td>{row.get('만족도 점수','')}</td><td>{row.get('한 줄 평가','')}</td></tr>"
+        html += "</table><h3>Step 4. 우리의 방식으로 해 보는 울산 브랜딩: 정체성 리뉴얼</h3>"
+        html += f"<p><b>1. 기존 프레임(대중의 오해):</b> {ans.get('step4_1','')}</p>"
+        html += f"<p><b>2. 우리 모둠이 도출한 지리적 본질:</b> {ans.get('step4_2','')}</p>"
+        html += f"<p><b>3. 우리 모둠의 반전 광고 슬로건:</b> {ans.get('step4_3','')}</p>"
+        html += f"<p><b>4. 우리 모둠이 제안하는 울산의 거주 적합성 개선 아이디어:</b> {ans.get('step4_4','')}</p>"
     elif act_name == ACT_2_2:
         html += f"<h4>👥 모둠 구성원</h4><ul><li>1: {ans.get('m1_id','')} {ans.get('m1_name','')}</li><li>2: {ans.get('m2_id','')} {ans.get('m2_name','')}</li><li>3: {ans.get('m3_id','')} {ans.get('m3_name','')}</li><li>4: {ans.get('m4_id','')} {ans.get('m4_name','')}</li></ul>"
-        html += f"<p><b>1. 대상 지역:</b> {ans.get('step1_1','')}</p>"
-        html += "<h4>[도시 개조 포인트]</h4>" + generate_points_html(ans.get("step2_point_df", []))
-        html += f"<p><b>1. 슬로건:</b> {ans.get('step4_1','')}</p><p><b>2. 공간 문제:</b> {ans.get('step4_2','')}</p><p><b>3. 버리고 채운 것:</b> {ans.get('step4_3','')}</p><p><b>4. 일상 변화:</b> {ans.get('step4_4','')}</p>"
+        html += "<h3>Step 1. 우리 동네 현황 진단</h3>"
+        html += f"<p><b>1. 대상 지역 (예: 학교 주변 인근 00아파트 00단지 일대):</b> {ans.get('step1_1','')}</p>"
+        html += "<h4>2. 15분 생활권 반경 내 필수 서비스 체크리스트</h4><table><tr><th>구분</th><th>필수 서비스 항목</th><th>충분</th><th>부족 or 없음</th></tr>"
+        for row in ans.get("step1_2_df", []): html += f"<tr><td>{row.get('구분','')}</td><td>{row.get('필수 서비스 항목','')}</td><td>{row.get('충분','')}</td><td>{row.get('부족 or 없음','')}</td></tr>"
+        html += "</table><h4>3. 선택한 지역의 핵심 문제점</h4>"
+        html += f"<p><b>문제점 1 / 데이터::</b> {ans.get('step1_3_1','')}</p><p><b>문제점 2 / 데이터::</b> {ans.get('step1_3_2','')}</p><p><b>문제점 3 / 데이터::</b> {ans.get('step1_3_3','')}</p>"
+        html += "<h3>Step 2. 도시 개조 포인트를 활용한 트레이드오프 설계</h3>"
+        html += "<h4>[도시 개조 포인트 (학생 추가 포함)]</h4>" + generate_points_html(ans.get("step2_point_df", []))
+        html += "<h4>[트레이드오프 설계표]</h4><table><tr><th>순번</th><th>선택 코드</th><th>버릴 공간</th><th>사용 포인트</th><th>공간 재설계 이유 및 기대효과</th></tr>"
+        for row in ans.get("step2_df", []): html += f"<tr><td>{row.get('순번','')}</td><td>{row.get('선택 코드','')}</td><td>{row.get('버릴 공간','')}</td><td>{row.get('사용 포인트','')}</td><td>{row.get('공간 재설계 이유 및 기대효과','')}</td></tr>"
+        html += "</table>"
+        html += "<h3>Step 3. N분 도시 공간 개조 자료</h3>"
+        b64_before = ans.get("file_before_data", ans.get("img_before", ""))
+        name_before = ans.get("file_before_name", "변경전_스케치.png" if ans.get("img_before") else "")
+        if b64_before:
+            html += f"<h4>변경 전 지도 스케치 자료: {name_before}</h4>"
+            if name_before.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')): html += f"<img src='data:image/png;base64,{b64_before}' style='max-width:100%; border:1px solid #ccc;'/>"
+        b64_after = ans.get("file_after_data", ans.get("img_after", ""))
+        name_after = ans.get("file_after_name", "변경후_스케치.png" if ans.get("img_after") else "")
+        if b64_after:
+            html += f"<h4>변경 후 지도 스케치 자료: {name_after}</h4>"
+            if name_after.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')): html += f"<img src='data:image/png;base64,{b64_after}' style='max-width:100%; border:1px solid #ccc;'/>"
+        html += "<h3>Step 4. 3분 공청회 발표를 위한 준비</h3>"
+        html += f"<p><b>1. 핵심 정책 슬로건:</b> {ans.get('step4_1','')}</p><p><b>2. 심각한 공간 문제:</b> {ans.get('step4_2','')}</p><p><b>3. 버리고 채운 것과 이유:</b> {ans.get('step4_3','')}</p><p><b>4. 일상의 변화:</b> {ans.get('step4_4','')}</p>"
     elif act_name == ACT_2_3:
-        html += f"<h4>👤 개별 정보</h4><ul><li>학번: {ans.get('ind_id','')}</li><li>이름: {ans.get('ind_name','')}</li><li>진로: {ans.get('ind_career','')}</li></ul>"
-        html += f"<p><b>▶ 최종 선정 건물:</b> {ans.get('step2_final_building','')}</p><p><b>▶ 선정 이유:</b> {ans.get('step2_reason','')}</p>"
-        html += f"<p><b>작품 제목:</b> {ans.get('step5_title','')}</p><p><b>전시 장소:</b> {ans.get('step5_place','')}</p><p><b>개요:</b> {ans.get('step5_summary','')}</p><p><b>활동 성찰:</b> {ans.get('step6_reflection','')}</p>"
+        html += f"<h4>👤 개별 정보</h4><ul><li>학번: {ans.get('ind_id','')}</li><li>이름: {ans.get('ind_name','')}</li><li>희망 진로: {ans.get('ind_career','')}</li></ul>"
+        html += "<h3>Step 1. 우리 지역 정체성 자원 발굴 및 팩트 체크</h3>"
+        html += "<table><tr><th>구분</th><th>내가 찾은 정체성 키워드 혹은 문장</th><th>근거가 되는 사실·통계·사건</th><th>출처(기관명/자료명/연도)</th></tr>"
+        for row in ans.get("step1_df", []): html += f"<tr><td>{row.get('구분','')}</td><td>{row.get('내가 찾은 정체성 키워드 혹은 문장','')}</td><td>{row.get('근거가 되는 사실·통계·사건','')}</td><td>{row.get('출처(기관명/자료명/연도)','')}</td></tr>"
+        html += "</table>"
+        html += f"<p><b>▶ 최종 선택 키워드:</b> {ans.get('step1_keyword','')}</p><p><b>▶ 단 하나의 메시지:</b> {ans.get('step1_message','')}</p>"
+        html += "<h3>Step 2. 캔버스 선정</h3>"
+        html += "<table><tr><th>후보(건물명)</th><th>벽면 조건</th><th>관람 조건</th><th>접근성</th><th>예상 제약</th><th>지역 정체성 연관성</th><th>적합도(별점)</th></tr>"
+        for row in ans.get("step2_df", []): html += f"<tr><td>{row.get('건물명','')}</td><td>{row.get('벽면 조건','')}</td><td>{row.get('관람 조건','')}</td><td>{row.get('접근성','')}</td><td>{row.get('예상 제약','')}</td><td>{row.get('정체성 연관성','')}</td><td>{row.get('적합도(별점)','')}</td></tr>"
+        html += "</table>"
+        html += f"<p><b>▶ 최종 선정 건물:</b> {ans.get('step2_final_building','')}</p><p><b>▶ 이유:</b> {ans.get('step2_reason','')}</p>"
+        html += "<h3>Step 3. 주어진 조건 진단 및 대응 설계</h3>"
+        html += "<table><tr><th>조건 영역</th><th>현장의 실제 조건 (확인한 사실)</th><th>작품에 미치는 영향</th><th>나의 대응 방안</th></tr>"
+        for row in ans.get("step3_df", []): html += f"<tr><td>{row.get('조건 영역','')}</td><td>{row.get('현장의 실제 조건 (확인한 사실)','')}</td><td>{row.get('작품에 미치는 영향','')}</td><td>{row.get('나의 대응 방안','')}</td></tr>"
+        html += "</table>"
+        html += "<h3>Step 4. 작품 스토리보드 4컷</h3>"
+        for i in range(1, 5):
+            c_desc = ans.get(f'cut_{i}_desc', '')
+            c_name = ans.get(f'cut_{i}_file_name', '')
+            html += f"<h4>컷 {i}</h4><p><b>장면 설명·사용 기술·소요 시간:</b> {c_desc}</p>"
+            b64_file = ans.get(f"cut_{i}_file_data", "")
+            if b64_file:
+                html += f"<p>첨부된 파일: {c_name}</p>"
+                if str(c_name).lower().endswith(('.png', '.jpg', '.jpeg', '.gif')): html += f"<img src='data:image/png;base64,{b64_file}' style='max-width:100%; border:1px solid #ccc;'/>"
+        html += "<h3>Step 5. 작품 설명 카드 작성 및 갤러리 워크</h3>"
+        html += f"<p><b>▶ 작품 제목:</b> {ans.get('step5_title','')}</p><p><b>▶ 전시 장소:</b> {ans.get('step5_place','')}</p><p><b>▶ 작품 개요:</b> {ans.get('step5_summary','')}</p><p><b>▶ 지역 정체성 반영:</b> {ans.get('step5_identity','')}</p><p><b>▶ 현장 조건 반영:</b> {ans.get('step5_condition','')}</p><p><b>▶ 남길 변화:</b> {ans.get('step5_change','')}</p>"
+        html += "<h3>Step 6. 제출 전 자기 점검 및 활용 기록</h3>"
+        html += "<h4>점검 항목 체크리스트</h4><table><tr><th>No</th><th>점검 항목</th><th>확인 여부</th></tr>"
+        for row in ans.get("step6_chk_df", []): html += f"<tr><td>{row.get('No','')}</td><td>{row.get('점검 항목','')}</td><td>{'✅' if row.get('확인') else '❌'}</td></tr>"
+        html += "</table>"
+        html += "<h4>생성형 AI 활용 기록</h4><table><tr><th>사용한 도구명</th><th>입력한 프롬프트</th><th>AI 결과물을 내가 수정·판단한 내용</th></tr>"
+        for row in ans.get("step6_ai_df", []): html += f"<tr><td>{row.get('사용한 도구명','')}</td><td>{row.get('입력한 프롬프트','')}</td><td>{row.get('AI 결과물을 내가 수정·판단한 내용','')}</td></tr>"
+        html += "</table>"
+        html += f"<p><b>▶ 활동 성찰:</b> {ans.get('step6_reflection','')}</p>"
     else:
         for q in config.get("custom_forms", {}).get(act_name, []): html += f"<h3>{q['label']}</h3><div class='content-box'>{ans.get(q['id'], '')}</div>"
     return html
-
-def generate_portfolio_html(user_key, u_info, view_subj, config, learning_data):
-    u_id, u_name, u_class = u_info.get('id', ''), u_info.get('name', '학생'), u_info.get('class_group', '')
-    html = f"""<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>{u_name} 수행평가 포트폴리오</title><style>body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; }} h1 {{ text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; }} h2 {{ color: #2c3e50; border-left: 5px solid #3498db; padding-left: 10px; margin-top: 40px; }} h3 {{ color: #2980b9; }} table {{ width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; table-layout: fixed; }} th {{ background-color: #ecf0f1; width: 30%; border: 1px solid #bdc3c7; padding: 10px; text-align: left; }} td {{ border: 1px solid #bdc3c7; padding: 10px; text-align: left; white-space: pre-wrap; }} .content-box {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #e9ecef; white-space: pre-wrap; }}</style></head><body><h1>📚 {view_subj} 수행평가 포트폴리오</h1><div style="text-align: right; margin-bottom: 30px;"><b>반:</b> {u_class} | <b>이름:</b> {u_name}</div>"""
-    for act in config.get("subject_activities", {}).get(view_subj, []):
-        owner_key, ans = get_user_activity_data(user_key, u_id, view_subj, u_class, act, learning_data)
-        if not ans: continue
-        html += f"<h2>▶ {act}</h2>" + generate_html_content(act, ans, config)
-    return html + "</body></html>"
-
-def generate_activity_html(act_name, ans, u_name):
-    html = f"""<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>{u_name} - {act_name}</title><style>body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; }} h2 {{ color: #2c3e50; border-left: 5px solid #3498db; padding-left: 10px; }} h3 {{ color: #2980b9; }} table {{ width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; table-layout: fixed; }} th {{ background-color: #ecf0f1; width: 30%; border: 1px solid #bdc3c7; padding: 10px; text-align: left; }} td {{ border: 1px solid #bdc3c7; padding: 10px; text-align: left; white-space: pre-wrap; }} .content-box {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #e9ecef; white-space: pre-wrap; }}</style></head><body><div style="text-align: right; margin-bottom: 20px;"><b>이름:</b> {u_name}</div><h2>▶ {act_name}</h2>"""
-    return html + generate_html_content(act_name, ans) + "</body></html>"
 
 def inject_custom_scripts():
     components.html("""<script>document.addEventListener("DOMContentLoaded", function() { const parentDoc = window.parent.document; function initAutoSave() { const elements = parentDoc.querySelectorAll('input[type="text"], textarea'); elements.forEach(el => { const ariaLabel = el.getAttribute('aria-label') || ''; const key = 'autosave_' + window.parent.location.pathname + '_' + ariaLabel; if (!el.dataset.autosaveAttached && ariaLabel !== '') { el.dataset.autosaveAttached = "true"; el.addEventListener('input', () => { window.localStorage.setItem(key, el.value); }); el.addEventListener('focus', () => { const savedVal = window.localStorage.getItem(key); if (savedVal && el.value === "") { let setter = Object.getOwnPropertyDescriptor(window.parent.HTMLInputElement.prototype, "value")?.set; if(el.tagName === 'TEXTAREA') setter = Object.getOwnPropertyDescriptor(window.parent.HTMLTextAreaElement.prototype, "value")?.set; if(setter) { setter.call(el, savedVal); el.dispatchEvent(new Event('input', { bubbles: true })); } else { el.value = savedVal; } } }); } }); } setInterval(initAutoSave, 1500); });</script>""", height=0, width=0)
