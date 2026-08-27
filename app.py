@@ -1118,6 +1118,10 @@ else:
                     if acts_for_subj:
                         selected_act_for_setting = st.selectbox("시간표를 설정할 수행평가 선택", acts_for_subj)
                         time_input_mode = st.radio("⏰ 시간 입력 방식", ["🔘 드롭다운 선택 (10분 단위)", "🔘 직접 타이핑 (자유 입력)"], horizontal=True)
+                        
+                        # 🌟 [추가된 핵심 기능] 시간표 개수를 자유롭게 조절하는 버튼 (폼 외부에 있어 즉시 반응함)
+                        slot_count = st.number_input("➕ 각 반별 입력할 수업 시간표 개수 (원하는 만큼 늘리거나 줄이세요)", min_value=1, max_value=20, value=3)
+                        
                         new_act_deadlines = fresh_config.setdefault("deadlines", {}).get(selected_act_for_setting, {})
                         with st.form(f"deadline_form_for_{selected_act_for_setting}"):
                             for c_group in CLASSES_MAP[admin_view_subj]:
@@ -1128,12 +1132,18 @@ else:
                                     except: cf_dt = get_kst_now() + datetime.timedelta(days=30)
                                     col_f1, col_f2 = st.columns(2)
                                     f_date = col_f1.date_input(f"[{c_group}] 최종 마감일", value=cf_dt.date(), key=f"f_date_{c_group}")
-                                    if time_input_mode == "🔘 드롭다운 선택 (10분 단위)": f_time_str = col_f2.selectbox(f"[{c_group}] 최종 마감 시간", TIME_OPTIONS, index=get_time_index(cf_dt.strftime("%H:%M")), key=f"f_time_sel_{c_group}")
-                                    else: f_time_str = col_f2.text_input(f"[{c_group}] 최종 마감 시간", value=cf_dt.strftime("%H:%M"), key=f"f_time_txt_{c_group}")
-                                    c_slots = c_data.get("slots", [{"day": "선택안함", "period": "선택안함", "start": "00:00", "end": "00:00"}] * 3)
-                                    while len(c_slots) < 3: c_slots.append({"day": "선택안함", "period": "선택안함", "start": "00:00", "end": "00:00"})
+                                    if time_input_mode == "🔘 드롭다운 선택 (10분 단위)":
+                                        f_time_str = col_f2.selectbox(f"[{c_group}] 최종 마감 시간", TIME_OPTIONS, index=get_time_index(cf_dt.strftime("%H:%M")), key=f"f_time_sel_{c_group}")
+                                    else:
+                                        f_time_str = col_f2.text_input(f"[{c_group}] 최종 마감 시간", value=cf_dt.strftime("%H:%M"), key=f"f_time_txt_{c_group}")
+                                    
+                                    # 🌟 [수정됨] 하드코딩된 3을 조절 가능한 slot_count로 변경
+                                    c_slots = c_data.get("slots", [{"day": "선택안함", "period": "선택안함", "start": "00:00", "end": "00:00"}] * slot_count)
+                                    while len(c_slots) < slot_count: c_slots.append({"day": "선택안함", "period": "선택안함", "start": "00:00", "end": "00:00"})
+                                    
                                     updated_slots = []
-                                    for i in range(3):
+                                    # 🌟 [수정됨] 3 대신 사용자가 선택한 개수(slot_count)만큼 칸 생성
+                                    for i in range(slot_count):
                                         sc1, sc2, sc3, sc4 = st.columns(4)
                                         day_opts = ["선택안함", "월", "화", "수", "목", "금"]
                                         period_opts = ["선택안함", "1교시", "2교시", "3교시", "4교시", "5교시", "6교시", "7교시", "8교시", "방과후"]
@@ -1149,7 +1159,6 @@ else:
                                 save_json(CONFIG_FILE, fresh_config)
                                 create_auto_backup(f"[{selected_act_for_setting}] 시간표 변경")
                                 st.session_state.admin_save_success = True; st.rerun()
-
             with menu_tabs[1]:
                 st.markdown("### 🗂️ 과목별 수행평가 목록 관리")
                 fresh_config = load_json(CONFIG_FILE, {})
