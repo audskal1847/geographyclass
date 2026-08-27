@@ -394,6 +394,34 @@ def generate_activity_html(act_name, ans, u_name):
     html += "</body></html>"
     return html
 
+def generate_portfolio_html(user_key, u_info, view_subj, config, learning_data):
+    u_id = u_info.get('id', '')
+    u_name = u_info.get('name', '학생')
+    u_class = u_info.get('class_group', '')
+    
+    html = f"""<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>{u_name} 수행평가 포트폴리오</title>
+    <style>
+        body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; }}
+        h1 {{ text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; }}
+        h2 {{ color: #2c3e50; border-left: 5px solid #3498db; padding-left: 10px; margin-top: 40px; }}
+        h3 {{ color: #2980b9; }}
+        table {{ width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; table-layout: fixed; }}
+        th {{ background-color: #ecf0f1; width: 30%; border: 1px solid #bdc3c7; padding: 10px; text-align: left; }}
+        td {{ border: 1px solid #bdc3c7; padding: 10px; text-align: left; white-space: pre-wrap; }}
+        .content-box {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #e9ecef; white-space: pre-wrap; }}
+    </style></head><body>
+    <h1>📚 {view_subj} 수행평가 포트폴리오</h1>
+    <div style="text-align: right; margin-bottom: 30px;"><b>반:</b> {u_class} | <b>이름:</b> {u_name}</div>
+    """
+    acts_for_subj = config.get("subject_activities", {}).get(view_subj, [])
+    for act in acts_for_subj:
+        owner_key, ans = get_user_activity_data(user_key, u_id, view_subj, u_class, act, learning_data)
+        if not ans: continue
+        html += f"<h2>▶ {act}</h2>"
+        html += generate_html_content(act, ans, config)
+    html += "</body></html>"
+    return html
+
 def inject_custom_scripts():
     components.html("""<script>document.addEventListener("DOMContentLoaded", function() { const parentDoc = window.parent.document; function initAutoSave() { const elements = parentDoc.querySelectorAll('input[type="text"], textarea'); elements.forEach(el => { const ariaLabel = el.getAttribute('aria-label') || ''; const key = 'autosave_' + window.parent.location.pathname + '_' + ariaLabel; if (!el.dataset.autosaveAttached && ariaLabel !== '') { el.dataset.autosaveAttached = "true"; el.addEventListener('input', () => { window.localStorage.setItem(key, el.value); }); el.addEventListener('focus', () => { const savedVal = window.localStorage.getItem(key); if (savedVal && el.value === "") { let setter = Object.getOwnPropertyDescriptor(window.parent.HTMLInputElement.prototype, "value")?.set; if(el.tagName === 'TEXTAREA') setter = Object.getOwnPropertyDescriptor(window.parent.HTMLTextAreaElement.prototype, "value")?.set; if(setter) { setter.call(el, savedVal); el.dispatchEvent(new Event('input', { bubbles: true })); } else { el.value = savedVal; } } }); } }); } setInterval(initAutoSave, 1500); });</script>""", height=0, width=0)
 
