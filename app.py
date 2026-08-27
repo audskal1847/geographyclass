@@ -481,6 +481,22 @@ def generate_portfolio_html(user_key, u_info, view_subj, config, learning_data):
     html += "</body></html>"
     return html
 
+def generate_activity_html(act_name, ans, u_name):
+    html = f"""<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>{u_name} - {act_name}</title>
+    <style>
+        body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; }} 
+        h2 {{ color: #2c3e50; border-left: 5px solid #3498db; padding-left: 10px; }} 
+        h3 {{ color: #2980b9; }} 
+        table {{ width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; table-layout: fixed; }} 
+        th {{ background-color: #ecf0f1; width: 30%; border: 1px solid #bdc3c7; padding: 10px; text-align: left; }} 
+        td {{ border: 1px solid #bdc3c7; padding: 10px; text-align: left; white-space: pre-wrap; }} 
+        .content-box {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #e9ecef; white-space: pre-wrap; }}
+    </style></head><body>
+    <div style="text-align: right; margin-bottom: 20px;"><b>이름:</b> {u_name}</div><h2>▶ {act_name}</h2>"""
+    html += generate_html_content(act_name, ans)
+    html += "</body></html>"
+    return html
+
 def inject_custom_scripts():
     components.html("""<script>document.addEventListener("DOMContentLoaded", function() { const parentDoc = window.parent.document; function initAutoSave() { const elements = parentDoc.querySelectorAll('input[type="text"], textarea'); elements.forEach(el => { const ariaLabel = el.getAttribute('aria-label') || ''; const key = 'autosave_' + window.parent.location.pathname + '_' + ariaLabel; if (!el.dataset.autosaveAttached && ariaLabel !== '') { el.dataset.autosaveAttached = "true"; el.addEventListener('input', () => { window.localStorage.setItem(key, el.value); }); el.addEventListener('focus', () => { const savedVal = window.localStorage.getItem(key); if (savedVal && el.value === "") { let setter = Object.getOwnPropertyDescriptor(window.parent.HTMLInputElement.prototype, "value")?.set; if(el.tagName === 'TEXTAREA') setter = Object.getOwnPropertyDescriptor(window.parent.HTMLTextAreaElement.prototype, "value")?.set; if(setter) { setter.call(el, savedVal); el.dispatchEvent(new Event('input', { bubbles: true })); } else { el.value = savedVal; } } }); } }); } setInterval(initAutoSave, 1500); });</script>""", height=0, width=0)
 
