@@ -223,7 +223,7 @@ def get_act_csv_rows(selected_view, ans, config=None):
         csv_data.append(["서구 중심적 시각에서 벗어나기", ""])
         for row in ans.get("western_df", []): csv_data.append([row.get("현재 가지고 있는 서구 중심적 시각", ""), f"개선 방법: {row.get('개선 방법', '')}"])
         csv_data.extend([["", ""], ["[4. 목표로 하는 세계관]", ""], ["▶ 어떤 사람이 되고 싶은가?", ans.get("goal_1", "")], ["▶ 어떤 세계관을 갖고 싶은가?", ans.get("goal_2", "")]])
-   elif selected_view == ACT_2_1:
+    elif selected_view == ACT_2_1:
         csv_data.extend([["[모둠 구성원]", ""], ["모둠 구성원", f"1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}"]])
         csv_data.append(["[Step 1. 우리 지역에 대한 '밈' 수집 및 지리 정보 팩트 체크 일지]", ""])
         csv_data.extend([["1. 우리가 선택한 우리 지역의 인터넷, SNS, 혹은 타 지역 친구들에게 들었던 우리 지역에 대한 유쾌한 편견이나 밈을 하나 선정 '밈'", ans.get("step1_1", "")], ["2. 이 밈이 대중에게 심어준 주관적 이미지 (편견 혹은 선입견)", ans.get("step1_2", "")], ["3. 왜 그런 '밈'이 생기게 되었을까? (주관적 생각)", ans.get("step1_new1", "")], ["4. 해당 '밈'이 생기게 된 이유를 지리적 관점에서 생각해 본다면?", ans.get("step1_new2", "")], ["5. 우리 모둠에게 특별한 장소감을 주는 장소", ans.get("step1_3", "")], ["6. 그 장소에서 느끼는 감정이나 생각", ans.get("step1_4", "")]])
