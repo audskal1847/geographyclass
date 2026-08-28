@@ -232,7 +232,7 @@ def get_act_csv_rows(selected_view, ans, config=None):
         csv_data.append(["[Step 3. 살기 좋은 울산의 조건: 거주 적합성 진단]", ""])
         for row in ans.get("step3_df", []): csv_data.append([row.get("거주 적합성 요인", ""), f"만족도 점수: {row.get('만족도 점수', '')} / 한 줄 평가: {row.get('한 줄 평가', '')}"])
         csv_data.append(["[Step 4. 우리의 방식으로 해 보는 울산 브랜딩: 정체성 리뉴얼]", ""])
-        csv_data.extend([["1. 기존 프레임(대중의 오해)", ans.get("step4_1", "")], ["2. 기존 프레임에 대한 우리 모둠의 생각", ans.get("step4_2", "")], ["3. 기존 프레임에 대한 우리 모음의 생각을 담은 강력한 슬로건", ans.get("step4_3", "")], ["4. 기존 프레임의 부정적인 부분을 상쇄할 수 있는 우리 모둠이 제안하는 울산의 거주 적합성 개선 아이디어", ans.get("step4_4", "")]])
+        csv_data.extend([["1. 기존 프레임(대중의 오해)", ans.get("step4_1", "")], ["2. 기존 프레임에 대한 우리 모둠의 생각", ans.get("step4_2", "")], ["3. 기존 프레임에 대한 우리 모둠의 생각을 담은 강력한 슬로건", ans.get("step4_3", "")], ["4. 기존 프레임의 부정적인 부분을 상쇄할 수 있는 우리 모둠이 제안하는 울산의 거주 적합성 개선 아이디어", ans.get("step4_4", "")]])
     elif selected_view == ACT_2_2:
         csv_data.extend([["[모둠 구성원]", ""], ["모둠 구성원", f"1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}"]])
         csv_data.append(["[Step 1. 우리 동네 현황 진단]", ""])
@@ -376,7 +376,7 @@ def generate_html_content(act_name, ans, config=None):
         html += "<div class='guide-box'><strong>밈과 지리적 사실의 융합을 통한 '울산성(Ulsan-ity)' 재정의</strong><br>STEP 1~3의 탐구 결과를 바탕으로, 울산의 프레임을 위트 있게 깨부수는 우리 모둠만의 울산 브랜딩 슬로건과 간단한 정책(시설)을 제안해 봅시다.</div>"
         html += f"<p><b>1. 기존 프레임(대중의 오해):</b><br>{ans.get('step4_1','')}</p>"
         html += f"<p><b>2. 기존 프레임에 대한 우리 모둠의 생각:</b><br>{ans.get('step4_2','')}</p>"
-        html += f"<p><b>3. 기존 프레임에 대한 우리 모음의 생각을 담은 강력한 슬로건:</b><br>{ans.get('step4_3','')}</p>"
+        html += f"<p><b>3. 기존 프레임에 대한 우리 모둠의 생각을 담은 강력한 슬로건:</b><br>{ans.get('step4_3','')}</p>"
         html += f"<p><b>4. 기존 프레임의 부정적인 부분을 상쇄할 수 있는 우리 모둠이 제안하는 울산의 거주 적합성 개선 아이디어:</b><br>{ans.get('step4_4','')}</p>"
 
     elif act_name == ACT_2_2:
@@ -718,7 +718,7 @@ def render_activity1_2nd(user_key, u_info, current_role):
     st.markdown("<div class='guide-box'><strong>밈과 지리적 사실의 융합을 통한 '울산성(Ulsan-ity)' 재정의</strong><br>STEP 1~3의 탐구 결과를 바탕으로, 울산의 프레임을 위트 있게 깨부수는 우리 모둠만의 울산 브랜딩 슬로건과 간단한 정책(시설)을 제안해 봅시다.</div>", unsafe_allow_html=True)
     step4_1 = st.text_input("1. 기존 프레임(대중의 오해)", value=ans.get("step4_1", ""), disabled=disabled_flag, key=f"step4_1_{category}")
     step4_2 = st.text_input("2. 기존 프레임에 대한 우리 모둠의 생각", value=ans.get("step4_2", ""), disabled=disabled_flag, key=f"step4_2_{category}")
-    step4_3 = st.text_input("3. 기존 프레임에 대한 우리 모음의 생각을 담은 강력한 슬로건", value=ans.get("step4_3", ""), disabled=disabled_flag, key=f"step4_3_{category}")
+    step4_3 = st.text_input("3. 기존 프레임에 대한 우리 모둠의 생각을 담은 강력한 슬로건", value=ans.get("step4_3", ""), disabled=disabled_flag, key=f"step4_3_{category}")
     step4_4 = st.text_area("4. 기존 프레임의 부정적인 부분을 상쇄할 수 있는 우리 모둠이 제안하는 울산의 거주 적합성 개선 아이디어", value=ans.get("step4_4", ""), disabled=disabled_flag, key=f"step4_4_{category}")
 
     if not disabled_flag and st.button("저장하기", type="primary", key=f"save_{category}"):
