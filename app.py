@@ -223,16 +223,16 @@ def get_act_csv_rows(selected_view, ans, config=None):
         csv_data.append(["서구 중심적 시각에서 벗어나기", ""])
         for row in ans.get("western_df", []): csv_data.append([row.get("현재 가지고 있는 서구 중심적 시각", ""), f"개선 방법: {row.get('개선 방법', '')}"])
         csv_data.extend([["", ""], ["[4. 목표로 하는 세계관]", ""], ["▶ 어떤 사람이 되고 싶은가?", ans.get("goal_1", "")], ["▶ 어떤 세계관을 갖고 싶은가?", ans.get("goal_2", "")]])
-    elif selected_view == ACT_2_1:
+   elif selected_view == ACT_2_1:
         csv_data.extend([["[모둠 구성원]", ""], ["모둠 구성원", f"1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}"]])
         csv_data.append(["[Step 1. 우리 지역에 대한 '밈' 수집 및 지리 정보 팩트 체크 일지]", ""])
-        csv_data.extend([["1. 우리가 선택한 우리 지역의 인터넷, SNS, 혹은 타 지역 친구들에게 들었던 우리 지역에 대한 유쾌한 편견이나 밈을 하나 선정 '밈'", ans.get("step1_1", "")], ["2. 이 밈이 대중에게 심어준 주관적 이미지 (편견 혹은 선입견)", ans.get("step1_2", "")], ["3. 우리 모둠에게 특별한 장소감을 주는 장소", ans.get("step1_3", "")], ["4. 그 장소에서 느끼는 감정이나 생각", ans.get("step1_4", "")]])
+        csv_data.extend([["1. 우리가 선택한 우리 지역의 인터넷, SNS, 혹은 타 지역 친구들에게 들었던 우리 지역에 대한 유쾌한 편견이나 밈을 하나 선정 '밈'", ans.get("step1_1", "")], ["2. 이 밈이 대중에게 심어준 주관적 이미지 (편견 혹은 선입견)", ans.get("step1_2", "")], ["3. 왜 그런 '밈'이 생기게 되었을까? (주관적 생각)", ans.get("step1_new1", "")], ["4. 해당 '밈'이 생기게 된 이유를 지리적 관점에서 생각해 본다면?", ans.get("step1_new2", "")], ["5. 우리 모둠에게 특별한 장소감을 주는 장소", ans.get("step1_3", "")], ["6. 그 장소에서 느끼는 감정이나 생각", ans.get("step1_4", "")]])
         csv_data.append(["[Step 2. 도시 발달 과정과 객관적 지표]", ""])
         csv_data.extend([["1. 우리 모둠이 탐구할 시기", ans.get("step2_1_period", "")], ["2-1. 선택한 시기의 핵심 공간", ans.get("step2_1_space", "")], ["2-2. 객관적 특징", ans.get("step2_1_feat", "")], ["3. 선택한 시기의 객관적 지리 데이터 혹은 지표", ans.get("step2_3", "")]])
         csv_data.append(["[Step 3. 살기 좋은 울산의 조건: 거주 적합성 진단]", ""])
         for row in ans.get("step3_df", []): csv_data.append([row.get("거주 적합성 요인", ""), f"만족도 점수: {row.get('만족도 점수', '')} / 한 줄 평가: {row.get('한 줄 평가', '')}"])
         csv_data.append(["[Step 4. 우리의 방식으로 해 보는 울산 브랜딩: 정체성 리뉴얼]", ""])
-        csv_data.extend([["1. 기존 프레임(대중의 오해)", ans.get("step4_1", "")], ["2. 우리 모둠이 도출한 지리적 본질", ans.get("step4_2", "")], ["3. 우리 모둠의 반전 광고 슬로건", ans.get("step4_3", "")], ["4. 우리 모둠이 제안하는 울산의 거주 적합성 개선 아이디어", ans.get("step4_4", "")]])
+        csv_data.extend([["1. 기존 프레임(대중의 오해)", ans.get("step4_1", "")], ["2. 기존 프레임에 대한 우리 모둠의 생각", ans.get("step4_2", "")], ["3. 기존 프레임에 대한 우리 모음의 생각을 담은 강력한 슬로건", ans.get("step4_3", "")], ["4. 기존 프레임의 부정적인 부분을 상쇄할 수 있는 우리 모둠이 제안하는 울산의 거주 적합성 개선 아이디어", ans.get("step4_4", "")]])
     elif selected_view == ACT_2_2:
         csv_data.extend([["[모둠 구성원]", ""], ["모둠 구성원", f"1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}"]])
         csv_data.append(["[Step 1. 우리 동네 현황 진단]", ""])
@@ -349,13 +349,16 @@ def generate_html_content(act_name, ans, config=None):
         html += f"<p><b>▶ 어떤 세계관을 갖고 싶은가?</b></p><div class='content-box'>{ans.get('goal_2','')}</div>"
 
     elif act_name == ACT_2_1:
+        elif act_name == ACT_2_1:
         html += f"<h4>👥 모둠 구성원</h4><ul><li>1: {ans.get('m1_id','')} {ans.get('m1_name','')}</li><li>2: {ans.get('m2_id','')} {ans.get('m2_name','')}</li><li>3: {ans.get('m3_id','')} {ans.get('m3_name','')}</li><li>4: {ans.get('m4_id','')} {ans.get('m4_name','')}</li></ul>"
         html += "<h3>Step 1. 우리 지역에 대한 '밈' 수집 및 지리 정보 팩트 체크 일지</h3>"
         html += "<div class='guide-box'><strong>▶ 교과서 13쪽 내용 中</strong><br>개인이 여러 장소에서 경험을 쌓으며 형성하는 주관적인 감정을 장소감이라 합니다. 이 장소감이 여러 사람에게 공유되면서 형성된 독특한 이미지가 바로 장소성이며, 이것이 확장되어 그 도시만의 독특한 특성인 도시 정체성을 만듭니다.<br><br><strong>* 나만의 주관적 장소감 성찰</strong><br>타 지역 사람들의 선입견과 달리, '우리 지역에서 나를 성장시킨 장소'나 '우리가 가장 애착을 느끼는 장소'를 적고 그에 대한 우리의 감정이나 생각을 적어 보세요.</div>"
         html += f"<p><b>1. 우리가 선택한 우리 지역의 인터넷, SNS, 혹은 타 지역 친구들에게 들었던 우리 지역에 대한 유쾌한 편견이나 밈을 하나 선정 '밈':</b><br>{ans.get('step1_1','')}</p>"
         html += f"<p><b>2. 이 밈이 대중에게 심어준 주관적 이미지 (편견 혹은 선입견):</b><br>{ans.get('step1_2','')}</p>"
-        html += f"<p><b>3. 우리 모둠에게 특별한 장소감을 주는 장소:</b><br>{ans.get('step1_3','')}</p>"
-        html += f"<p><b>4. 그 장소에서 느끼는 감정이나 생각:</b><br>{ans.get('step1_4','')}</p>"
+        html += f"<p><b>3. 왜 그런 '밈'이 생기게 되었을까? (주관적 생각):</b><br>{ans.get('step1_new1','')}</p>"
+        html += f"<p><b>4. 해당 '밈'이 생기게 된 이유를 지리적 관점에서 생각해 본다면?:</b><br>{ans.get('step1_new2','')}</p>"
+        html += f"<p><b>5. 우리 모둠에게 특별한 장소감을 주는 장소:</b><br>{ans.get('step1_3','')}</p>"
+        html += f"<p><b>6. 그 장소에서 느끼는 감정이나 생각:</b><br>{ans.get('step1_4','')}</p>"
         
         html += "<h3>Step 2. 도시 발달 과정과 객관적 지표</h3>"
         html += "<div class='guide-box'><strong>▶ 교과서 14~15, 31~32쪽 내용 中</strong><br>객관적 의미의 도시는 시가지로 구성되며 2·3차 산업 비율이 높은 공간입니다. 도시는 살아있는 생명체처럼 탄생, 성장, 정체, 쇠퇴, 전환의 도시 발달 과정을 겪습니다. 울산은 시대별로 역동적인 변화를 거쳐왔습니다.<br><br><strong>* 울산의 역사적 발달 과정 추적</strong><br>다음 제시된 울산의 발달 역사 중 우리 조가 탐구할 시기를 선택하고, 당시 울산의 핵심 공간과 객관적 특징을 매칭해 보세요.<br><br><strong>* 지리 데이터 기반 분석</strong><br>우리 모둠이 선택한 시기 울산의 객관적 지표를 지리 정보 서비스나 통계 자료를 통해 확인해 보세요.<br>- 추천 검색어: '울산광역시 통계포털', 'KOSIS 지역별 고용조사', '카카오맵/네이버맵 지적편집도'<br>- 조사한 구체적 사실/통계: 예) 현재 울산의 제조업 종사자 비율이 약 40% 이상으로 전국 최고 수준이라는 점 / 태화강 수질이 생태 등급으로 회복된 지표 등</div>"
@@ -373,9 +376,9 @@ def generate_html_content(act_name, ans, config=None):
         html += "<h3>Step 4. 우리의 방식으로 해 보는 울산 브랜딩: 정체성 리뉴얼</h3>"
         html += "<div class='guide-box'><strong>밈과 지리적 사실의 융합을 통한 '울산성(Ulsan-ity)' 재정의</strong><br>STEP 1~3의 탐구 결과를 바탕으로, 울산의 프레임을 위트 있게 깨부수는 우리 모둠만의 울산 브랜딩 슬로건과 간단한 정책(시설)을 제안해 봅시다.</div>"
         html += f"<p><b>1. 기존 프레임(대중의 오해):</b><br>{ans.get('step4_1','')}</p>"
-        html += f"<p><b>2. 우리 모둠이 도출한 지리적 본질:</b><br>{ans.get('step4_2','')}</p>"
-        html += f"<p><b>3. 우리 모둠의 반전 광고 슬로건:</b><br>{ans.get('step4_3','')}</p>"
-        html += f"<p><b>4. 우리 모둠이 제안하는 울산의 거주 적합성 개선 아이디어:</b><br>{ans.get('step4_4','')}</p>"
+        html += f"<p><b>2. 기존 프레임에 대한 우리 모둠의 생각:</b><br>{ans.get('step4_2','')}</p>"
+        html += f"<p><b>3. 기존 프레임에 대한 우리 모음의 생각을 담은 강력한 슬로건:</b><br>{ans.get('step4_3','')}</p>"
+        html += f"<p><b>4. 기존 프레임의 부정적인 부분을 상쇄할 수 있는 우리 모둠이 제안하는 울산의 거주 적합성 개선 아이디어:</b><br>{ans.get('step4_4','')}</p>"
 
     elif act_name == ACT_2_2:
         html += f"<h4>👥 모둠 구성원</h4><ul><li>1: {ans.get('m1_id','')} {ans.get('m1_name','')}</li><li>2: {ans.get('m2_id','')} {ans.get('m2_name','')}</li><li>3: {ans.get('m3_id','')} {ans.get('m3_name','')}</li><li>4: {ans.get('m4_id','')} {ans.get('m4_name','')}</li></ul>"
@@ -692,8 +695,10 @@ def render_activity1_2nd(user_key, u_info, current_role):
     st.markdown("<div class='guide-box'><strong>▶ 교과서 13쪽 내용 中</strong><br>개인이 여러 장소에서 경험을 쌓으며 형성하는 주관적인 감정을 장소감이라 합니다. 이 장소감이 여러 사람에게 공유되면서 형성된 독특한 이미지가 바로 장소성이며, 이것이 확장되어 그 도시만의 독특한 특성인 도시 정체성을 만듭니다.<br><br><strong>* 나만의 주관적 장소감 성찰</strong><br>타 지역 사람들의 선입견과 달리, '우리 지역에서 나를 성장시킨 장소'나 '우리가 가장 애착을 느끼는 장소'를 적고 그에 대한 우리의 감정이나 생각을 적어 보세요.</div>", unsafe_allow_html=True)
     step1_1 = st.text_input("1. 우리가 선택한 우리 지역의 밈", value=ans.get("step1_1", ""), disabled=disabled_flag, key=f"step1_1_{category}")
     step1_2 = st.text_input("2. 이 밈이 대중에게 심어준 주관적 이미지 (편견 혹은 선입견)", value=ans.get("step1_2", ""), disabled=disabled_flag, key=f"step1_2_{category}")
-    step1_3 = st.text_input("3. 우리 모둠에게 특별한 장소감을 주는 장소", value=ans.get("step1_3", ""), disabled=disabled_flag, key=f"step1_3_{category}")
-    step1_4 = st.text_area("4. 그 장소에서 느끼는 감정이나 생각", value=ans.get("step1_4", ""), disabled=disabled_flag, key=f"step1_4_{category}")
+    step1_new1 = st.text_area("3. 왜 그런 '밈'이 생기게 되었을까? (주관적 생각)", value=ans.get("step1_new1", ""), disabled=disabled_flag, key=f"step1_new1_{category}")
+    step1_new2 = st.text_area("4. 해당 '밈'이 생기게 된 이유를 지리적 관점에서 생각해 본다면?", value=ans.get("step1_new2", ""), disabled=disabled_flag, key=f"step1_new2_{category}")
+    step1_3 = st.text_input("5. 우리 모둠에게 특별한 장소감을 주는 장소", value=ans.get("step1_3", ""), disabled=disabled_flag, key=f"step1_3_{category}")
+    step1_4 = st.text_area("6. 그 장소에서 느끼는 감정이나 생각", value=ans.get("step1_4", ""), disabled=disabled_flag, key=f"step1_4_{category}")
     
     st.markdown("---")
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 2. 도시 발달 과정과 객관적 지표</h3>", unsafe_allow_html=True)
@@ -713,9 +718,9 @@ def render_activity1_2nd(user_key, u_info, current_role):
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 4. 우리의 방식으로 해 보는 울산 브랜딩: 정체성 리뉴얼</h3>", unsafe_allow_html=True)
     st.markdown("<div class='guide-box'><strong>밈과 지리적 사실의 융합을 통한 '울산성(Ulsan-ity)' 재정의</strong><br>STEP 1~3의 탐구 결과를 바탕으로, 울산의 프레임을 위트 있게 깨부수는 우리 모둠만의 울산 브랜딩 슬로건과 간단한 정책(시설)을 제안해 봅시다.</div>", unsafe_allow_html=True)
     step4_1 = st.text_input("1. 기존 프레임(대중의 오해)", value=ans.get("step4_1", ""), disabled=disabled_flag, key=f"step4_1_{category}")
-    step4_2 = st.text_input("2. 우리 모둠이 도출한 지리적 본질", value=ans.get("step4_2", ""), disabled=disabled_flag, key=f"step4_2_{category}")
-    step4_3 = st.text_input("3. 우리 모둠의 반전 광고 슬로건", value=ans.get("step4_3", ""), disabled=disabled_flag, key=f"step4_3_{category}")
-    step4_4 = st.text_area("4. 우리 모둠이 제안하는 울산의 거주 적합성 개선 아이디어", value=ans.get("step4_4", ""), disabled=disabled_flag, key=f"step4_4_{category}")
+    step4_2 = st.text_input("2. 기존 프레임에 대한 우리 모둠의 생각", value=ans.get("step4_2", ""), disabled=disabled_flag, key=f"step4_2_{category}")
+    step4_3 = st.text_input("3. 기존 프레임에 대한 우리 모음의 생각을 담은 강력한 슬로건", value=ans.get("step4_3", ""), disabled=disabled_flag, key=f"step4_3_{category}")
+    step4_4 = st.text_area("4. 기존 프레임의 부정적인 부분을 상쇄할 수 있는 우리 모둠이 제안하는 울산의 거주 적합성 개선 아이디어", value=ans.get("step4_4", ""), disabled=disabled_flag, key=f"step4_4_{category}")
 
     if not disabled_flag and st.button("저장하기", type="primary", key=f"save_{category}"):
         current_data = load_json(DATA_FILE, {}) 
