@@ -2133,7 +2133,7 @@ else:
                 col_t, col_b = st.columns([8, 2])
                 with col_t: st.markdown("### 📥 학생 학습 활동 및 제출 자료 실시간 조회")
                 with col_b:
-                    if st.button("🔄 실시간 새로고침", type="primary", use_container_width=True): st.rerun()
+                   if st.button("🔄 실시간 새로고침", key="..."):st.balloons()st.rerun()
                 st.markdown("---")
                 col_filter1, col_filter2 = st.columns(2)
                 with col_filter1: view_subj = st.selectbox("과목 선택", SUBJECTS, key="view_subj_select")
