@@ -194,51 +194,138 @@ def get_user_activity_data(user_key, u_id, u_subj, u_class, act_name, learning_d
     return user_key, learning_data.get(user_key, {}).get(act_name, {})
 
 def get_act_csv_rows(selected_view, ans, config=None):
+    if ans is None:
+        ans = {}
     csv_data = []
+
+    # ----------------------------------------------------
+    # 3학년 여행지리 수행평가 1
+    # ----------------------------------------------------
     if selected_view == ACT_3_1:
-        csv_data.extend([["[1. 자신이 선택한 영상에 대한 첫번째 질문]", ""], ["1. 영상의 제목", ans.get("a1_1", "")], ["2. 영상에 등장하는 국가 혹은 지역", ans.get("a1_2", "")], ["3. 해당 영상을 선택하게 된 이유", ans.get("a1_3", "")], ["", ""], ["[2. 자신이 선택한 영상에 대한 두 번째 질문]", ""], ["1. 첫 느낌", ans.get("a2_1", "")], ["▶ 인상적이었던 장소 혹은 공간:", ans.get("a2_2_1", "")], ["▶ 이유:", ans.get("a2_2_2", "")], ["▶ 누구에게 추천:", ans.get("a2_3_1", "")], ["▶ 추천하는 이유:", ans.get("a2_3_2", "")], ["4. 영상에 대한 나만의 감상평", ans.get("a2_4", "")], ["", ""], ["[5. 만일 내가 영상 속 지역을 배경으로 영상을 찍는다면?]", ""], ["1) 영상의 제목:", ans.get("a3_1", "")], ["2) 영상의 주요 컨셉 혹은 느낌:", ans.get("a3_2", "")], ["3) 누구와 함께 가고 싶은가?:", ans.get("a3_3", "")], ["4) 그 이유는?:", ans.get("a3_4", "")], ["5) 그곳에서 가장 해 보고 싶은 것:", ans.get("a3_5", "")], ["6) 그 이유는?:", ans.get("a3_6", "")], ["7) 영상에 꼭 넣고 싶은 장소 혹은 공간:", ans.get("a3_7", "")], ["8) 그 이유는?:", ans.get("a3_8", "")], ["9) 만일 내가 썸네일 영상을 만든다면?:", ans.get("a3_9", "")], ["10) 어울리는 BGM:", ans.get("a3_10", "")], ["11) 그 이유는?:", ans.get("a3_11", "")]])
+        csv_data.extend([
+            ["[1. 자신이 선택한 영상에 대한 첫번째 질문]", ""],
+            ["1. 영상의 제목", ans.get("a1_1", "")],
+            ["2. 영상(다큐멘터리/영화 등)의 줄거리 요약", ans.get("a1_2", "")],
+            ["3. 영상에서 다루는 주요 지리적/문화적 배경", ans.get("a1_3", "")]
+        ])
+
+    # ----------------------------------------------------
+    # 3학년 여행지리 수행평가 2
+    # ----------------------------------------------------
     elif selected_view == ACT_3_2:
-        csv_data.extend([["1-1) 나에게 편안함을 주는 장소(공간)이/가 있는가?", ans.get("q1_1", "")], ["1-2) 그 장소(공간)이/가 어떤 면에서 나에게 편안함을 주는 것 같은가?", ans.get("q1_2", "")], ["2-1) 자신이 생각하기에 자신의 성격은?", ans.get("q2_1", "")], ["2-2) 자신이 성격 형성에 있어 영향을 준 장소(공간)이/가 있는가?", ans.get("q2_2", "")], ["2-3) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", ans.get("q2_3", "")], ["3-1) 자신이 생각하기에 자신의 장점은?", ans.get("q3_1", "")], ["3-2) 자신이 장점 형성에 있어 영향을 준 장소(공간)이/가 있는가?", ans.get("q3_2", "")], ["3-3) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", ans.get("q3_3", "")], ["4-1) 내가 성장함에 있어 영향을 준 장소(공간)이/가 있는가?", ans.get("q4_1", "")], ["4-2) 그런 장소(공간)이/가 있다면 어떤 면에서 영향을 준 것 같은가?", ans.get("q4_2", "")], ["5-1) 지금 나의 목표는 무엇인가?", ans.get("q5_1", "")], ["5-2) 그런 목표를 설정함에 있어 영향을 준 장소(공간)이/가 있는가?", ans.get("q5_2", "")], ["6-1) 훗날 소중한 사람에게 소개해 주고 싶은 장소(공간)이/가 있는가?", ans.get("q6_1", "")], ["6-2) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", ans.get("q6_2", "")], ["7-1) 나만의 비밀 장소(공간)이/가 있는가?", ans.get("q7_1", "")], ["7-2) 만약 그런 장소(공간)이/가 있다면 무엇 때문인가?", ans.get("q7_2", "")], ["8-1) 시간을 돌려 과거로 돌아갈 수 있다면 다시 가 보고 싶은 장소(공간)이/가 있는가?", ans.get("q8_1", "")], ["8-2) 장소(공간)로/으로 다시 가 보고 싶은 이유는 무엇 때문인가?", ans.get("q8_2", "")]])
+        csv_data.extend([
+            ["1-1) 나에게 편안함을 주는 장소(공간)이/가 있는가?", ans.get("q1_1", "")],
+            ["1-2) 그 장소(공간)이/가 편안함을 주는 이유는 무엇인가?", ans.get("q1_2", "")],
+            ["2-1) 나에게 불편함을 주는 장소(공간)이/가 있는가?", ans.get("q2_1", "")],
+            ["2-2) 그 장소(공간)이/가 불편함을 주는 이유는 무엇인가?", ans.get("q2_2", "")]
+        ])
+
+    # ----------------------------------------------------
+    # 3학년 여행지리 수행평가 3
+    # ----------------------------------------------------
     elif selected_view == ACT_3_3:
         csv_data.extend([["[1. 세계 인식 수준에 대한 확인]", ""], ["1. 대륙별 관심도 및 지식 수준 체크", ""]])
-        for row in ans.get("s1_df", []): csv_data.append([row.get("대륙", ""), f"관심도: {row.get('관심도', '')} / 지식수준: {row.get('지식수준', '')}"])
+        for row in ans.get("s1_df", []):
+            csv_data.append([row.get("대륙", ""), f"관심도: {row.get('관심도', '')} / 지식수준: {row.get('지식수준', '')}"])
+        
         csv_data.append(["2. (개인적 경험에 기반) 특정 국가에 대한 기억과 인상에 대한 분석", ""])
         csv_data.append(["[직접 경험]", ""])
-        for row in ans.get("direct_df", []): csv_data.append([row.get("여행해 본 국가", ""), row.get("해당 국가에 대한 구체적인 기억 혹은 인상", "")])
+        for row in ans.get("direct_df", []):
+            csv_data.append([row.get("여행해 본 국가", ""), row.get("해당 국가에 대한 구체적인 기억 혹은 인상", "")])
+        
         csv_data.append(["[간접 경험]", ""])
-        csv_data.extend([["즐겨 보는 외국 영화/드라마는 어느 나라 작품?", ans.get("ind1", "")], ["좋아하는 음악가나 연예인이 있다면 어느 나라?", ans.get("ind2", "")], ["자주 먹는 외국 음식이 있다면 어느 나라?", ans.get("ind3", "")]])
+        csv_data.extend([
+            ["즐겨 보는 외국 영화/드라마는 어느 나라 작품?", ans.get("ind1", "")],
+            ["좋아하는 음악가나 연예인이 있다면 어느 나라?", ans.get("ind2", "")],
+            ["자주 먹는 외국 음식이 있다면 어느 나라?", ans.get("ind3", "")]
+        ])
+        
         csv_data.append(["3. 꼭 가보고 싶은 Top 5 국가와 그 이유", ""])
-        for row in ans.get("top5_want", []): csv_data.append([row.get("국가 혹은 지역", ""), row.get("이유", "")])
-        csv_data.append(["4. 절대 가고 싶은 Top 5 국가와 그 이유", ""])
-        for row in ans.get("top5_notwant", []): csv_data.append([row.get("국가 혹은 지역", ""), row.get("이유", "")])
+        for row in ans.get("top5_want", []):
+            csv_data.append([row.get("국가 혹은 지역", ""), row.get("이유", "")])
+        
+        csv_data.append(["4. 절대 가고 싶지 않은 Top 5 국가와 그 이유", ""])
+        for row in ans.get("top5_notwant", []):
+            csv_data.append([row.get("국가 혹은 지역", ""), row.get("이유", "")])
+
         csv_data.extend([["", ""], ["[2. 특정 대륙/국가에 대한 자신의 편견과 고정관념]", ""], ["1. 국가별 한 단어 라벨링", ""]])
-        for row in ans.get("label_df", []): csv_data.append([row.get("가 보고 싶은 국가", ""), f"한 단어 라벨: {row.get('한 단어 라벨', '')} / 가고 싶지 않은 국가: {row.get('가고 싶지 않은 국가', '')} / 한 단어 라벨: {row.get('한 단어 라벨(부정)', '')}"])
+        for row in ans.get("label_df", []):
+            csv_data.append([row.get("가 보고 싶은 국가", ""), f"한 단어 라벨: {row.get('한 단어 라벨', '')} | 가고 싶지 않은 국가: {row.get('가고 싶지 않은 국가', '')} (라벨: {row.get('한 단어 라벨(부정)', '')})"])
+        
         csv_data.append(["2. 개인적으로 가장 강한 편견을 가진 국가", ""])
-        for row in ans.get("prej_df", []): csv_data.append([row.get("국가명", ""), f"편견 내용: {row.get('편견 내용', '')} / 편견 형성 과정 혹은 이유: {row.get('편견 형성 과정 혹은 이유', '')}"])
-        csv_data.extend([["3. 미디어와 교육의 영향으로 인한 인식 발견", ""], ["뉴스에서 자주 접하는 국가들", ans.get("media1_1", "")], ["그 나라들에 대한 이미지", ans.get("media1_2", "")], ["영화/드라마에서 자주 접하는 국가들", ans.get("media2_1", "")], ["그 나라들에 대한 이미지", ans.get("media2_2", "")], ["학교에서 많이 배운 국가들", ans.get("media3_1", "")], ["그 나라들에 대한 지식", ans.get("media3_2", "")], ["4. 부정확한 정보나 과장된 인식 발견", ""]])
-        for row in ans.get("fake_df", []): csv_data.append([row.get("국가명", ""), f"잘못 알고 있었던 내용: {row.get('잘못 알고 있었던 내용', '')} / 실제 사실: {row.get('실제 사실', '')}"])
+        for row in ans.get("prej_df", []):
+            csv_data.append([row.get("국가명", ""), f"편견 내용: {row.get('편견 내용', '')} / 이유: {row.get('편견 형성 과정 혹은 이유', '')}"])
+        
+        csv_data.extend([
+            ["3. 미디어와 교육의 영향으로 인한 인식 발견", ""],
+            ["뉴스에서 자주 접하는 국가들", f"{ans.get('media1_1', '')} (이미지: {ans.get('media1_2', '')})"],
+            ["영화/드라마에서 자주 접하는 국가들", f"{ans.get('media2_1', '')} (이미지: {ans.get('media2_2', '')})"],
+            ["학교에서 많이 배운 국가들", f"{ans.get('media3_1', '')} (지식: {ans.get('media3_2', '')})"]
+        ])
+        
+        csv_data.append(["4. 부정확한 정보나 과장된 인식 발견", ""])
+        for row in ans.get("fake_df", []):
+            csv_data.append([row.get("국가명", ""), f"잘못 알고 있던 내용: {row.get('잘못 알고 있었던 내용', '')} / 실제 사실: {row.get('실제 사실', '')}"])
+        
         csv_data.append(["5. 우월감이나 차별 의식 점검", ""])
-        for row in ans.get("discrim_df", []): csv_data.append([row.get("어떤 국가에 대해?", ""), f"어떤 측면에서: {row.get('어떤 측면에서', '')} / 우월감이나 차별 의식을 느끼는 부분: {row.get('그 이유', '')}"])
+        for row in ans.get("discrim_df", []):
+            csv_data.append([row.get("어떤 국가에 대해?", ""), f"측면: {row.get('어떤 측면에서', '')} / 이유: {row.get('그 이유', '')}"])
+
         csv_data.extend([["", ""], ["[3. 포용적이고 균형잡힌 세계관을 위한 노력]", ""]])
         csv_data.append(["1. 편견을 바꾸고 싶은 국가", ""])
-        for row in ans.get("change_df", []): csv_data.append([row.get("어떤 국가에 대해?", ""), f"현재의 편견: {row.get('현재의 편견', '')} / 올바른 정보를 찾기 위한 계획: {row.get('올바른 정보를 찾기 위한 계획', '')}"])
+        for row in ans.get("change_df", []):
+            csv_data.append([row.get("어떤 국가에 대해?", ""), f"현재 편견: {row.get('현재의 편견', '')} / 계획: {row.get('올바른 정보를 찾기 위한 계획', '')}"])
+        
         csv_data.append(["2. 가장 무관심했던 대륙 혹은 국가", ""])
-        for row in ans.get("ignore_df", []): csv_data.append([row.get("선택 대륙/국가", ""), f"무관심 이유: {row.get('무관심 이유', '')} / 관심 확장을 위한 정보 수집 방법: {row.get('관심 확장을 위한 정보 수집 방법', '')}"])
+        for row in ans.get("ignore_df", []):
+            csv_data.append([row.get("선택 대륙/국가", ""), f"무관심 이유: {row.get('무관심 이유', '')} / 정보 수집 방법: {row.get('관심 확장을 위한 정보 수집 방법', '')}"])
+        
         csv_data.append(["3. 서구 중심적 시각에서 벗어나기", ""])
-        for row in ans.get("western_df", []): csv_data.append([row.get("현재 가지고 있는 서구 중심적 시각", ""), f"개선 방법: {row.get('개선 방법', '')}"])
+        for row in ans.get("western_df", []):
+            csv_data.append([row.get("현재 가지고 있는 서구 중심적 시각", ""), f"개선 방법: {row.get('개선 방법', '')}"])
+        
         csv_data.append(["4. 약소국 관점 이해하기", ""])
-        for row in ans.get("weak_df", []): csv_data.append([row.get("주목해 볼 국가", ""), f"그 이유: {row.get('그 이유', '')}"])
+        for row in ans.get("weak_df", []):
+            csv_data.append([row.get("주목해 볼 국가", ""), f"이유: {row.get('그 이유', '')}"])
+
         csv_data.extend([["", ""], ["[5. 목표로 하는 세계관]", ""], ["▶ 어떤 사람이 되고 싶은가?", ans.get("goal_1", "")], ["▶ 어떤 세계관을 갖고 싶은가?", ans.get("goal_2", "")]])
+
+    # ----------------------------------------------------
+    # 2학년 수행평가 1 (도시 밈 해석)
+    # ----------------------------------------------------
     elif selected_view == ACT_2_1:
         csv_data.extend([["[모둠 구성원]", ""], ["모둠 구성원", f"1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}"]])
         csv_data.append(["[Step 1. 우리 지역에 대한 '밈' 수집 및 지리 정보 팩트 체크 일지]", ""])
-        csv_data.extend([["1. 우리가 선택한 우리 지역의 인터넷, SNS, 혹은 타 지역 친구들에게 들었던 우리 지역에 대한 유쾌한 편견이나 밈을 하나 선정 '밈'", ans.get("step1_1", "")], ["2. 이 밈이 대중에게 심어준 주관적 이미지 (편견 혹은 선입견)", ans.get("step1_2", "")], ["3. 왜 그런 '밈'이 생기게 되었을까? (주관적 생각)", ans.get("step1_new1", "")], ["4. 해당 '밈'이 생기게 된 이유를 지리적 관점에서 생각해 본다면?", ans.get("step1_new2", "")], ["5. 우리 모둠에게 특별한 장소감을 주는 장소", ans.get("step1_3", "")], ["6. 그 장소에서 느끼는 감정이나 생각", ans.get("step1_4", "")]])
+        csv_data.extend([
+            ["1. 우리가 선택한 우리 지역의 밈", ans.get("step1_1", "")],
+            ["2. 이 밈이 대중에게 심어준 주관적 이미지", ans.get("step1_2", "")],
+            ["3. 왜 그런 '밈'이 생기게 되었을까? (주관적 생각)", ans.get("step1_new1", "")],
+            ["4. 해당 '밈'이 생기게 된 이유를 지리적 관점에서 생각해 본다면?", ans.get("step1_new2", "")],
+            ["5. 우리 모둠에게 특별한 장소감을 주는 장소", ans.get("step1_3", "")],
+            ["6. 그 장소에서 느끼는 감정이나 생각", ans.get("step1_4", "")]
+        ])
         csv_data.append(["[Step 2. 도시 발달 과정과 객관적 지표]", ""])
-        csv_data.extend([["1. 우리 모둠이 탐구할 시기", ans.get("step2_1_period", "")], ["2-1. 선택한 시기의 핵심 공간", ans.get("step2_1_space", "")], ["2-2. 객관적 특징", ans.get("step2_1_feat", "")], ["3. 선택한 시기의 객관적 지리 데이터 혹은 지표", ans.get("step2_3", "")]])
+        csv_data.extend([
+            ["1. 우리 모둠이 탐구할 시기", ans.get("step2_1_period", "")],
+            ["2-1. 선택한 시기의 핵심 공간", ans.get("step2_1_space", "")],
+            ["2-2. 객관적 특징", ans.get("step2_1_feat", "")],
+            ["3. 선택한 시기의 객관적 지리 데이터 혹은 지표", ans.get("step2_3", "")]
+        ])
         csv_data.append(["[Step 3. 살기 좋은 울산의 조건: 거주 적합성 진단]", ""])
-        for row in ans.get("step3_df", []): csv_data.append([row.get("거주 적합성 요인", ""), f"만족도 점수: {row.get('만족도 점수', '')} / 한 줄 평가: {row.get('한 줄 평가', '')}"])
+        for row in ans.get("step3_df", []):
+            csv_data.append([row.get("거주 적합성 요인", ""), f"만족도 점수: {row.get('만족도 점수', '')} / 한 줄 평가: {row.get('한 줄 평가', '')}"])
+        
         csv_data.append(["[Step 4. 우리의 방식으로 해 보는 울산 브랜딩: 정체성 리뉴얼]", ""])
-        csv_data.extend([["1. 기존 프레임(대중의 오해)", ans.get("step4_1", "")], ["2. 기존 프레임에 대한 우리 모둠의 생각", ans.get("step4_2", "")], ["3. 기존 프레임에 대한 우리 모둠의 생각을 담은 강력한 슬로건", ans.get("step4_3", "")], ["4. 기존 프레임의 부정적인 부분을 상쇄할 수 있는 우리 모둠이 제안하는 울산의 거주 적합성 개선 아이디어", ans.get("step4_4", "")]])
+        csv_data.extend([
+            ["1. 기존 프레임(대중의 오해)", ans.get("step4_1", "")],
+            ["2. 우리 모둠이 도출한 지리적 본질", ans.get("step4_2", "")],
+            ["3. 우리 모둠의 반전 광고 슬로건", ans.get("step4_3", "")],
+            ["4. 우리 모둠이 제안하는 울산의 거주 적합성 개선 아이디어", ans.get("step4_4", "")]
+        ])
+
+    # ----------------------------------------------------
+    # 2학년 수행평가 2 (15분 도시설계)
+    # ----------------------------------------------------
     elif selected_view == ACT_2_2:
         csv_data.extend([["[모둠 구성원]", ""], ["모둠 구성원", f"1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}"]])
         csv_data.append(["[Step 1. 우리 동네 현황 진단]", ""])
@@ -261,9 +348,10 @@ def get_act_csv_rows(selected_view, ans, config=None):
         ])
         
         csv_data.append(["[Step 2. 도시 개조 포인트를 활용한 트레이드오프 설계]", ""])
-        for row in ans.get("step2_point_df", []):
-            if row.get("세부 개조 항목") or row.get("코드"):
-                csv_data.append([f"[{row.get('카테고리','')}] {row.get('코드','')}", f"{row.get('세부 개조 항목','')} ({row.get('비용','')})"])
+        if ans.get("step2_custom_df"):
+            for row in ans.get("step2_custom_df", []):
+                if row.get("세부 개조 항목"):
+                    csv_data.append([f"[추가개조] {row.get('코드','')}", f"{row.get('세부 개조 항목','')} ({row.get('비용(10~20pt)','')})"])
         
         csv_data.append(["[Step 4. 3분 공청회 발표를 위한 준비]", ""])
         csv_data.extend([
@@ -272,6 +360,10 @@ def get_act_csv_rows(selected_view, ans, config=None):
             ["3. 한정된 100pt를 활용해 무엇을 버리고 무엇을 채웠는가? 그 이유는 무엇인가?", ans.get("step4_3", "")],
             ["4. 공간 재설계로 인해 일상이 어떻게 변화할 것이라고 생각하는가?", ans.get("step4_4", "")]
         ])
+
+    # ----------------------------------------------------
+    # 2학년 수행평가 3 (미디어 파사드)
+    # ----------------------------------------------------
     elif selected_view == ACT_2_3:
         csv_data.extend([["[개별 정보]", ""], ["학번/이름", f"{ans.get('ind_id', '')} / {ans.get('ind_name', '')}"], ["희망 진로", ans.get("ind_career", "")]])
         csv_data.append(["[Step 1. 우리 지역의 정체성 탐색]", ""])
@@ -305,6 +397,14 @@ def get_act_csv_rows(selected_view, ans, config=None):
             csv_data.append([f"[AI활용] {row.get('사용한 도구명', '')}", f"프롬프트: {row.get('입력한 프롬프트', '')} / 수정내용: {row.get('AI 결과물을 내가 수정·판단한 내용', '')}"])
         csv_data.append(["▶ 활동 성찰", ans.get("step6_reflection", "")])
 
+    # ----------------------------------------------------
+    # 기타 커스텀 문항
+    # ----------------------------------------------------
+    else:
+        for q in (config.get("custom_forms", {}).get(selected_view, []) if config else []):
+            csv_data.append([q.get("label", ""), ans.get(q.get("id", ""), "")])
+
+    return csv_data
 def generate_html_content(act_name, ans, config=None):
     if ans is None:
         ans = {}
