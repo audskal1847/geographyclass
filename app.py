@@ -2261,10 +2261,34 @@ else:
                         if has_data:
                             st.download_button(label=f"📦 전체 포트폴리오 일괄 다운로드 (ZIP)", data=zip_buffer.getvalue(), file_name=f"{view_subj}_{view_class}_포트폴리오.zip", mime="application/zip", type="primary")
                         st.markdown("---")
-                        search_student_tab4 = st.text_input("🔍 학생 검색", key="search_student_tab4")
-                        filtered_student_list = [uid for uid in student_list if search_student_tab4.lower() in f"{all_users[uid].get('class_group')} {all_users[uid].get('name')} {all_users[uid].get('id')}".lower()]
-                        selected_student = st.selectbox("학생 선택", ["선택"] + filtered_student_list, format_func=lambda x: "선택" if x=="선택" else f"[{all_users[x].get('class_group')}] {all_users[x].get('name')} ({all_users[x].get('id')})", key="select_student_tab3")
-                        if selected_student != "선택":
+                        search_student_tab4 = st.text_input("🔍 학생 검색 (이름 또는 학번 입력)", key="search_student_tab4")
+        
+                        filtered_student_list = [
+                            uid for uid in student_list 
+                            if not search_student_tab4.strip() or search_student_tab4.strip().lower() in f"{all_users.get(uid, {}).get('name', '')} {all_users.get(uid, {}).get('id', '')} {uid}".lower()
+        ]
+
+        # 검색어 입력 시 '선택' 없이 검색된 학생이 즉시 1순위로 자동 선택됨
+                        if search_student_tab4.strip():
+                            if filtered_student_list:
+                                selected_student = st.selectbox(
+                                    f"학생 선택 (검색 결과: {len(filtered_student_list)}명)",
+                                    filtered_student_list,
+                                    format_func=lambda x: f"[{all_users[x].get('class_group')}] {all_users[x].get('name')} ({all_users[x].get('id')})",
+                                    key="selected_student_tab4_box"
+                                )
+                            else:
+                                st.warning("검색 일치 학생이 없습니다.")
+                                selected_student = None
+                        else:
+                            selected_student = st.selectbox(
+                                "학생 선택",
+                                ["선택"] + filtered_student_list,
+                                format_func=lambda x: "선택" if x == "선택" else f"[{all_users[x].get('class_group')}] {all_users[x].get('name')} ({all_users[x].get('id')})",
+                                key="selected_student_tab4_box"
+                            )
+
+                        if selected_student and selected_student != "선택":
                             u_info_sel = all_users[selected_student]
                             acts_for_subj = load_json(CONFIG_FILE, {}).get("subject_activities", {}).get(view_subj, [])
                             filter_act = st.selectbox("활동지 필터링", ["전체 활동지 보기"] + acts_for_subj)
