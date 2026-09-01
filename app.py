@@ -242,19 +242,36 @@ def get_act_csv_rows(selected_view, ans, config=None):
     elif selected_view == ACT_2_2:
         csv_data.extend([["[모둠 구성원]", ""], ["모둠 구성원", f"1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}"]])
         csv_data.append(["[Step 1. 우리 동네 현황 진단]", ""])
-        csv_data.append(["1. 대상 지역 (예: 학교 주변 인근 00아파트 00단지 일대)", ans.get("step1_1", "")])
-        for row in ans.get("step1_2_df", []): csv_data.append([row.get("구분", ""), f"필수 서비스 항목: {row.get('필수 서비스 항목', '')} / 충분: {row.get('충분', '')} / 부족 or 없음: {row.get('부족 or 없음', '')}"])
-        csv_data.extend([["문제점 1 / 데이터:", ans.get("step1_3_1", "")], ["문제점 2 / 데이터:", ans.get("step1_3_2", "")], ["문제점 3 / 데이터:", ans.get("step1_3_3", "")]])
+        csv_data.append(["1. 대상 지역 (예: 학교 주변 인근 OO아파트 OO단지 일대)", ans.get("step1_1", "")])
+        for row in ans.get("step1_2_df", []):
+            if row.get("구분") or row.get("필수 서비스 항목"):
+                stat = "충분" if row.get("충분") else ("부족/없음" if row.get("부족 or 없음") else "")
+                csv_data.append([f"[{row.get('구분','')}] {row.get('필수 서비스 항목','')}", stat])
+        
+        p1 = ans.get('step1_p1', ans.get('step1_3_1', ''))
+        d1 = ans.get('step1_d1', '')
+        p2 = ans.get('step1_p2', ans.get('step1_3_2', ''))
+        d2 = ans.get('step1_d2', '')
+        p3 = ans.get('step1_p3', ans.get('step1_3_3', ''))
+        d3 = ans.get('step1_d3', '')
+        csv_data.extend([
+            ["3. 핵심 문제점 1", p1], ["3. 문제점 1 관련 데이터", d1],
+            ["3. 핵심 문제점 2", p2], ["3. 문제점 2 관련 데이터", d2],
+            ["3. 핵심 문제점 3", p3], ["3. 문제점 3 관련 데이터", d3]
+        ])
+        
         csv_data.append(["[Step 2. 도시 개조 포인트를 활용한 트레이드오프 설계]", ""])
-        csv_data.append(["▶ 도시 개조 포인트", ""])
-        for row in ans.get("step2_point_df", []): csv_data.append([row.get("카테고리", ""), f"코드: {row.get('코드', '')}, 세부 개조 항목: {row.get('세부 개조 항목', '')}, 비용: {row.get('비용', '')}"])
-        csv_data.append(["▶ 트레이드오프 설계표", ""])
-        for row in ans.get("step2_df", []): csv_data.append([f"트레이드오프 순번 {row.get('순번', '')}", f"선택 코드: {row.get('선택 코드', '')} / 버릴 공간: {row.get('버릴 공간', '')} / 사용 포인트: {row.get('사용 포인트', '')} / 공간 재설계 이유 및 기대효과: {row.get('공간 재설계 이유 및 기대효과', '')}"])
-        csv_data.append(["[Step 3. N분 도시 공간 개조 자료 스케치/기획안 업로드]", ""])
-        if ans.get("file_before_data") or ans.get("img_before"): csv_data.append(["변경 전 지도 스케치 자료", f"제출 완료 ({ans.get('file_before_name', '스케치.png')})"])
-        if ans.get("file_after_data") or ans.get("img_after"): csv_data.append(["변경 후 지도 스케치 자료", f"제출 완료 ({ans.get('file_after_name', '스케치.png')})"])
+        for row in ans.get("step2_point_df", []):
+            if row.get("세부 개조 항목") or row.get("코드"):
+                csv_data.append([f"[{row.get('카테고리','')}] {row.get('코드','')}", f"{row.get('세부 개조 항목','')} ({row.get('비용','')})"])
+        
         csv_data.append(["[Step 4. 3분 공청회 발표를 위한 준비]", ""])
-        csv_data.extend([["1. 핵심 정책 슬로건", ans.get("step4_1", "")], ["2. 심각한 공간 문제", ans.get("step4_2", "")], ["3. 버리고 채운 것과 이유", ans.get("step4_3", "")], ["4. 일상의 변화", ans.get("step4_4", "")]])
+        csv_data.extend([
+            ["1. 핵심 정책 슬로건", ans.get("step4_1", "")],
+            ["2. 실제 답사 및 데이터로 확인한 선택한 지역의 가장 심각한 공간 문제는 무엇이라고 생각하는가?", ans.get("step4_2", "")],
+            ["3. 한정된 100pt를 활용해 무엇을 버리고 무엇을 채웠는가? 그 이유는 무엇인가?", ans.get("step4_3", "")],
+            ["4. 공간 재설계로 인해 일상이 어떻게 변화할 것이라고 생각하는가?", ans.get("step4_4", "")]
+        ])
     elif selected_view == ACT_2_3:
         csv_data.extend([["[개별 정보]", ""], ["학번/이름", f"{ans.get('ind_id', '')} / {ans.get('ind_name', '')}"], ["희망 진로", ans.get("ind_career", "")], ["[Step 1. 우리 지역 정체성 자원 발굴 및 팩트 체크]", ""]])
         for row in ans.get("step1_df", []): csv_data.append([row.get("구분", ""), f"내가 찾은 정체성 키워드 혹은 문장: {row.get('내가 찾은 정체성 키워드 혹은 문장', '')} / 근거가 되는 사실·통계·사건: {row.get('근거가 되는 사실·통계·사건', '')} / 출처(기관명/자료명/연도): {row.get('출처(기관명/자료명/연도)', '')}"])
@@ -388,40 +405,45 @@ def generate_html_content(act_name, ans, config=None):
         html += f"<p><b>4. 기존 프레임의 부정적인 부분을 상쇄할 수 있는 우리 모둠이 제안하는 울산의 거주 적합성 개선 아이디어:</b><br>{ans.get('step4_4','')}</p>"
 
     elif act_name == ACT_2_2:
-        html += f"<h4>👥 모둠 구성원</h4><ul><li>1: {ans.get('m1_id','')} {ans.get('m1_name','')}</li><li>2: {ans.get('m2_id','')} {ans.get('m2_name','')}</li><li>3: {ans.get('m3_id','')} {ans.get('m3_name','')}</li><li>4: {ans.get('m4_id','')} {ans.get('m4_name','')}</li></ul>"
+        html += f"<h4>모둠 구성원</h4><p>1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}</p>"
         
         html += "<h3>Step 1. 우리 동네 현황 진단</h3>"
-        html += "<div class='guide-box'><strong>도보 15분 / 반경 1km 생활권 분석</strong><br>: 실제 답사와 지도 앱 내용을 통한 필수 서비스 결손 현황 체크</div>"
-        html += f"<p><b>1. 대상 지역 (예: 학교 주변 인근 00아파트 00단지 일대):</b><br>{ans.get('step1_1','')}</p>"
-        html += "<h4>2. 15분 생활권 반경 내 필수 서비스 체크리스트</h4><table><tr><th>구분</th><th>필수 서비스 항목</th><th>충분</th><th>부족 or 없음</th></tr>"
-        for row in ans.get("step1_2_df", []): html += f"<tr><td>{row.get('구분','')}</td><td>{row.get('필수 서비스 항목','')}</td><td>{row.get('충분','')}</td><td>{row.get('부족 or 없음','')}</td></tr>"
-        html += "</table><h4>3. 선택한 지역의 핵심 문제점</h4>"
-        html += "<p style='color: #d35400; font-weight: bold;'>※ 선택한 지역의 핵심 문제점 (반드시 실제 현장 답사 및 데이터에 기반한 내용을 작성할 것)</p>"
-        html += f"<p><b>문제점 1 / 데이터:</b><br>{ans.get('step1_3_1','')}</p><p><b>문제점 2 / 데이터:</b><br>{ans.get('step1_3_2','')}</p><p><b>문제점 3 / 데이터:</b><br>{ans.get('step1_3_3','')}</p>"
-        
-        html += "<h3>Step 2. 도시 개조 포인트를 활용한 트레이드오프 설계</h3>"
-        html += "<div class='guide-box'><strong>▶ 트레이드오프 설계</strong><br>: 두 개 이상의 상충되는 요구사항(예: 성능 대 비용, 유연성 대 단순성) 사이에서 최선의 선택을 하기 위해 장단점을 저울질하고 조율하는 과정. 완벽한 설계는 존재하지 않으며, 모든 설계는 무엇인가를 얻는 대신 다른 것을 포기하는 구조를 가질 수 밖에 없음<br><br><strong>▶ 도시 개조 포인트</strong><br>: 기본 100포인트 부여, 포인트를 활용하여 기존의 비효율적, 차량 중심 공간을 보행자를 위한 친환경 인프라로!!<br>: 새롭게 추가하는 카테고리/코드/세부 개조 항목 관련한 포인트는 최소 10pt, 최대 20pt(10~20pt)<br>: 포인트는 남김 없이 모두 사용해야 함<br>: 최소한의 현실 가능성은 충족할 것 예) 지하철 개통, 공항 건설... ㅠ.ㅠ</div>"
-        html += "<h4>[도시 개조 포인트 (학생 추가 포함)]</h4>" + generate_points_html(ans.get("step2_point_df", []))
-        html += "<h4>[트레이드오프 설계표]</h4><table><tr><th>순번</th><th>선택 코드</th><th>버릴 공간</th><th>사용 포인트</th><th>공간 재설계 이유 및 기대효과</th></tr>"
-        for row in ans.get("step2_df", []): html += f"<tr><td>{row.get('순번','')}</td><td>{row.get('선택 코드','')}</td><td>{row.get('버릴 공간','')}</td><td>{row.get('사용 포인트','')}</td><td>{row.get('공간 재설계 이유 및 기대효과','')}</td></tr>"
+        html += f"<p><b>1. 대상 지역:</b> {ans.get('step1_1','')}</p>"
+        html += "<h4>2. 15분 생활권 반경 내 필수 서비스 체크리스트</h4>"
+        html += "<table><tr><th>구분</th><th>필수 서비스 항목</th><th>충분</th><th>부족 or 없음</th></tr>"
+        for row in ans.get("step1_2_df", []):
+            if row.get("구분") or row.get("필수 서비스 항목"):
+                c_ok = "V" if row.get("충분") else ""
+                c_no = "V" if row.get("부족 or 없음") else ""
+                html += f"<tr><td>{row.get('구분','')}</td><td>{row.get('필수 서비스 항목','')}</td><td style='text-align:center;'>{c_ok}</td><td style='text-align:center;'>{c_no}</td></tr>"
         html += "</table>"
         
-        html += "<h3>Step 3. N분 도시 공간 개조 자료 스케치/기획안 업로드</h3>"
-        html += "<div class='guide-box'>변경 전과 변경 후의 지도 스케치(변경 인프라 및 보행선 관련 내용 표시)</div>"
-        b64_before = ans.get("file_before_data", ans.get("img_before", ""))
-        name_before = ans.get("file_before_name", "변경전_스케치.png" if ans.get("img_before") else "")
-        if b64_before:
-            html += f"<h4>변경 전 지도 스케치 자료: {name_before}</h4>"
-            if name_before.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')): html += f"<img src='data:image/png;base64,{b64_before}' style='max-width:100%; border:1px solid #ccc;'/>"
-        b64_after = ans.get("file_after_data", ans.get("img_after", ""))
-        name_after = ans.get("file_after_name", "변경후_스케치.png" if ans.get("img_after") else "")
-        if b64_after:
-            html += f"<h4>변경 후 지도 스케치 자료: {name_after}</h4>"
-            if name_after.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')): html += f"<img src='data:image/png;base64,{b64_after}' style='max-width:100%; border:1px solid #ccc;'/>"
-            
+        html += "<h4>3. 선택한 지역의 핵심 문제점</h4>"
+        html += "<table><tr><th style='width:50%;'>문제점</th><th style='width:50%;'>데이터</th></tr>"
+        p1 = ans.get('step1_p1', ans.get('step1_3_1', ''))
+        d1 = ans.get('step1_d1', '')
+        p2 = ans.get('step1_p2', ans.get('step1_3_2', ''))
+        d2 = ans.get('step1_d2', '')
+        p3 = ans.get('step1_p3', ans.get('step1_3_3', ''))
+        d3 = ans.get('step1_d3', '')
+        html += f"<tr><td><b>문제점 1:</b><br>{p1}</td><td><b>데이터 1:</b><br>{d1}</td></tr>"
+        html += f"<tr><td><b>문제점 2:</b><br>{p2}</td><td><b>데이터 2:</b><br>{d2}</td></tr>"
+        html += f"<tr><td><b>문제점 3:</b><br>{p3}</td><td><b>데이터 3:</b><br>{d3}</td></tr>"
+        html += "</table>"
+
+        html += "<h3>Step 2. 도시 개조 포인트를 활용한 트레이드오프 설계</h3>"
+        html += "<table><tr><th>카테고리</th><th>코드</th><th>세부 개조 항목</th><th>비용</th></tr>"
+        for row in ans.get("step2_point_df", []):
+            if row.get("세부 개조 항목") or row.get("코드"):
+                html += f"<tr><td>{row.get('카테고리','')}</td><td>{row.get('코드','')}</td><td>{row.get('세부 개조 항목','')}</td><td>{row.get('비용','')}</td></tr>"
+        html += "</table>"
+
         html += "<h3>Step 4. 3분 공청회 발표를 위한 준비</h3>"
-        html += "<div class='guide-box'><strong>핵심 정책 슬로건과 발표 내용 요약</strong><br>STEP 1~3의 탐구 결과를 바탕으로, 발표 자료를 만들어 봅시다.<br>* 핵심 정책 슬로건에는 버릴공간과 문제점 + 채울 인프라와 미래 가치에 대한 내용이 반드시 들어가야 함.</div>"
-        html += f"<p><b>1. 핵심 정책 슬로건:</b><br>{ans.get('step4_1','')}</p><p><b>2. 심각한 공간 문제:</b><br>{ans.get('step4_2','')}</p><p><b>3. 버리고 채운 것과 이유:</b><br>{ans.get('step4_3','')}</p><p><b>4. 일상의 변화:</b><br>{ans.get('step4_4','')}</p>"
+        html += f"<p><b>1. 핵심 정책 슬로건:</b></p><div class='content-box'>{ans.get('step4_1','')}</div>"
+        html += "<div style='text-align: center; font-weight: bold; background-color: #eee; padding: 6px; margin: 15px 0;'>연설 내용 구조화 스크립트 작성</div>"
+        html += f"<p><b>2. 실제 답사 및 데이터로 확인한 선택한 지역의 가장 심각한 공간 문제는 무엇이라고 생각하는가?:</b></p><div class='content-box'>{ans.get('step4_2','')}</div>"
+        html += f"<p><b>3. 한정된 100pt를 활용해 무엇을 버리고 무엇을 채웠는가? 그 이유는 무엇인가?:</b></p><div class='content-box'>{ans.get('step4_3','')}</div>"
+        html += f"<p><b>4. 공간 재설계로 인해 일상이 어떻게 변화할 것이라고 생각하는가?:</b></p><div class='content-box'>{ans.get('step4_4','')}</div>"
         
     elif act_name == ACT_2_3:
         html += f"<h4>👤 개별 정보</h4><ul><li>학번: {ans.get('ind_id','')}</li><li>이름: {ans.get('ind_name','')}</li><li>희망 진로: {ans.get('ind_career','')}</li></ul>"
@@ -794,107 +816,221 @@ def render_activity2_2nd(user_key, u_info, current_role):
     u_name, u_id, u_subj, user_class = u_info.get("name", ""), u_info.get("id", ""), u_info.get("subject", "전체"), u_info.get("class_group", "")
     learning_data = load_json(DATA_FILE, {})
     owner_key, ans = get_user_activity_data(user_key, u_id, u_subj, user_class, category, learning_data)
+    
     is_active, status_msg = check_active_with_exception(category, user_class, user_key)
     disabled_flag = (current_role == "학생" and not is_active)
-    is_member_view = False
-    if current_role == "학생" and owner_key != user_key:
-        is_member_view = True; disabled_flag = True
-    if current_role == "관리자": disabled_flag = False; st.info("💡 교사/관리자 모드입니다.")
-        
-    st.markdown(f"<h2 style='font-size: 28px; font-weight: 900; color: #000;'>♣ {category}</h2>", unsafe_allow_html=True)
-    if is_member_view: st.info("💡 **[조회 전용]** 모둠장(대표)이 작성 및 저장한 화면을 연동하여 조회 중입니다.")
-    elif current_role == "학생":
-        if disabled_flag: st.error(status_msg.replace('\n', '<br>'), icon="🚫")
-        else: st.success(status_msg, icon="✅")
+    if current_role == "관리자":
+        disabled_flag = False
+        st.info("💡 교사/관리자 모드입니다. (수정 가능)")
 
-    m1_id, m1_name, m2_id, m2_name, m3_id, m3_name, m4_id, m4_name = render_group_members(ans, disabled_flag, category)
-    st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 1. 우리 동네 현황 진단</h3>", unsafe_allow_html=True)
-    st.markdown("<div class='guide-box'><strong>도보 15분 / 반경 1km 생활권 분석</strong><br>: 실제 답사와 지도 앱 내용을 통한 필수 서비스 결손 현황 체크</div>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='font-size: 26px; font-weight: 900; color: #111; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ [2학년] 수행평가 2 - 내가 설계하는 N분 도시 with 파리의 15분 도시설계</h2>", unsafe_allow_html=True)
     
-    step1_1 = st.text_input("1. 대상 지역 (예: 학교 주변 인근 00아파트 00단지 일대)", value=ans.get("step1_1", ""), disabled=disabled_flag, key=f"step1_1_{category}")
-    default_step1_2 = [{"구분": "주거 및 생활", "필수 서비스 항목": "생필품 마트", "충분": False, "부족 or 없음": False}, {"구분": "의료 및 돌봄", "필수 서비스 항목": "병원, 약국", "충분": False, "부족 or 없음": False}, {"구분": "노동 및 학습", "필수 서비스 항목": "무료 학습 공간", "충분": False, "부족 or 없음": False}, {"구분": "여가 및 녹지", "필수 서비스 항목": "공원, 휴식 공간", "충분": False, "부족 or 없음": False}, {"구분": "교육 및 문화", "필수 서비스 항목": "문화 시설", "충분": False, "부족 or 없음": False}, {"구분": "이동 및 보행", "필수 서비스 항목": "보행자 전용 도로", "충분": False, "부족 or 없음": False}]
-    step1_2_df = pd.DataFrame(ans.get("step1_2_df", default_step1_2))
-    edited_step1_2_df = st.data_editor(step1_2_df, hide_index=True, use_container_width=True, disabled=disabled_flag, num_rows="dynamic", key=f"step1_2_df_{category}")
-    st.markdown("<p style='color: #d35400; font-weight: bold;'>※ 선택한 지역의 핵심 문제점 (반드시 실제 현장 답사 및 데이터에 기반한 내용을 작성할 것)</p>", unsafe_allow_html=True)
-    step1_3_1 = st.text_area("문제점 1 / 데이터:", value=ans.get("step1_3_1", ""), disabled=disabled_flag, height=80, key=f"step1_3_1_{category}")
-    step1_3_2 = st.text_area("문제점 2 / 데이터:", value=ans.get("step1_3_2", ""), disabled=disabled_flag, height=80, key=f"step1_3_2_{category}")
-    step1_3_3 = st.text_area("문제점 3 / 데이터:", value=ans.get("step1_3_3", ""), disabled=disabled_flag, height=80, key=f"step1_3_3_{category}")
+    if current_role == "학생":
+        if disabled_flag:
+            st.error(status_msg, icon="🔒")
+        else:
+            st.success(status_msg, icon="🔓")
 
-    st.markdown("---")
-    st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 2. 도시 개조 포인트를 활용한 트레이드오프 설계</h3>", unsafe_allow_html=True)
-    st.markdown("<div class='guide-box'><strong>▶ 트레이드오프 설계</strong><br>: 두 개 이상의 상충되는 요구사항(예: 성능 대 비용, 유연성 대 단순성) 사이에서 최선의 선택을 하기 위해 장단점을 저울질하고 조율하는 과정. 완벽한 설계는 존재하지 않으며, 모든 설계는 무엇인가를 얻는 대신 다른 것을 포기하는 구조를 가질 수 밖에 없음<br><br><strong>▶ 도시 개조 포인트</strong><br>: 기본 100포인트 부여, 포인트를 활용하여 기존의 비효율적, 차량 중심 공간을 보행자를 위한 친환경 인프라로!!<br>: 새롭게 추가하는 카테고리/코드/세부 개조 항목 관련한 포인트는 최소 10pt, 최대 20pt(10~20pt)<br>: 포인트는 남김 없이 모두 사용해야 함<br>: 최소한의 현실 가능성은 충족할 것 예) 지하철 개통, 공항 건설... ㅠ.ㅠ</div>", unsafe_allow_html=True)
+    # 모둠원 정보 입력
+    st.markdown("#### 👥 모둠 구성원 (학번/이름)")
+    c1, c2, c3, c4 = st.columns(4)
+    m1_id = c1.text_input("모둠원1(모둠장) 학번", value=ans.get("m1_id", ""), disabled=disabled_flag, key="m1_id_2_2")
+    m1_name = c1.text_input("모둠원1 이름", value=ans.get("m1_name", ""), disabled=disabled_flag, key="m1_name_2_2")
+    m2_id = c2.text_input("모둠원2 학번", value=ans.get("m2_id", ""), disabled=disabled_flag, key="m2_id_2_2")
+    m2_name = c2.text_input("모둠원2 이름", value=ans.get("m2_name", ""), disabled=disabled_flag, key="m2_name_2_2")
+    m3_id = c3.text_input("모둠원3 학번", value=ans.get("m3_id", ""), disabled=disabled_flag, key="m3_id_2_2")
+    m3_name = c3.text_input("모둠원3 이름", value=ans.get("m3_name", ""), disabled=disabled_flag, key="m3_name_2_2")
+    m4_id = c4.text_input("모둠원4 학번", value=ans.get("m4_id", ""), disabled=disabled_flag, key="m4_id_2_2")
+    m4_name = c4.text_input("모둠원4 이름", value=ans.get("m4_name", ""), disabled=disabled_flag, key="m4_name_2_2")
+
+    st.markdown("<hr style='margin: 30px 0;'>", unsafe_allow_html=True)
+
+    # ----------------------------------------------------
+    # Step 1. 우리 동네 현황 진단
+    # ----------------------------------------------------
+    st.markdown("<h3 style='font-size: 22px; font-weight: 800; color: #111;'>Step 1. 우리 동네 현황 진단</h3>", unsafe_allow_html=True)
+    st.markdown("""
+    <div style='background-color: #f0f7ff; border-left: 4px solid #3182ce; padding: 12px 16px; border-radius: 4px; margin-bottom: 20px;'>
+        <b style='color: #2b6cb0;'>▶ 도보 15분 / 반경 1km 생활권 분석</b><br>
+        <span style='font-size: 14px; color: #4a5568;'>: 실제 답사와 지도 앱 내용을 통한 필수 서비스 결손 현황 체크</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("**1. 대상 지역** (예: 학교 주변 인근 OO아파트 OO단지 일대)")
+    step1_1 = st.text_input("대상 지역 입력", value=ans.get("step1_1", ""), label_visibility="collapsed", disabled=disabled_flag, key="s1_1_2_2")
+
+    st.markdown("<br>**2. 15분 생활권 반경 내 필수 서비스 체크리스트**", unsafe_allow_html=True)
+    default_s1_df = [
+        {"구분": "주거 및 생활", "필수 서비스 항목": "생필품 마트, 일상 편의시설", "충분": False, "부족 or 없음": False},
+        {"구분": "의료 및 돌봄", "필수 서비스 항목": "병원, 약국, 돌봄센터", "충분": False, "부족 or 없음": False},
+        {"구분": "노동 및 학습", "필수 서비스 항목": "청소년 무료 학습/스터디 공간", "충분": False, "부족 or 없음": False},
+        {"구분": "여가 및 녹지", "필수 서비스 항목": "공원, 수변 공간, 휴식 공간", "충분": False, "부족 or 없음": False},
+        {"구분": "교육 및 문화", "필수 서비스 항목": "도서관, 학습 공간, 문화 시설", "충분": False, "부족 or 없음": False},
+        {"구분": "이동 및 보행", "필수 서비스 항목": "보행자 전용 도로, 자전거 도로", "충분": False, "부족 or 없음": False},
+        {"구분": "", "필수 서비스 항목": "", "충분": False, "부족 or 없음": False},
+        {"구분": "", "필수 서비스 항목": "", "충분": False, "부족 or 없음": False},
+    ]
+    s1_df_data = ans.get("step1_2_df", default_s1_df)
+    s1_df = pd.DataFrame(s1_df_data)
+    edited_step1_2_df = st.data_editor(
+        s1_df,
+        num_rows="dynamic",
+        use_container_width=True,
+        hide_index=True,
+        disabled=disabled_flag,
+        column_config={
+            "구분": st.column_config.TextColumn("구분", width="medium"),
+            "필수 서비스 항목": st.column_config.TextColumn("필수 서비스 항목", width="large"),
+            "충분": st.column_config.CheckboxColumn("충분", width="small"),
+            "부족 or 없음": st.column_config.CheckboxColumn("부족 or 없음", width="small"),
+        },
+        key="s1_2_editor"
+    )
+
+    st.markdown("<br>**3. 선택한 지역의 핵심 문제점** *(반드시 실제 현장 답사 및 데이터에 기반한 내용을 작성할 것)*", unsafe_allow_html=True)
     
-    cat_names = ["안전한 보행 환경", "녹지 및 생태공간 구축", "문화와 교육을 위한 공간", "효율적인 교통과 모빌리티 구축"]
-    default_point_table = [{"카테고리": "안전한 보행 환경", "코드": "A-1", "세부 개조 항목": "여고생 안심 귀가 스마트 로드 (CCTV 연동)", "비용": "-15pt"}]
-    saved_points = ans.get("step2_point_df", default_point_table)
-    categorized_data = {cat: [] for cat in cat_names}
-    current_cat = cat_names[0]
-    for row in saved_points:
-        cat_val = str(row.get("카테고리", "")).strip()
-        if cat_val in cat_names: current_cat = cat_val
-        categorized_data[current_cat].append(row)
-        
-    edited_points_merged = []
-    for i, cat in enumerate(cat_names):
-        st.markdown(f"<h5 style='color:#2c3e50; margin-top:20px; margin-bottom:5px; font-size:20px !important; font-weight:800;'>🔹 {cat}</h5>", unsafe_allow_html=True)
-        df_cat = pd.DataFrame(categorized_data[cat] if categorized_data[cat] else [{"카테고리": cat, "코드": "", "세부 개조 항목": "", "비용": ""}])
-        edited_df_cat = st.data_editor(df_cat, key=f"editor_cat_{i}_{category}", num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, column_config={"카테고리": None, "코드": st.column_config.TextColumn("코드", required=True, width="small"), "세부 개조 항목": st.column_config.TextColumn("세부 개조 항목", width="large"), "비용": st.column_config.TextColumn("비용", width="small")})
-        for j, record in enumerate(edited_df_cat.to_dict('records')):
-            record["카테고리"] = cat if j == 0 else ""
-            edited_points_merged.append(record)
+    col_p1, col_d1 = st.columns([1, 1])
+    with col_p1:
+        step1_p1 = st.text_area("문제점 1", value=ans.get("step1_p1", ans.get("step1_3_1", "")), height=100, disabled=disabled_flag, key="s1_p1")
+    with col_d1:
+        step1_d1 = st.text_area("데이터 1", value=ans.get("step1_d1", ""), height=100, disabled=disabled_flag, key="s1_d1")
 
-    st.markdown("#### ▶ 도시 개조 트레이드오프 설계표")
-    default_step2 = [{"순번": str(i+1), "선택 코드": "", "버릴 공간": "", "사용 포인트": "", "공간 재설계 이유 및 기대효과": ""} for i in range(8)]
-    step2_df = pd.DataFrame(ans.get("step2_df", default_step2))
-    edited_step2_df = st.data_editor(step2_df, hide_index=True, use_container_width=True, disabled=disabled_flag, num_rows="dynamic", key=f"step2_df_{category}")
+    col_p2, col_d2 = st.columns([1, 1])
+    with col_p2:
+        step1_p2 = st.text_area("문제점 2", value=ans.get("step1_p2", ans.get("step1_3_2", "")), height=100, disabled=disabled_flag, key="s1_p2")
+    with col_d2:
+        step1_d2 = st.text_area("데이터 2", value=ans.get("step1_d2", ""), height=100, disabled=disabled_flag, key="s1_d2")
 
-    st.markdown("---")
-    st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 3. N분 도시 공간 개조 자료 스케치/기획안 업로드</h3>", unsafe_allow_html=True)
-    st.markdown("<div class='guide-box'>변경 전과 변경 후의 지도 스케치(변경 인프라 및 보행선 관련 내용 표시)</div>", unsafe_allow_html=True)
-    
-    col_img1, col_img2 = st.columns(2)
-    with col_img1:
-        st.markdown("**[변경 전 자료]**")
-        b64_before = ans.get("file_before_data", ans.get("img_before", ""))
-        name_before = ans.get("file_before_name", "변경전_스케치.png" if ans.get("img_before") else "")
-        if b64_before:
-            if name_before.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')): st.image(base64.b64decode(b64_before), use_container_width=True)
-            if not disabled_flag and st.button("🗑️ 변경 전 자료 삭제", key=f"del_saved_before_{category}"):
-                current_data = load_json(DATA_FILE, {}) 
-                if user_key in current_data and category in current_data[user_key]:
-                    current_data[user_key][category]["img_before"] = ""; current_data[user_key][category]["file_before_data"] = ""; current_data[user_key][category]["file_before_name"] = ""
-                    save_json(DATA_FILE, current_data); st.rerun()
-        file_before = st.file_uploader("변경 전 파일 첨부", key=f"up_before_{category}", disabled=disabled_flag)
-        if file_before and not disabled_flag: b64_before = base64.b64encode(file_before.getvalue()).decode("utf-8"); name_before = file_before.name
+    col_p3, col_d3 = st.columns([1, 1])
+    with col_p3:
+        step1_p3 = st.text_area("문제점 3", value=ans.get("step1_p3", ans.get("step1_3_3", "")), height=100, disabled=disabled_flag, key="s1_p3")
+    with col_d3:
+        step1_d3 = st.text_area("데이터 3", value=ans.get("step1_d3", ""), height=100, disabled=disabled_flag, key="s1_d3")
 
-    with col_img2:
-        st.markdown("**[변경 후 자료]**")
-        b64_after = ans.get("file_after_data", ans.get("img_after", ""))
-        name_after = ans.get("file_after_name", "변경후_스케치.png" if ans.get("img_after") else "")
-        if b64_after:
-            if name_after.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')): st.image(base64.b64decode(b64_after), use_container_width=True)
-            if not disabled_flag and st.button("🗑️ 변경 후 자료 삭제", key=f"del_saved_after_{category}"):
-                current_data = load_json(DATA_FILE, {}) 
-                if user_key in current_data and category in current_data[user_key]:
-                    current_data[user_key][category]["img_after"] = ""; current_data[user_key][category]["file_after_data"] = ""; current_data[user_key][category]["file_after_name"] = ""
-                    save_json(DATA_FILE, current_data); st.rerun()
-        file_after = st.file_uploader("변경 후 파일 첨부", key=f"up_after_{category}", disabled=disabled_flag)
-        if file_after and not disabled_flag: b64_after = base64.b64encode(file_after.getvalue()).decode("utf-8"); name_after = file_after.name
+    st.markdown("<hr style='margin: 30px 0;'>", unsafe_allow_html=True)
 
-    st.markdown("---")
-    st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 4. 3분 공청회 발표를 위한 준비</h3>", unsafe_allow_html=True)
-    st.markdown("<div class='guide-box'><strong>핵심 정책 슬로건과 발표 내용 요약</strong><br>STEP 1~3의 탐구 결과를 바탕으로, 발표 자료를 만들어 봅시다.<br>* 핵심 정책 슬로건에는 버릴공간과 문제점 + 채울 인프라와 미래 가치에 대한 내용이 반드시 들어가야 함.</div>", unsafe_allow_html=True)
-    step4_1 = st.text_input("1. 핵심 정책 슬로건", value=ans.get("step4_1", ""), disabled=disabled_flag, key=f"step4_1_{category}")
-    step4_2 = st.text_area("2. 심각한 공간 문제", value=ans.get("step4_2", ""), disabled=disabled_flag, key=f"step4_2_{category}")
-    step4_3 = st.text_area("3. 버리고 채운 것과 이유", value=ans.get("step4_3", ""), disabled=disabled_flag, key=f"step4_3_{category}")
-    step4_4 = st.text_area("4. 일상의 변화", value=ans.get("step4_4", ""), disabled=disabled_flag, key=f"step4_4_{category}")
+    # ----------------------------------------------------
+    # Step 2. 도시 개조 포인트를 활용한 트레이드오프 설계
+    # ----------------------------------------------------
+    st.markdown("<h3 style='font-size: 22px; font-weight: 800; color: #111;'>Step 2. 도시 개조 포인트를 활용한 트레이드오프 설계</h3>", unsafe_allow_html=True)
+    st.markdown("""
+    <div style='background-color: #f0f7ff; border-left: 4px solid #3182ce; padding: 12px 16px; border-radius: 4px; margin-bottom: 20px;'>
+        <b style='color: #2b6cb0;'>▶ 트레이드오프 설계</b><br>
+        <span style='font-size: 13.5px; color: #4a5568;'>: 두 개 이상의 상충되는 요구사항(예: 성능 대 비용, 유연성 대 단순성) 사이에서 최선의 선택을 하기 위해 장단점을 저울질하고 조율하는 과정. 완벽한 설계는 존재하지 않으며, 모든 설계는 무엇인가를 얻는 대신 다른 것을 포기하는 구조를 가질 수 밖에 없음</span><br><br>
+        <b style='color: #2b6cb0;'>▶ 도시 개조 포인트</b><br>
+        <span style='font-size: 13.5px; color: #4a5568;'>
+        : 기본 100포인트 부여, 포인트를 활용하여 기존의 비효율적, 차량 중심 공간을 보행자를 위한 친환경 인프라로!!<br>
+        : 새롭게 추가하는 카테고리/코드/세부 개조 항목 관련한 포인트는 최소 10pt, 최대 20pt(10~20pt)<br>
+        : 포인트는 남김 없이 모두 사용해야 함<br>
+        : 최소한의 현실 가능성은 충족할 것 예) 지하철 개통, 공항 건설... ㅠ.ㅠ
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
 
+    default_points_df = [
+        {"카테고리": "안전한 보행 환경", "코드": "A-1", "세부 개조 항목": "여고생 안심 하교길 스마트 로드", "비용": "-15pt"},
+        {"카테고리": "안전한 보행 환경", "코드": "A-2", "세부 개조 항목": "아파트 단지 간 담장 철거 및 공공 보행로 연결", "비용": "-20pt"},
+        {"카테고리": "안전한 보행 환경", "코드": "A-3", "세부 개조 항목": "차로 축소 및 쾌적한 보행을 위한 녹지 공간 조성", "비용": "-20pt"},
+        {"카테고리": "안전한 보행 환경", "코드": "A-4", "세부 개조 항목": "스마트 횡단보도 및 교통약자/학생 쉼터", "비용": "-10pt"},
+        {"카테고리": "안전한 보행 환경", "코드": "A-5", "세부 개조 항목": "", "비용": ""},
+        {"카테고리": "안전한 보행 환경", "코드": "A-6", "세부 개조 항목": "", "비용": ""},
+        {"카테고리": "녹지 및 생태공간 구축", "코드": "B-1", "세부 개조 항목": "아파트 상가/방치 공터 → 도심 소공원 조성", "비용": "-15pt"},
+        {"카테고리": "녹지 및 생태공간 구축", "코드": "B-2", "세부 개조 항목": "도심 바람길 숲 및 수변 산책로 조성", "비용": "-15pt"},
+        {"카테고리": "녹지 및 생태공간 구축", "코드": "B-3", "세부 개조 항목": "에코 펫파크(반려견 전용 공원 및 산책로)", "비용": "-15pt"},
+        {"카테고리": "녹지 및 생태공간 구축", "코드": "B-4", "세부 개조 항목": "", "비용": ""},
+        {"카테고리": "녹지 및 생태공간 구축", "코드": "B-5", "세부 개조 항목": "", "비용": ""},
+        {"카테고리": "문화와 교육을 위한 공간", "코드": "C-1", "세부 개조 항목": "24시간 공공 스터디 & 커뮤니티 카페", "비용": "-15pt"},
+        {"카테고리": "문화와 교육을 위한 공간", "코드": "C-2", "세부 개조 항목": "청소년 팝업 스튜디오 & 소공연장", "비용": "-15pt"},
+        {"카테고리": "문화와 교육을 위한 공간", "코드": "C-3", "세부 개조 항목": "친환경 스마트 팜", "비용": "-10pt"},
+        {"카테고리": "문화와 교육을 위한 공간", "코드": "C-4", "세부 개조 항목": "", "비용": ""},
+        {"카테고리": "문화와 교육을 위한 공간", "코드": "C-5", "세부 개조 항목": "", "비용": ""},
+        {"카테고리": "효율적인 교통과 모빌리티 구축", "코드": "D-1", "세부 개조 항목": "공유 자전거 및 킥보드 전용 도로", "비용": "-15pt"},
+        {"카테고리": "효율적인 교통과 모빌리티 구축", "코드": "D-2", "세부 개조 항목": "스마트 버스 쉘터(공기 청정, 냉난방 설비 구축)", "비용": "-10pt"},
+        {"카테고리": "효율적인 교통과 모빌리티 구축", "코드": "D-3", "세부 개조 항목": "", "비용": ""},
+        {"카테고리": "효율적인 교통과 모빌리티 구축", "코드": "D-4", "세부 개조 항목": "", "비용": ""},
+    ]
+    step2_point_data = ans.get("step2_point_df", default_points_df)
+    point_df = pd.DataFrame(step2_point_data)
+
+    st.markdown("#### ◆ 도시 개조 포인트 목록 (참고 및 추가 작성)")
+    edited_step2_point_df = st.data_editor(
+        point_df,
+        num_rows="dynamic",
+        use_container_width=True,
+        hide_index=True,
+        disabled=disabled_flag,
+        column_config={
+            "카테고리": st.column_config.TextColumn("카테고리", width="medium"),
+            "코드": st.column_config.TextColumn("코드", width="small"),
+            "세부 개조 항목": st.column_config.TextColumn("세부 개조 항목", width="large"),
+            "비용": st.column_config.TextColumn("비용", width="small"),
+        },
+        key="s2_point_editor"
+    )
+
+    st.markdown("<hr style='margin: 30px 0;'>", unsafe_allow_html=True)
+
+    # ----------------------------------------------------
+    # Step 4. 3분 공청회 발표를 위한 준비
+    # ----------------------------------------------------
+    st.markdown("<h3 style='font-size: 22px; font-weight: 800; color: #111;'>Step 4. 3분 공청회 발표를 위한 준비</h3>", unsafe_allow_html=True)
+    st.markdown("""
+    <div style='background-color: #f0f7ff; border-left: 4px solid #3182ce; padding: 12px 16px; border-radius: 4px; margin-bottom: 20px;'>
+        <b style='color: #2b6cb0;'>▶ 핵심 정책 슬로건과 발표 내용 요약</b><br>
+        <span style='font-size: 13.5px; color: #4a5568;'>
+        * STEP 1~3의 탐구 결과를 바탕으로, 발표 자료를 만들어 봅시다.<br>
+        * 핵심 정책 슬로건에는 버릴공간과 문제점 + 채울 인프라와 미래 가치에 대한 내용이 반드시 들어가야 함.
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("**1. 핵심 정책 슬로건**")
+    step4_1 = st.text_input("1. 핵심 정책 슬로건", value=ans.get("step4_1", ""), label_visibility="collapsed", disabled=disabled_flag, key="s4_1_input")
+
+    st.markdown("""
+    <div style='text-align: center; font-weight: 800; font-size: 16px; background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 10px; margin: 25px 0 15px 0; border-radius: 4px;'>
+        연설 내용 구조화 스크립트 작성
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("**2. 실제 답사 및 데이터로 확인한 선택한 지역의 가장 심각한 공간 문제는 무엇이라고 생각하는가?**")
+    step4_2 = st.text_area("2. 실제 답사 및 데이터로 확인한 문제", value=ans.get("step4_2", ""), height=100, label_visibility="collapsed", disabled=disabled_flag, key="s4_2_input")
+
+    st.markdown("**3. 한정된 100pt를 활용해 무엇을 버리고 무엇을 채웠는가? 그 이유는 무엇인가?**")
+    step4_3 = st.text_area("3. 버리고 채운 것과 이유", value=ans.get("step4_3", ""), height=100, label_visibility="collapsed", disabled=disabled_flag, key="s4_3_input")
+
+    st.markdown("**4. 공간 재설계로 인해 일상이 어떻게 변화할 것이라고 생각하는가?**")
+    step4_4 = st.text_area("4. 일상의 변화", value=ans.get("step4_4", ""), height=100, label_visibility="collapsed", disabled=disabled_flag, key="s4_4_input")
+
+    # ----------------------------------------------------
+    # 저장하기 버튼 & 데이터베이스 동기화
+    # ----------------------------------------------------
+    st.markdown("<br>", unsafe_allow_html=True)
     if not disabled_flag and st.button("저장하기", type="primary", key=f"save_{category}"):
-        current_data = load_json(DATA_FILE, {}) 
-        if user_key not in current_data: current_data[user_key] = {}
-        new_ans = {"m1_id": m1_id, "m1_name": m1_name, "m2_id": m2_id, "m2_name": m2_name, "m3_id": m3_id, "m3_name": m3_name, "m4_id": m4_id, "m4_name": m4_name, "step1_1": step1_1, "step1_2_df": edited_step1_2_df.to_dict('records'), "step1_3_1": step1_3_1, "step1_3_2": step1_3_2, "step1_3_3": step1_3_3, "step2_point_df": edited_points_merged, "step2_df": edited_step2_df.to_dict('records'), "file_before_data": b64_before, "file_before_name": name_before, "file_after_data": b64_after, "file_after_name": name_after, "img_before": b64_before, "img_after": b64_after, "step4_1": step4_1, "step4_2": step4_2, "step4_3": step4_3, "step4_4": step4_4}
+        current_data = load_json(DATA_FILE, {})
+        if user_key not in current_data:
+            current_data[user_key] = {}
+        
+        new_ans = {
+            "m1_id": m1_id, "m1_name": m1_name, "m2_id": m2_id, "m2_name": m2_name,
+            "m3_id": m3_id, "m3_name": m3_name, "m4_id": m4_id, "m4_name": m4_name,
+            "step1_1": step1_1,
+            "step1_2_df": edited_step1_2_df.to_dict('records'),
+            "step1_p1": step1_p1, "step1_d1": step1_d1,
+            "step1_p2": step1_p2, "step1_d2": step1_d2,
+            "step1_p3": step1_p3, "step1_d3": step1_d3,
+            "step2_point_df": edited_step2_point_df.to_dict('records'),
+            "step4_1": step4_1,
+            "step4_2": step4_2,
+            "step4_3": step4_3,
+            "step4_4": step4_4
+        }
+        
         current_data[user_key][category] = new_ans
-        save_json(DATA_FILE, current_data); create_auto_backup(f"[{u_name}] {category} 저장"); st.balloons(); st.success("🎉 저장 완료!")
+        save_json(DATA_FILE, current_data)
+        create_auto_backup(f"[{u_name}] {category} 저장")
+        st.balloons()
+        st.success("성공적으로 저장되었습니다!")
 
 def render_activity3_2nd(user_key, u_info, current_role):
     category = ACT_2_3
