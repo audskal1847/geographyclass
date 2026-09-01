@@ -1194,7 +1194,7 @@ def render_activity3_2nd(user_key, u_info, current_role):
     </div>
     """, unsafe_allow_html=True)
 
-   st.markdown("""
+    st.markdown("""
     <div style='background-color: #fefce8; border: 1px solid #fde047; border-left: 4px solid #ca8a04; border-radius: 6px; padding: 10px 14px; font-size: 14.5px; color: #1e293b; line-height: 1.6; margin-bottom: 12px;'>
         <b style='color: #b45309; font-size: 15px;'>💡 [작성 예시]</b><br>
         • <b>구분:</b> (예시) 자연·생태 &nbsp;|&nbsp; 
