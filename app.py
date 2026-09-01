@@ -2235,7 +2235,7 @@ else:
                 with col_b:
                     if st.button("🔄 실시간 새로고침", key="refresh_dashboard_btn"):
                         st.balloons()
-                        st.rerun()
+                        st.toast("최신 데이터로 새로고침되었습니다.")
                 st.markdown("---")
                 col_filter1, col_filter2 = st.columns(2)
                 with col_filter1: view_subj = st.selectbox("과목 선택", SUBJECTS, key="view_subj_select")
