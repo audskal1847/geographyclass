@@ -1289,8 +1289,15 @@ def render_activity3_2nd(user_key, u_info, current_role):
     </div>
     """, unsafe_allow_html=True)
 
-    st.caption("💡 (예시) 조건 영역: (예시) 물리적 조건 | 현장 실제 조건: 외벽의 40%가 창문이라 영상이 끊겨 보인다 | 영향: 인물이나 글자를 크게 넣으면 형태가 깨진다 | 대응 방안: 창틀 격자를 공장 창문으로 역이용해, 격자 사이로 빛이 번지는 산업 도시 이미지를 연출한다")
-
+    st.markdown("""
+    <div style='background-color: #fefce8; border: 1px solid #fde047; border-left: 4px solid #ca8a04; border-radius: 6px; padding: 10px 14px; font-size: 14.5px; color: #1e293b; line-height: 1.6; margin-bottom: 12px;'>
+        <b style='color: #b45309; font-size: 15px;'>💡 [작성 예시]</b><br>
+        • <b>조건 영역:</b> (예시) 물리적 조건 &nbsp;|&nbsp; 
+        • <b>현장의 실제 조건:</b> 외벽의 40%가 창문이라 영상이 끊겨 보인다<br>
+        • <b>작품에 미치는 영향:</b> 인물이나 글자를 크게 넣으면 형태가 깨진다<br>
+        • <b>나의 대응 방안:</b> 창틀 격자를 공장 창문으로 역이용해, 격자 사이로 빛이 번지는 산업 도시 이미지를 연출한다
+    </div>
+    """, unsafe_allow_html=True)
     default_s3_df = [
         {"조건 영역": "1. 물리적 조건\n(벽면 형태·재질·구조물)", "현장의 실제 조건 (확인한 사실)": "", "작품에 미치는 영향": "", "나의 대응 방안": ""},
         {"조건 영역": "2. 빛·환경 조건\n(주변 조명·간판·빛공해)", "현장의 실제 조건 (확인한 사실)": "", "작품에 미치는 영향": "", "나의 대응 방안": ""},
