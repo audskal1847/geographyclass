@@ -2230,19 +2230,7 @@ else:
                 create_auto_backup(f"[{target_info.get('name')}] 계정 삭제")
                 st.balloons()
                 st.success(f"[{target_info.get('name')}] 학생 계정이 삭제되었습니다.")
-                            
-                        if btn_delete:
-                            fresh_users = load_json(USERS_FILE, {})
-                            fresh_data = load_json(DATA_FILE, {})
-                            if edit_target in fresh_users:
-                                del fresh_users[edit_target]
-                                save_json(USERS_FILE, fresh_users)
-                            if edit_target in fresh_data:
-                                del fresh_data[edit_target]
-                                save_json(DATA_FILE, fresh_data)
-                            create_auto_backup(f"[{target_info.get('name')}] 계정 삭제")
-                            st.success("해당 계정과 데이터가 성공적으로 완전 삭제되었습니다."); st.rerun()
-
+               
             with menu_tabs[3]:
                 col_t, col_b = st.columns([8, 2])
                 with col_t: st.markdown("### 📥 학생 학습 활동 및 제출 자료 실시간 조회")
