@@ -2185,38 +2185,51 @@ else:
                 if edit_target != "선택":
                     target_info = filtered_for_edit[edit_target]
                     with st.form("edit_student_form"):
-                        e_subj = st.selectbox("과목", SUBJECTS, index=SUBJECTS.index(target_info.get("subject")) if target_info.get("subject") in SUBJECTS else 0)
-                        e_cls = st.selectbox("반", CLASSES_MAP.get(e_subj, []), index=CLASSES_MAP.get(e_subj, []).index(target_info.get("class_group")) if target_info.get("class_group") in CLASSES_MAP.get(e_subj, []) else 0)
-                        e_id = st.text_input("학번", value=target_info.get("id", ""))
-                        e_name = st.text_input("이름", value=target_info.get("name", ""))
-                        e_pw = st.text_input("비밀번호", value=target_info.get("password", ""))
-                        
-                        col_btn1, col_btn2 = st.columns(2)
-                        with col_btn1:
-                            btn_edit = st.form_submit_button("정보 수정 적용", type="primary", use_container_width=True)
-                        with col_btn2:
-                            btn_delete = st.form_submit_button("❌ 학생 계정 영구 삭제", use_container_width=True)
-                        
-                        if btn_edit:
-                            fresh_users = load_json(USERS_FILE, {})
-                            fresh_data = load_json(DATA_FILE, {})
-                            new_key = f"{e_subj}_{e_cls}_{e_id}"
-                            new_info = target_info.copy()
-                            new_info.update({"subject": e_subj, "class_group": e_cls, "id": e_id, "name": e_name, "password": e_pw})
-                            if new_key != edit_target:
-                                fresh_users[new_key] = new_info
-                                del fresh_users[edit_target]
-                                if edit_target in fresh_data:
-                                    fresh_data[new_key] = fresh_data[edit_target]
-                                    del fresh_data[edit_target]
-                                    save_json(DATA_FILE, fresh_data)
-                                save_json(USERS_FILE, fresh_users)
-                            else:
-                                fresh_users[edit_target] = new_info
-                                save_json(USERS_FILE, fresh_users)
-                            create_auto_backup(f"[{e_name}] 정보 수정")
-                            st.balloons()
-                            st.success("학생 계정이 영구 삭제되었습니다.")
+                    e_subj = st.selectbox("과목", SUBJECTS, index=SUBJECTS.index(target_info.get("subject")) if target_info.get("subject") in SUBJECTS else 0)
+                    e_cls = st.selectbox("반", CLASSES_MAP.get(e_subj, []), index=CLASSES_MAP.get(e_subj, []).index(target_info.get("class_group")) if target_info.get("class_group") in CLASSES_MAP.get(e_subj, []) else 0)
+                    e_id = st.text_input("학번", value=target_info.get("id", ""))
+                    e_name = st.text_input("이름", value=target_info.get("name", ""))
+                    e_pw = st.text_input("비밀번호", value=target_info.get("password", ""))
+
+                    col_btn1, col_btn2 = st.columns(2)
+                    with col_btn1:
+                    btn_edit = st.form_submit_button("정보 수정 적용", type="primary", use_container_width=True)
+                    with col_btn2:
+                    btn_delete = st.form_submit_button("❌ 학생 계정 영구 삭제", use_container_width=True)
+
+                    # 1. 정보 수정 처리 (계정 삭제 없이 데이터만 안전하게 갱신)
+                    if btn_edit:
+                        fresh_users = load_json(USERS_FILE, {})
+                        fresh_data = load_json(DATA_FILE, {})
+                
+                    # 기존 데이터가 존재하는지 확인 후 안전 업데이트
+                    if edit_target in fresh_users:
+                        fresh_users[edit_target]["subject"] = e_subj
+                        fresh_users[edit_target]["class_group"] = e_cls
+                        fresh_users[edit_target]["id"] = e_id
+                        fresh_users[edit_target]["name"] = e_name
+                        fresh_users[edit_target]["password"] = e_pw
+                        save_json(USERS_FILE, fresh_users)
+                
+                create_auto_backup(f"[{e_name}] 정보 수정")
+                st.balloons()
+                st.success(f"[{e_name}] 학생의 정보가 안전하게 수정되었습니다.")
+
+            # 2. 영구 삭제 처리
+            if btn_delete:
+                fresh_users = load_json(USERS_FILE, {})
+                fresh_data = load_json(DATA_FILE, {})
+                
+                if edit_target in fresh_users:
+                    del fresh_users[edit_target]
+                    save_json(USERS_FILE, fresh_users)
+                if edit_target in fresh_data:
+                    del fresh_data[edit_target]
+                    save_json(DATA_FILE, fresh_data)
+                    
+                create_auto_backup(f"[{target_info.get('name')}] 계정 삭제")
+                st.balloons()
+                st.success(f"[{target_info.get('name')}] 학생 계정이 삭제되었습니다.")
                             
                         if btn_delete:
                             fresh_users = load_json(USERS_FILE, {})
