@@ -774,7 +774,18 @@ def render_activity1_2nd(user_key, u_info, current_role):
     if not disabled_flag and st.button("저장하기", type="primary", key=f"save_{category}"):
         current_data = load_json(DATA_FILE, {}) 
         if user_key not in current_data: current_data[user_key] = {}
-        new_ans = {"m1_id": m1_id, "m1_name": m1_name, "m2_id": m2_id, "m2_name": m2_name, "m3_id": m3_id, "m3_name": m3_name, "m4_id": m4_id, "m4_name": m4_name, "step1_1": step1_1, "step1_2": step1_2, "step1_3": step1_3, "step1_4": step1_4, "step2_1_period": step2_1_period, "step2_1_space": step2_1_space, "step2_1_feat": step2_1_feat, "step2_3": step2_3, "step3_df": edited_step3_df.to_dict('records'), "step4_1": step4_1, "step4_2": step4_2, "step4_3": step4_3, "step4_4": step4_4}
+        new_ans = {
+            "m1_id": m1_id, "m1_name": m1_name, "m2_id": m2_id, "m2_name": m2_name, "m3_id": m3_id, "m3_name": m3_name, "m4_id": m4_id, "m4_name": m4_name, 
+            "step1_1": step1_1, 
+            "step1_2": step1_2, 
+            "step1_new1": step1_new1, 
+            "step1_new2": step1_new2, 
+            "step1_3": step1_3, 
+            "step1_4": step1_4, 
+            "step2_1_period": step2_1_period, "step2_1_space": step2_1_space, "step2_1_feat": step2_1_feat, "step2_3": step2_3, 
+            "step3_df": edited_step3_df.to_dict('records'), 
+            "step4_1": step4_1, "step4_2": step4_2, "step4_3": step4_3, "step4_4": step4_4
+        }
         current_data[user_key][category] = new_ans
         save_json(DATA_FILE, current_data); create_auto_backup(f"[{u_name}] {category} 저장"); st.balloons(); st.success("🎉 저장 완료!")
 
