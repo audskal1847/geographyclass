@@ -2215,7 +2215,8 @@ else:
                                 fresh_users[edit_target] = new_info
                                 save_json(USERS_FILE, fresh_users)
                             create_auto_backup(f"[{e_name}] 정보 수정")
-                            st.success("수정 완료"); st.rerun()
+                            st.balloons()
+                            st.success("회원 정보 수정이 완료되었습니다.")
                             
                         if btn_delete:
                             fresh_users = load_json(USERS_FILE, {})
