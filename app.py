@@ -1194,7 +1194,15 @@ def render_activity3_2nd(user_key, u_info, current_role):
     </div>
     """, unsafe_allow_html=True)
 
-    st.caption("💡 (예시) 구분: (예시) 자연·생태 | 키워드: 죽음의 강에서 되살아난 태화강 | 근거: 수질이 생태 등급으로 회복, 철새 서식지로 지정 | 출처: 울산시 환경 관련 통계 / 20OO")
+   st.markdown("""
+    <div style='background-color: #fefce8; border: 1px solid #fde047; border-left: 4px solid #ca8a04; border-radius: 6px; padding: 10px 14px; font-size: 14.5px; color: #1e293b; line-height: 1.6; margin-bottom: 12px;'>
+        <b style='color: #b45309; font-size: 15px;'>💡 [작성 예시]</b><br>
+        • <b>구분:</b> (예시) 자연·생태 &nbsp;|&nbsp; 
+        • <b>키워드:</b> 죽음의 강에서 되살아난 태화강<br>
+        • <b>근거:</b> 수질이 생태 등급으로 회복, 철새 서식지로 지정 &nbsp;|&nbsp; 
+        • <b>출처:</b> 울산시 환경 관련 통계 / 20OO
+    </div>
+    """, unsafe_allow_html=True)
 
     default_s1_df = [
         {"구분": "1. 자연·생태", "내가 찾은 정체성 키워드 혹은 문장": "", "근거가 되는 사실·통계·사건": "", "출처 (기관명 / 자료명 / 연도)": ""},
