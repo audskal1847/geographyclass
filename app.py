@@ -2216,7 +2216,7 @@ else:
                                 save_json(USERS_FILE, fresh_users)
                             create_auto_backup(f"[{e_name}] 정보 수정")
                             st.balloons()
-                            st.success("회원 정보 수정이 완료되었습니다.")
+                            st.success("학생 계정이 영구 삭제되었습니다.")
                             
                         if btn_delete:
                             fresh_users = load_json(USERS_FILE, {})
