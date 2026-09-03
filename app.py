@@ -22,6 +22,45 @@ def process_sketch_image(uploaded_file, max_width=800):
         return f"data:image/jpeg;base64,{b64_data}"
     except Exception:
         return ""
+def create_storyboard_gif(images_b64_list, duration=1500):
+    """업로드된 4컷 이미지를 순서대로 이어붙여 1.5초 간격의 슬라이드 영상(GIF)으로 자동 변환"""
+    pil_imgs = []
+    target_size = (700, 420)
+    for b64 in images_b64_list:
+        if not b64 or not b64.startswith("data:image"):
+            continue
+        try:
+            header, data = b64.split(",", 1) if "," in b64 else ("", b64)
+            img = Image.open(io.BytesIO(base64.b64decode(data)))
+            if img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+            # 비율 유지 리사이즈 & 흰색 캔버스 중앙 배치
+            img.thumbnail(target_size, Image.Resampling.LANCZOS)
+            bg = Image.new("RGB", target_size, (255, 255, 255))
+            offset = ((target_size[0] - img.size[0]) // 2, (target_size[1] - img.size[1]) // 2)
+            bg.paste(img, offset)
+            pil_imgs.append(bg)
+        except Exception:
+            pass
+    if not pil_imgs:
+        return ""
+    buf = io.BytesIO()
+    # 4컷 순환 애니메이션 GIF 생성
+    pil_imgs[0].save(buf, format="GIF", save_all=True, append_images=pil_imgs[1:], duration=duration, loop=0)
+    b64_gif = base64.b64encode(buf.getvalue()).decode("utf-8")
+    return f"data:image/gif;base64,{b64_gif}"
+
+def process_uploaded_video(uploaded_file, max_mb=10):
+    """직접 제작한 시뮬레이션 영상(MP4/GIF)을 Base64로 안전하게 변환 (용량 초과 방지)"""
+    if uploaded_file is None:
+        return ""
+    if uploaded_file.size > max_mb * 1024 * 1024:
+        st.error(f"⚠️ 영상 파일 용량이 {max_mb}MB를 초과했습니다. 더 짧거나 작은 파일로 올려주세요.")
+        return ""
+    bytes_data = uploaded_file.read()
+    mime = uploaded_file.type or "video/mp4"
+    b64 = base64.b64encode(bytes_data).decode("utf-8")
+    return f"data:{mime};base64,{b64}"        
 
 # 🚀 기본 설정 및 페이지 구성 (사이드바 강제 열림)
 st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", layout="wide", initial_sidebar_state="expanded")
@@ -433,27 +472,31 @@ def get_act_csv_rows(selected_view, ans, config=None):
         for row in ans.get("step3_df", []):
             csv_data.append([row.get("조건 영역", ""), f"실제조건: {row.get('현장의 실제 조건 (확인한 사실)', '')} / 영향: {row.get('작품에 미치는 영향', '')} / 대응: {row.get('나의 대응 방안', '')}"])
 
-        csv_data.append(["[Step 4. 작품 스토리보드 4 컷]", ""])
+        csv_data.append(["[Step 4. 작품 스토리보드 4컷 및 시뮬레이션 영상]", ""])
         s4_rows = ans.get("step4_df", [])
         if s4_rows:
             for row in s4_rows:
                 c_name = row.get("컷", "")
                 c_desc = row.get("장면 설명 · 사용 기술 · 소요 시간", "") or "(설명 미작성)"
                 c_img = row.get("스케치_img", "")
-                
                 if c_img:
-                    # 교사용 화면 박스 안에 스케치 이미지와 설명을 함께 렌더링
-                    html_display = (
-                        f"{c_desc}<br>"
-                        f"<div style='margin-top:10px;'>"
-                        f"<img src='{c_img}' style='max-width:350px; border-radius:8px; border:1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>"
-                        f"</div>"
-                    )
+                    html_display = f"{c_desc}<br><div style='margin-top:8px;'><img src='{c_img}' style='max-width:300px; border-radius:6px; border:1px solid #cbd5e1;'></div>"
                     csv_data.append([f"[{c_name}] 스케치 및 설명", html_display])
                 else:
-                    csv_data.append([f"[{c_name}] 설명 (스케치 미등록)", c_desc])
+                    csv_data.append([f"[{c_name}] 설명", c_desc])
         else:
             csv_data.append(["스토리보드", "(미작성)"])
+
+        # 최종 시뮬레이션 영상 출력
+        sim_video = ans.get("step4_video", "")
+        if sim_video:
+            if "data:video" in sim_video:
+                v_tag = f"<video src='{sim_video}' controls style='max-width:450px; border-radius:8px; border:1px solid #94a3b8;'></video>"
+            else:
+                v_tag = f"<img src='{sim_video}' style='max-width:450px; border-radius:8px; border:1px solid #94a3b8; box-shadow:0 4px 6px rgba(0,0,0,0.1);'>"
+            csv_data.append(["[최종] 미디어 파사드 시뮬레이션 영상", v_tag])
+        else:
+            csv_data.append(["[최종] 시뮬레이션 영상", "(영상 미등록)"])
             
         csv_data.append(["[Step 5. 작품 설명 카드 작성 및 갤러리 워크]", ""])
         csv_data.extend([
@@ -716,12 +759,9 @@ def generate_html_content(act_name, ans, config=None):
                 html += f"<tr><td>{row.get('조건 영역','')}</td><td>{row.get('현장의 실제 조건 (확인한 사실)','')}</td><td>{row.get('작품에 미치는 영향','')}</td><td>{row.get('나의 대응 방안','')}</td></tr>"
         html += "</table>"
 
-        # ----------------------------------------------------
-        # Step 4. 작품 스토리보드 4컷 HTML (스케치 이미지 + 설명)
-        # ----------------------------------------------------
-        html += "<h3>Step 4. 작품 스토리보드 4 컷</h3>"
+        html += "<h3>Step 4. 작품 스토리보드 4컷 & 미디어 파사드 시뮬레이션 영상</h3>"
         html += "<table style='width:100%; border-collapse: collapse; margin-top:10px; font-size:14px;'>"
-        html += "<tr style='background-color:#f8fafc;'><th style='width:12%; padding:10px; border:1px solid #cbd5e1; text-align:center;'>컷</th><th style='width:40%; padding:10px; border:1px solid #cbd5e1; text-align:center;'>스케치</th><th style='width:48%; padding:10px; border:1px solid #cbd5e1; text-align:center;'>장면 설명 · 사용 기술 · 소요 시간</th></tr>"
+        html += "<tr style='background-color:#f8fafc;'><th style='width:12%; padding:10px; border:1px solid #cbd5e1; text-align:center;'>컷</th><th style='width:38%; padding:10px; border:1px solid #cbd5e1; text-align:center;'>스케치</th><th style='width:50%; padding:10px; border:1px solid #cbd5e1; text-align:center;'>장면 설명 · 사용 기술 · 소요 시간</th></tr>"
         
         for row in ans.get("step4_df", []):
             c_name = row.get("컷", "")
@@ -729,13 +769,24 @@ def generate_html_content(act_name, ans, config=None):
             c_img = row.get("스케치_img", "")
             
             if c_img:
-                img_tag = f"<img src='{c_img}' style='max-width:280px; max-height:200px; border-radius:6px; border:1px solid #e2e8f0; display:block; margin:0 auto;'>"
+                img_tag = f"<img src='{c_img}' style='max-width:260px; max-height:180px; border-radius:6px; border:1px solid #e2e8f0; display:block; margin:0 auto;'>"
             else:
                 img_tag = "<span style='color:#94a3b8; font-size:13px;'>(스케치 미등록)</span>"
                 
-            html += f"<tr><td style='text-align:center; font-weight:bold; border:1px solid #cbd5e1; padding:10px; background-color:#fafafa;'>{c_name}</td><td style='text-align:center; border:1px solid #cbd5e1; padding:10px; vertical-align:middle;'>{img_tag}</td><td style='border:1px solid #cbd5e1; padding:10px; vertical-align:top; line-height:1.6;'>{c_desc}</td></tr>"
+            html += f"<tr><td style='text-align:center; font-weight:bold; border:1px solid #cbd5e1; padding:8px; background-color:#fafafa;'>{c_name}</td><td style='text-align:center; border:1px solid #cbd5e1; padding:8px; vertical-align:middle;'>{img_tag}</td><td style='border:1px solid #cbd5e1; padding:10px; vertical-align:top; line-height:1.6;'>{c_desc}</td></tr>"
             
         html += "</table>"
+
+        # 시뮬레이션 영상 HTML 출력
+        sim_v = ans.get("step4_video", "")
+        if sim_v:
+            html += "<div style='margin-top:15px; padding:15px; background-color:#f8fafc; border-radius:8px; border:1px solid #e2e8f0; text-align:center;'>"
+            html += "<p style='font-weight:bold; font-size:15px; margin-bottom:10px; color:#1e293b;'>🎬 미디어 파사드 모션 시뮬레이션</p>"
+            if "data:video" in sim_v:
+                html += f"<video src='{sim_v}' controls style='max-width:520px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.1);'></video>"
+            else:
+                html += f"<img src='{sim_v}' style='max-width:520px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.1);'>"
+            html += "</div>"
 
         html += "<h3>Step 5. 작품 설명 카드 작성 및 갤러리 워크</h3>"
         html += f"<p><b>▶ 작품 제목:</b> {ans.get('step5_title','')}</p>"
@@ -1592,21 +1643,21 @@ def render_activity3_2nd(user_key, u_info, current_role):
     st.markdown("<hr style='margin: 30px 0;'>", unsafe_allow_html=True)
 
     # ----------------------------------------------------
-    # Step 4. 작품 스토리보드 4컷 (스케치 파일 업로드 + 설명)
+    # Step 4. 작품 스토리보드 4컷 & 미디어 파사드 시뮬레이션 영상
     # ----------------------------------------------------
-    st.markdown("### Step 4. 작품 스토리보드 4 컷")
+    st.markdown("### Step 4. 작품 스토리보드 4컷 & 미디어 파사드 시뮬레이션 영상")
     st.markdown("""
     > **안내사항**  
-    > • 각 컷별로 **스케치한 파일(사진/캡처 이미지)**을 업로드하고, 우측에 **장면 설명**을 작성합니다.  
-    > • *(종이 1장에 4컷을 모두 그린 경우, '1 도입'에 전체 사진을 올리고 설명만 각각 작성해도 됩니다.)*
+    > • 도입-전개-절정-마무리 4컷의 **스케치 파일**과 **장면 설명**을 작성합니다.  
+    > • 4컷 등록 후, 하단의 **[🎬 4컷 연결 시뮬레이션 영상 자동 생성]** 버튼을 누르거나 직접 편집한 영상(MP4/GIF)을 등록하세요.
     """)
 
     cut_names = ["1 도입", "2 전개", "3 절정", "4 마무리"]
     saved_step4 = ans.get("step4_df", [])
     step4_data = []
+    current_images = []
 
     for i, c_name in enumerate(cut_names):
-        # 기존 저장 데이터 불러오기
         old_cut = saved_step4[i] if i < len(saved_step4) and isinstance(saved_step4[i], dict) else {}
         old_img = old_cut.get("스케치_img", "")
         old_desc = old_cut.get("장면 설명 · 사용 기술 · 소요 시간", "")
@@ -1616,19 +1667,16 @@ def render_activity3_2nd(user_key, u_info, current_role):
 
         with col_img:
             up_file = st.file_uploader(
-                f"[{c_name}] 스케치 파일 업로드 (JPG/PNG)", 
+                f"[{c_name}] 스케치 파일 (JPG/PNG)", 
                 type=["png", "jpg", "jpeg", "webp"], 
                 key=f"step4_file_{i}",
                 disabled=disabled_flag if 'disabled_flag' in locals() else False
             )
-            # 새 파일 업로드 시 압축 변환, 미업로드 시 기존 이미지 유지
-            if up_file is not None:
-                current_img = process_sketch_image(up_file)
-            else:
-                current_img = old_img
+            current_img = process_sketch_image(up_file) if up_file else old_img
+            current_images.append(current_img)
 
             if current_img:
-                st.image(current_img, caption=f"{c_name} 스케치 미리보기", use_container_width=True)
+                st.image(current_img, caption=f"{c_name} 스케치", use_container_width=True)
             else:
                 st.caption("📷 등록된 스케치 이미지가 없습니다.")
 
@@ -1641,16 +1689,51 @@ def render_activity3_2nd(user_key, u_info, current_role):
                 disabled=disabled_flag if 'disabled_flag' in locals() else False
             )
 
-        st.markdown("<hr style='margin: 15px 0; border: 0.5px dashed #cbd5e1;'>", unsafe_allow_html=True)
-
+        st.markdown("<hr style='margin: 12px 0; border: 0.5px dashed #cbd5e1;'>", unsafe_allow_html=True)
         step4_data.append({
             "컷": c_name,
             "스케치_img": current_img,
             "장면 설명 · 사용 기술 · 소요 시간": desc_val
         })
 
-    st.markdown("---")
+    # --- [미디어 파사드 시뮬레이션 영상 영역] ---
+    st.markdown("#### 🎥 최종 미디어 파사드 시뮬레이션 영상")
+    saved_video = ans.get("step4_video", "")
 
+    v_col1, v_col2 = st.columns([1, 1])
+    with v_col1:
+        st.markdown("**방법 A. 4컷 스케치 자동 연결**")
+        if st.button("🪄 4컷 스케치 연결 영상(움짤) 자동 생성", key="btn_gen_gif", disabled=disabled_flag if 'disabled_flag' in locals() else False):
+            valid_imgs = [img for img in current_images if img]
+            if len(valid_imgs) < 2:
+                st.warning("⚠️ 최소 2개 이상의 스케치 이미지를 업로드해야 영상을 생성할 수 있습니다.")
+            else:
+                with st.spinner("4컷을 연결하여 시뮬레이션 영상을 생성 중입니다..."):
+                    saved_video = create_storyboard_gif(valid_imgs, duration=1500)
+                    st.success("🎉 시뮬레이션 영상이 생성되었습니다! 하단 [저장하기]를 눌러 반영하세요.")
+
+    with v_col2:
+        st.markdown("**방법 B. 직접 제작한 영상(MP4/GIF) 업로드**")
+        up_video = st.file_uploader(
+            "편집 영상 업로드 (MP4, WebM, GIF / 최대 10MB)", 
+            type=["mp4", "webm", "gif"], 
+            key="step4_video_uploader",
+            disabled=disabled_flag if 'disabled_flag' in locals() else False
+        )
+        if up_video is not None:
+            saved_video = process_uploaded_video(up_video)
+
+    # 영상 미리보기 출력
+    if saved_video:
+        st.markdown("**▶ 등록된 시뮬레이션 영상 미리보기**")
+        if "data:video" in saved_video:
+            st.video(saved_video)
+        else:
+            st.image(saved_video, caption="미디어 파사드 4컷 모션 시뮬레이션", width=500)
+    else:
+        st.info("ℹ️ 아직 등록된 시뮬레이션 영상이 없습니다. [자동 생성] 버튼을 누르거나 직접 만든 영상 파일을 올려주세요.")
+
+    st.markdown("---")
     # ----------------------------------------------------
     # Step 5. 작품 설명 카드 작성 및 갤러리 워크
     # ----------------------------------------------------
@@ -1755,7 +1838,8 @@ def render_activity3_2nd(user_key, u_info, current_role):
             "step2_final_building": step2_final_building,
             "step2_reason": step2_reason,
             "step3_df": edited_step3_df.to_dict('records'),
-            "step4_df": step4_editor.to_dict('records') if hasattr(step4_editor, 'to_dict') else step4_editor,
+            "step4_df": step4_data,
+            "step4_video": saved_video,
             "step5_title": step5_title,
             "step5_place": step5_place,
             "step5_desc": step5_desc,
