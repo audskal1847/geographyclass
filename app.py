@@ -223,7 +223,7 @@ def get_act_csv_rows(selected_view, ans, config=None):
     # ----------------------------------------------------
     # 3학년 여행지리 수행평가 3
     # ----------------------------------------------------
-   elif selected_view == ACT_3_3:
+    elif selected_view == ACT_3_3:
         csv_data.extend([["[1. 세계 인식 수준에 대한 확인]", ""], ["[1. 대륙별 관심도 및 지식 수준 체크]", ""]])
         for row in ans.get("s1_df", []):
             csv_data.append([row.get("대륙", ""), f"관심도: {row.get('관심도', '')} / 지식수준: {row.get('지식수준', '')}"])
