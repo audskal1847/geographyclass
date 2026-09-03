@@ -224,7 +224,7 @@ def get_act_csv_rows(selected_view, ans, config=None):
     # 3학년 여행지리 수행평가 3
     # ----------------------------------------------------
     elif selected_view == ACT_3_3:
-        csv_data.extend([["1. 세계 인식 수준에 대한 확인", ""], ["[1. 대륙별 관심도 및 지식 수준 체크]", ""]])
+        csv_data.extend([["[1. 세계 인식 수준에 대한 확인]", ""], ["[1. 대륙별 관심도 및 지식 수준 체크]", ""]])
         for row in ans.get("s1_df", []):
             csv_data.append([row.get("대륙", ""), f"관심도: {row.get('관심도', '')} / 지식수준: {row.get('지식수준', '')}"])
         
@@ -251,7 +251,7 @@ def get_act_csv_rows(selected_view, ans, config=None):
             if row.get("국가 혹은 지역") or row.get("이유"):
                 csv_data.append([row.get("국가 혹은 지역", ""), row.get("이유", "")])
 
-        csv_data.extend([["", ""], ["2. 특정 대륙/국가에 대한 자신의 편견과 고정관념", ""], ["[1. 국가별 한 단어 라벨링]", ""]])
+        csv_data.extend([["", ""], ["[2. 특정 대륙/국가에 대한 자신의 편견과 고정관념]", ""], ["[1. 국가별 한 단어 라벨링]", ""]])
         for row in ans.get("label_df", []):
             if row.get("가 보고 싶은 국가") or row.get("가고 싶지 않은 국가"):
                 csv_data.append([row.get("가 보고 싶은 국가", ""), f"한 단어 라벨: {row.get('한 단어 라벨', '')} | 가고 싶지 않은 국가: {row.get('가고 싶지 않은 국가', '')} (라벨: {row.get('한 단어 라벨(부정)', '')})"])
