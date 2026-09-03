@@ -1752,7 +1752,7 @@ def render_activity3_2nd(user_key, u_info, current_role):
     st.markdown("**전시 장소** *(건물명 / 투사 벽면 / 권장 관람 위치)*")
     step5_place = st.text_input("전시 장소", value=ans.get("step5_place", ""), label_visibility="collapsed", disabled=disabled_flag, key="s5_place")
 
-    st.markdown("**작품 개요** *(3 문장 이내)*")
+    st.markdown("**작품 개요** *(5 문장 이내)*")
     step5_desc = st.text_area("작품 개요", value=ans.get("step5_desc", ""), height=90, label_visibility="collapsed", disabled=disabled_flag, key="s5_desc")
 
     st.markdown("**이 작품이 지역의 어떤 정체성을 담았는가** *(Step 1 의 근거 자료를 인용하여 쓸 것)*")
