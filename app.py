@@ -1762,8 +1762,45 @@ def render_activity3_2nd(user_key, u_info, current_role):
     step5_condition = st.text_area("현장 조건 반영", value=ans.get("step5_condition", ans.get("step5_q2", "")), height=90, label_visibility="collapsed", disabled=disabled_flag, key="s5_condition")
 
     st.markdown("**이 작품이 우리 지역에 남길 변화** *(관람객 / 주민 / 상권 세 측면에서 각각 한 줄씩)*")
-    step5_change = st.text_area("남길 변화", value=ans.get("step5_change", ans.get("step5_q3", "")), height=90, label_visibility="collapsed", disabled=disabled_flag, key="s5_change")
+    
+    # 3개 구역 분할 (관람객 / 주민 / 상권)
+    col_c1, col_c2, col_c3 = st.columns(3)
+    
+    with col_c1:
+        st.markdown("##### 👥 1. 관람객 측면")
+        step5_change_visitor = st.text_area(
+            "관람객에게 미칠 영향 및 변화",
+            value=ans.get("step5_change_visitor", ""),
+            placeholder="예: 우리 지역의 새로운 문화적 랜드마크로 인식하고 야간 명소로 방문하게 된다.",
+            height=110,
+            key="step5_change_vis_input",
+            disabled=disabled_flag if 'disabled_flag' in locals() else False,
+            label_visibility="collapsed"
+        )
 
+    with col_c2:
+        st.markdown("##### 🏡 2. 주민 측면")
+        step5_change_resident = st.text_area(
+            "지역 주민에게 미칠 영향 및 변화",
+            value=ans.get("step5_change_resident", ""),
+            placeholder="예: 낡고 어두웠던 공간이 밝아져 자긍심을 느끼고 야간 안심 귀갓길이 형성된다.",
+            height=110,
+            key="step5_change_res_input",
+            disabled=disabled_flag if 'disabled_flag' in locals() else False,
+            label_visibility="collapsed"
+        )
+
+    with col_c3:
+        st.markdown("##### 🛍️ 3. 상권 측면")
+        step5_change_market = st.text_area(
+            "주변 상권에게 미칠 영향 및 변화",
+            value=ans.get("step5_change_market", ""),
+            placeholder="예: 야간 유동 인구가 증가하여 인근 카페, 식당 등 골목 상권이 활성화된다.",
+            height=110,
+            key="step5_change_mkt_input",
+            disabled=disabled_flag if 'disabled_flag' in locals() else False,
+            label_visibility="collapsed"
+        )
     st.markdown("<hr style='margin: 30px 0;'>", unsafe_allow_html=True)
 
     # ----------------------------------------------------
