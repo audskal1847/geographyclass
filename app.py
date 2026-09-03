@@ -317,11 +317,12 @@ def get_act_csv_rows(selected_view, ans, config=None):
             csv_data.append(["주목해 볼 국가", "(미작성)"])
             csv_data.append(["그 이유", "(미작성)"])
 
-        # 5. 목표로 하는 세계관 (소제목으로 자동 분류되며 문항 상자 2개가 나란히 출력됨)
-        csv_data.append(["[5. 목표로 하는 세계관]", ""])
+        # 4. 목표로 하는 세계관 (대제목으로 분류되어 파란 밑줄과 함께 질문/답변 박스가 출력됨)
         csv_data.extend([
-            ["어떤 사람이 되고 싶은가?", ans.get("goal_1", "").strip() or "(미작성)"],
-            ["어떤 세계관을 갖고 싶은가?", ans.get("goal_2", "").strip() or "(미작성)"]
+            ["", ""],
+            ["[4. 목표로 하는 세계관]", ""],
+            ["▶ 어떤 사람이 되고 싶은가?", ans.get("goal_1", "").strip() or "(미작성)"],
+            ["▶ 어떤 세계관을 갖고 싶은가?", ans.get("goal_2", "").strip() or "(미작성)"]
         ])
     # 2학년 수행평가 1 (도시 밈 해석)
     # ----------------------------------------------------
@@ -538,7 +539,7 @@ def generate_html_content(act_name, ans, config=None):
             html += f"<tr><td>{row.get('주목해 볼 국가','')}</td><td>{row.get('그 이유','')}</td></tr>"
         html += "</table>"
 
-        html += "<h3>5. 목표로 하는 세계관</h3>"
+        html += "<h3>4. 목표로 하는 세계관</h3>"
         html += f"<p><b>▶ 어떤 사람이 되고 싶은가?</b></p><div class='content-box'>{ans.get('goal_1','')}</div>"
         html += f"<p><b>▶ 어떤 세계관을 갖고 싶은가?</b></p><div class='content-box'>{ans.get('goal_2','')}</div>"
 
@@ -932,7 +933,7 @@ def render_activity3_3th(user_key, u_info, current_role):
     weak_df = pd.DataFrame(ans.get("weak_df", [{"주목해 볼 국가": "", "그 이유": ""} for _ in range(2)]))
     edited_weak_df = st.data_editor(weak_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"weak_df_{category}")
 
-    st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>5. 목표로 하는 세계관</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>4. 목표로 하는 세계관</h3>", unsafe_allow_html=True)
     goal_1 = st.text_area("▶ 어떤 사람이 되고 싶은가?", value=ans.get("goal_1", ""), height=100, disabled=disabled_flag, key=f"goal_1_{category}")
     goal_2 = st.text_area("▶ 어떤 세계관을 갖고 싶은가?", value=ans.get("goal_2", ""), height=100, disabled=disabled_flag, key=f"goal_2_{category}")
     
