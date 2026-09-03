@@ -314,14 +314,14 @@ def get_act_csv_rows(selected_view, ans, config=None):
             for row in wk_list: 
                 csv_data.append([row.get("주목해 볼 국가", ""), f"이유: {row.get('그 이유', '')}"])
         else:
-            csv_data.append(["작성 내용", "(미작성)"])
+            csv_data.append(["주목해 볼 국가", "(미작성)"])
+            csv_data.append(["그 이유", "(미작성)"])
 
-        # 5. 목표로 하는 세계관 (미작성 시에도 질문/답변 박스가 유지됨)
+        # 5. 목표로 하는 세계관 (소제목으로 자동 분류되며 문항 상자 2개가 나란히 출력됨)
+        csv_data.append(["[5. 목표로 하는 세계관]", ""])
         csv_data.extend([
-            ["", ""],
-            ["[5. 목표로 하는 세계관]", ""],
-            ["▶ 어떤 사람이 되고 싶은가?", ans.get("goal_1", "").strip() or "(미작성)"],
-            ["▶ 어떤 세계관을 갖고 싶은가?", ans.get("goal_2", "").strip() or "(미작성)"]
+            ["어떤 사람이 되고 싶은가?", ans.get("goal_1", "").strip() or "(미작성)"],
+            ["어떤 세계관을 갖고 싶은가?", ans.get("goal_2", "").strip() or "(미작성)"]
         ])
     # 2학년 수행평가 1 (도시 밈 해석)
     # ----------------------------------------------------
@@ -2368,7 +2368,7 @@ else:
                                             clean_title = q_t.strip("[]")
                                             is_main = any(k in clean_title for k in [
                                                 "Step", "1. 세계 인식", "2. 특정 대륙", "3. 포용", 
-                                                "4. 목표", "5. 목표", "모둠 구성원", "개별 정보"
+                                                "모둠 구성원", "개별 정보"
                                             ])
 
                                             if is_main:
