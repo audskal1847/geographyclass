@@ -2337,39 +2337,39 @@ else:
                                     act_rows = get_act_csv_rows(selected_view, ans, app_config)
                                     csv_data.extend(act_rows)
                                     for row in act_rows:
-            q_t, a_t = str(row[0]), str(row[1])
-            if not q_t and not a_t:
-                continue
+                                        q_t, a_t = str(row[0]), str(row[1])
+                                        if not q_t and not a_t:
+                                            continue
 
-            # 제목/소제목 판별 및 위계 분리 (대괄호[] 자동 제거)
-            if not a_t and (q_t.startswith("[") or q_t.startswith("▶")):
-                clean_title = q_t.strip("[]")
-                is_main = any(k in clean_title for k in [
-                    "Step", "1. 세계 인식", "2. 특정 대륙", "3. 포용", 
-                    "4. 목표", "5. 목표", "모둠 구성원", "개별 정보"
-                ])
+                                        # 제목/소제목 판별 및 위계 분리 (대괄호[] 자동 제거)
+                                        if not a_t and (q_t.startswith("[") or q_t.startswith("▶")):
+                                            clean_title = q_t.strip("[]")
+                                            is_main = any(k in clean_title for k in [
+                                                "Step", "1. 세계 인식", "2. 특정 대륙", "3. 포용", 
+                                                "4. 목표", "5. 목표", "모둠 구성원", "개별 정보"
+                                            ])
 
-                if is_main:
-                    # 🔷 [대제목]: 큰 글씨(20px) + 파란색 + 하단 밑줄선
-                    main_style = (
-                        "color: #1e3a8a; font-size: 20px; font-weight: 800; "
-                        "margin-top: 30px; margin-bottom: 12px; "
-                        "border-bottom: 2px solid #3b82f6; padding-bottom: 6px;"
-                    )
-                    st.markdown(f"<h3 style='{main_style}'>{clean_title}</h3>", unsafe_allow_html=True)
-                else:
-                    # 🔹 [소제목]: 대괄호 제거 + 밑줄 없음 + 단정한 크기(16px) + 짙은 회색
-                    sub_style = (
-                        "color: #334155; font-size: 16px; font-weight: 700; "
-                        "margin-top: 18px; margin-bottom: 8px;"
-                    )
-                    st.markdown(f"<div style='{sub_style}'>▶ {clean_title}</div>", unsafe_allow_html=True)
-            elif a_t:
-                box_style = (
-                    "background-color: #f8f9fa; padding: 12px; "
-                    "border-radius: 5px; border: 1px solid #e9ecef; margin-bottom: 8px;"
-                )
-                st.markdown(f"<div style='{box_style}'><b>{q_t}</b><br>{a_t}</div>", unsafe_allow_html=True)
+                                            if is_main:
+                                            # 🔷 [대제목]: 큰 글씨(20px) + 파란색 + 하단 밑줄선
+                                            main_style = (
+                                                "color: #1e3a8a; font-size: 20px; font-weight: 800; "
+                                                "margin-top: 30px; margin-bottom: 12px; "
+                                                "border-bottom: 2px solid #3b82f6; padding-bottom: 6px;"
+                                            )
+                                            st.markdown(f"<h3 style='{main_style}'>{clean_title}</h3>", unsafe_allow_html=True)
+                                        else:
+                                            # 🔹 [소제목]: 대괄호 제거 + 밑줄 없음 + 단정한 크기(16px) + 짙은 회색
+                                            sub_style = (
+                                                "color: #334155; font-size: 16px; font-weight: 700; "
+                                                "margin-top: 18px; margin-bottom: 8px;"
+                                            )
+                                            st.markdown(f"<div style='{sub_style}'>▶ {clean_title}</div>", unsafe_allow_html=True)
+                                        elif a_t:
+                                            box_style = (
+                                                "background-color: #f8f9fa; padding: 12px; "
+                                                "border-radius: 5px; border: 1px solid #e9ecef; margin-bottom: 8px;"
+                                            )
+                                            st.markdown(f"<div style='{box_style}'><b>{q_t}</b><br>{a_t}</div>", unsafe_allow_html=True)
                                             
                                     # 🌟 [복구된 코드] 삭제되었던 HTML 파일 생성 변수 1줄 복구!
                                     single_html = generate_activity_html(selected_view, ans, u_info_csv.get('name'))
