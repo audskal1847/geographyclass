@@ -278,7 +278,7 @@ def get_act_csv_rows(selected_view, ans, config=None):
             if row.get("어떤 국가에 대해?") or row.get("어떤 측면에서"):
                 csv_data.append([row.get("어떤 국가에 대해?", ""), f"측면: {row.get('어떤 측면에서', '')} / 이유: {row.get('그 이유', '')}"])
 
-        csv_data.extend([["", ""], ["3. 포용적이고 균형잡힌 세계관을 위한 노력]", ""]])
+        csv_data.extend([["", ""], ["[3. 포용적이고 균형잡힌 세계관을 위한 노력]", ""]])
         csv_data.append(["[1. 편견을 바꾸고 싶은 국가]", ""])
         for row in ans.get("change_df", []):
             if row.get("어떤 국가에 대해?") or row.get("현재의 편견"):
