@@ -2339,12 +2339,22 @@ else:
                                     for row in act_rows:
                                         q_t, a_t = str(row[0]), str(row[1])
                                         if not q_t and not a_t: continue
-                                        
-                                        # 💡 대제목(Step 1 등)일 경우 파란색 글씨로 강제 출력
-                                        if not a_t and q_t.startswith("["): 
-                                            st.markdown(f"<h4 style='color:#2980b9; margin-top:25px; border-bottom:2px solid #ecf0f1; padding-bottom:8px;'>{q_t}</h4>", unsafe_allow_html=True)
-                                        elif a_t: 
-                                            st.markdown(f"<div style='background-color:#f8f9fa; padding:12px; border-radius:5px; margin-bottom:8px; border-left: 4px solid #bdc3c7;'><b>{q_t}</b><br><span style='color:#333;'>{a_t}</span></div>", unsafe_allow_html=True)
+
+                                        # 제목/소제목 판별 및 위계 분리 (대괄호[] 자동 제거)
+                                        if not a_t and (q_t.startswith("[") or q_t.startswith("▶")):
+                                            clean_title = q_t.strip("[]")  # 화면 출력 시 대괄호 제거
+                
+                                            # 대제목 판별 (Step, 대단원 번호, 모둠/개별 정보)
+                                            is_main = any(k in clean_title for k in ["Step", "1. 세계 인식", "2. 특정 대륙", "3. 포용", "4. 목표", "5. 목표", "모둠 구성원", "개별 정보"])
+
+                                            if is_main:
+                                                # 🔷 [대제목]: 큰 글씨(20px) + 파란색 + 하단 밑줄선
+                                                st.markdown(f"<h3 style='color: #1e3a8a; font-size: 20px; font-weight: 800; margin-top: 32px; margin-bottom: 12px; border-bottom: 2px solid #3b82f6; padding-bottom: 6px;'>{clean_title}</h3>", unsafe_allow_html=True)
+                                            else:
+                                                # 🔹 [소제목]: 대괄호 제거 + 밑줄 없음 + 단정한 크기(16px) + 짙은 회색 불릿
+                                                st.markdown(f"<div style='color: #334155; font-size: 16px; font-weight: 700; margin-top: 18px; margin-bottom: 8px;'>▶ {clean_title}</div>", unsafe_allow_html=True)
+                                        elif a_t:
+                                            st.markdown(f"<div style='background-color:#f8f9fa; padding: 12px; border-radius:5px; border:1px solid #e9ecef; margin-bottom:8px;'><b>{q_t}</b><br>{a_t}</div>", unsafe_allow_html=True)px solid #bdc3c7;'><b>{q_t}</b><br><span style='color:#333;'>{a_t}</span></div>", unsafe_allow_html=True)
                                             
                                     # 🌟 [복구된 코드] 삭제되었던 HTML 파일 생성 변수 1줄 복구!
                                     single_html = generate_activity_html(selected_view, ans, u_info_csv.get('name'))
