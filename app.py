@@ -863,7 +863,7 @@ def render_activity3_3th(user_key, u_info, current_role):
     top5_want = pd.DataFrame(ans.get("top5_want", [{"국가 혹은 지역": "", "이유": ""} for _ in range(5)]))
     edited_top5_want = st.data_editor(top5_want, num_rows="fixed", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"top5_want_{category}")
     
-    st.markdown("**4. 절대 가고 싶지 않 Top 5 국가와 그 이유**")
+    st.markdown("**4. 절대 가고 싶지 않은 Top 5 국가와 그 이유**")
     top5_notwant = pd.DataFrame(ans.get("top5_notwant", [{"국가 혹은 지역": "", "이유": ""} for _ in range(5)]))
     edited_top5_notwant = st.data_editor(top5_notwant, num_rows="fixed", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"top5_notwant_{category}")
     
