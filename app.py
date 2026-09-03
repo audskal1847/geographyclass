@@ -2364,12 +2364,12 @@ else:
                                                     "margin-top: 18px; margin-bottom: 8px;"
                                                 )
                                                 st.markdown(f"<div style='{sub_style}'>▶ {clean_title}</div>", unsafe_allow_html=True)
-                                            elif a_t:
-                                                box_style = (
-                                                    "background-color: #f8f9fa; padding: 12px; "
-                                                    "border-radius: 5px; border: 1px solid #e9ecef; margin-bottom: 8px;"
-                                                )
-                                                st.markdown(f"<div style='{box_style}'><b>{q_t}</b><br>{a_t}</div>", unsafe_allow_html=True)
+                                        elif a_t:
+                                            box_style = (
+                                                "background-color: #f8f9fa; padding: 12px; "
+                                                "border-radius: 5px; border: 1px solid #e9ecef; margin-bottom: 8px;"
+                                            )
+                                            st.markdown(f"<div style='{box_style}'><b>{q_t}</b><br>{a_t}</div>", unsafe_allow_html=True)
                                             
                                     # 🌟 [복구된 코드] 삭제되었던 HTML 파일 생성 변수 1줄 복구!
                                     single_html = generate_activity_html(selected_view, ans, u_info_csv.get('name'))
