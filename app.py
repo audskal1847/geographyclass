@@ -2368,8 +2368,9 @@ else:
                                         if not a_t and (q_t.startswith("[") or q_t.startswith("▶")):
                                             clean_title = q_t.strip("[]")
                                             is_main = any(k in clean_title for k in [
-                                                "Step", "1. 세계 인식", "2. 특정 대륙", "3. 포용", 
+                                                "Step", "1. 세계 인식", "2. 특정 대륙", "3. 포용", "4. 목표", 
                                                 "모둠 구성원", "개별 정보"
+                                            ])
                                             ])
 
                                             if is_main:
