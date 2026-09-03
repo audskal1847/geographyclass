@@ -2350,26 +2350,26 @@ else:
                                             ])
 
                                             if is_main:
-                                            # 🔷 [대제목]: 큰 글씨(20px) + 파란색 + 하단 밑줄선
-                                            main_style = (
-                                                "color: #1e3a8a; font-size: 20px; font-weight: 800; "
-                                                "margin-top: 30px; margin-bottom: 12px; "
-                                                "border-bottom: 2px solid #3b82f6; padding-bottom: 6px;"
-                                            )
-                                            st.markdown(f"<h3 style='{main_style}'>{clean_title}</h3>", unsafe_allow_html=True)
-                                        else:
-                                            # 🔹 [소제목]: 대괄호 제거 + 밑줄 없음 + 단정한 크기(16px) + 짙은 회색
-                                            sub_style = (
-                                                "color: #334155; font-size: 16px; font-weight: 700; "
-                                                "margin-top: 18px; margin-bottom: 8px;"
-                                            )
-                                            st.markdown(f"<div style='{sub_style}'>▶ {clean_title}</div>", unsafe_allow_html=True)
-                                        elif a_t:
-                                            box_style = (
-                                                "background-color: #f8f9fa; padding: 12px; "
-                                                "border-radius: 5px; border: 1px solid #e9ecef; margin-bottom: 8px;"
-                                            )
-                                            st.markdown(f"<div style='{box_style}'><b>{q_t}</b><br>{a_t}</div>", unsafe_allow_html=True)
+                                                # 🔷 [대제목]: 큰 글씨(20px) + 파란색 + 하단 밑줄선
+                                                main_style = (
+                                                    "color: #1e3a8a; font-size: 20px; font-weight: 800; "
+                                                    "margin-top: 30px; margin-bottom: 12px; "
+                                                    "border-bottom: 2px solid #3b82f6; padding-bottom: 6px;"
+                                                )
+                                                st.markdown(f"<h3 style='{main_style}'>{clean_title}</h3>", unsafe_allow_html=True)
+                                            else:
+                                                # 🔹 [소제목]: 대괄호 제거 + 밑줄 없음 + 단정한 크기(16px) + 짙은 회색
+                                                sub_style = (
+                                                    "color: #334155; font-size: 16px; font-weight: 700; "
+                                                    "margin-top: 18px; margin-bottom: 8px;"
+                                                )
+                                                st.markdown(f"<div style='{sub_style}'>▶ {clean_title}</div>", unsafe_allow_html=True)
+                                            elif a_t:
+                                                box_style = (
+                                                    "background-color: #f8f9fa; padding: 12px; "
+                                                    "border-radius: 5px; border: 1px solid #e9ecef; margin-bottom: 8px;"
+                                                )
+                                                st.markdown(f"<div style='{box_style}'><b>{q_t}</b><br>{a_t}</div>", unsafe_allow_html=True)
                                             
                                     # 🌟 [복구된 코드] 삭제되었던 HTML 파일 생성 변수 1줄 복구!
                                     single_html = generate_activity_html(selected_view, ans, u_info_csv.get('name'))
