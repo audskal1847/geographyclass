@@ -1529,6 +1529,43 @@ def render_activity3_2nd(user_key, u_info, current_role):
     st.markdown("<hr style='margin: 30px 0;'>", unsafe_allow_html=True)
 
     # ----------------------------------------------------
+    # Step 4. 작품 스토리보드 4 컷 (복구 코드)
+    # ----------------------------------------------------
+    st.markdown("### Step 4. 작품 스토리보드 4 컷")
+    st.markdown("""
+    > **안내사항**  
+    > • Step 1의 메시지를 Step 2의 벽면 위에, Step 3의 조건을 지키면서 어떻게 펼칠지 4컷으로 구성합니다.  
+    > • 그림 실력은 평가하지 않습니다. 화면 구성(스케치 내용)을 구체적인 글이나 장면 묘사로 표현해도 됩니다. 대신 설명은 구체적으로 씁니다.
+    """)
+
+    # 4컷 기본 데이터 정의 (도입, 전개, 절정, 마무리)
+    default_step4 = [
+        {"컷": "1 도입", "화면 구성 (스케치)": "", "장면 설명 · 사용 기술 · 소요 시간": ""},
+        {"컷": "2 전개", "화면 구성 (스케치)": "", "장면 설명 · 사용 기술 · 소요 시간": ""},
+        {"컷": "3 절정", "화면 구성 (스케치)": "", "장면 설명 · 사용 기술 · 소요 시간": ""},
+        {"컷": "4 마무리", "화면 구성 (스케치)": "", "장면 설명 · 사용 기술 · 소요 시간": ""}
+    ]
+    step4_list = ans.get("step4_df", default_step4)
+    if not step4_list or not isinstance(step4_list, list):
+        step4_list = default_step4
+
+    df_step4 = pd.DataFrame(step4_list)
+    step4_editor = st.data_editor(
+        df_step4,
+        use_container_width=True,
+        disabled=disabled_flag if 'disabled_flag' in locals() else False,
+        column_config={
+            "컷": st.column_config.TextColumn("컷", width="small", disabled=True),
+            "화면 구성 (스케치)": st.column_config.TextColumn("화면 구성 (스케치)", width="large"),
+            "장면 설명 · 사용 기술 · 소요 시간": st.column_config.TextColumn("장면 설명 · 사용 기술 · 소요 시간", width="large")
+        },
+        hide_index=True,
+        key="step4_editor_key"
+    )
+
+    st.markdown("---")
+
+    # ----------------------------------------------------
     # Step 5. 작품 설명 카드 작성 및 갤러리 워크
     # ----------------------------------------------------
     st.markdown("<h3 style='font-size: 22px; font-weight: 800; color: #111;'>Step 5. 작품 설명 카드 작성 및 갤러리 워크</h3>", unsafe_allow_html=True)
@@ -1632,6 +1669,7 @@ def render_activity3_2nd(user_key, u_info, current_role):
             "step2_final_building": step2_final_building,
             "step2_reason": step2_reason,
             "step3_df": edited_step3_df.to_dict('records'),
+            "step4_df": step4_editor.to_dict('records') if hasattr(step4_editor, 'to_dict') else step4_editor,
             "step5_title": step5_title,
             "step5_place": step5_place,
             "step5_desc": step5_desc,
