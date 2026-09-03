@@ -505,7 +505,16 @@ def get_act_csv_rows(selected_view, ans, config=None):
             ["▶ 작품 개요", ans.get("step5_desc", "")],
             ["▶ 이 작품이 지역의 어떤 정체성을 담았는가", ans.get("step5_identity", ans.get("step5_q1", ""))],
             ["▶ 현장 조건을 어떻게 작품에 반영했는가", ans.get("step5_condition", ans.get("step5_q2", ""))],
-            ["▶ 이 작품이 우리 지역에 남길 변화", ans.get("step5_change", ans.get("step5_q3", ""))]
+            [
+            "▶ 이 작품이 우리 지역에 남길 변화",
+            (
+                f"<div style='line-height: 1.8;'>"
+                f"<b>👥 관람객:</b> {ans.get('step5_change_visitor', '').strip() or '(미작성)'}<br>"
+                f"<b>🏡 주 민:</b> {ans.get('step5_change_resident', '').strip() or '(미작성)'}<br>"
+                f"<b>🛍️ 상 권:</b> {ans.get('step5_change_market', '').strip() or '(미작성)'}"
+                f"</div>"
+            )
+        ]
         ])
 
         csv_data.append(["[Step 6. 제출 전 자기 점검 및 활용 기록]", ""])
@@ -794,7 +803,18 @@ def generate_html_content(act_name, ans, config=None):
         html += f"<p><b>▶ 작품 개요:</b></p><div class='content-box'>{ans.get('step5_desc','')}</div>"
         html += f"<p><b>▶ 이 작품이 지역의 어떤 정체성을 담았는가:</b></p><div class='content-box'>{ans.get('step5_identity', ans.get('step5_q1',''))}</div>"
         html += f"<p><b>▶ 현장 조건을 어떻게 작품에 반영했는가:</b></p><div class='content-box'>{ans.get('step5_condition', ans.get('step5_q2',''))}</div>"
-        html += f"<p><b>▶ 이 작품이 우리 지역에 남길 변화:</b></p><div class='content-box'>{ans.get('step5_change', ans.get('step5_q3',''))}</div>"
+        vis = ans.get("step5_change_visitor", "").strip()
+        res = ans.get("step5_change_resident", "").strip()
+        mkt = ans.get("step5_change_market", "").strip()
+        if vis or res or mkt:
+            change_content = (
+                f"<b>• 👥 관람객:</b> {vis or '(미작성)'}<br>"
+                f"<b>• 🏡 주 민:</b> {res or '(미작성)'}<br>"
+                f"<b>• 🛍️ 상 권:</b> {mkt or '(미작성)'}"
+            )
+        else:
+            change_content = ans.get("step5_change", ans.get("step5_q3", "(미작성)"))
+        html += f"<p><b>▶ 이 작품이 우리 지역에 남길 변화:</b></p><div class='content-box'>{change_content}</div>"
 
         html += "<h3>Step 6. 제출 전 자기 점검 및 활용 기록</h3>"
         html += "<h4>[자기 점검]</h4><table><tr><th>No</th><th>점검 항목</th><th>확인</th></tr>"
@@ -1882,7 +1902,10 @@ def render_activity3_2nd(user_key, u_info, current_role):
             "step5_desc": step5_desc,
             "step5_identity": step5_identity,
             "step5_condition": step5_condition,
-            "step5_change": step5_change,
+            "step5_change_visitor": step5_change_visitor,
+            "step5_change_resident": step5_change_resident,
+            "step5_change_market": step5_change_market,
+            "step5_change": f"[관람객] {step5_change_visitor} / [주민] {step5_change_resident} / [상권] {step5_change_market}",
             "step6_chk_df": edited_step6_chk_df.to_dict('records'),
             "step6_ai_df": edited_step6_ai_df.to_dict('records'),
             "step6_reflection": step6_reflection
