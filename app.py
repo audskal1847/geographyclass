@@ -2,6 +2,26 @@ import streamlit as st
 import streamlit.components.v1 as components
 import json, os, base64, datetime, threading, io, zipfile
 import pandas as pd
+from PIL import Image
+
+def process_sketch_image(uploaded_file, max_width=800):
+    """스마트폰 고화질 사진을 경량화하여 JSON에 안전하게 저장 가능한 Base64로 변환"""
+    if uploaded_file is None:
+        return ""
+    try:
+        img = Image.open(uploaded_file)
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        w, h = img.size
+        if w > max_width:
+            new_h = int(h * (max_width / w))
+            img = img.resize((max_width, new_h), Image.Resampling.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=75)
+        b64_data = base64.b64encode(buf.getvalue()).decode("utf-8")
+        return f"data:image/jpeg;base64,{b64_data}"
+    except Exception:
+        return ""
 
 # 🚀 기본 설정 및 페이지 구성 (사이드바 강제 열림)
 st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", layout="wide", initial_sidebar_state="expanded")
@@ -413,6 +433,28 @@ def get_act_csv_rows(selected_view, ans, config=None):
         for row in ans.get("step3_df", []):
             csv_data.append([row.get("조건 영역", ""), f"실제조건: {row.get('현장의 실제 조건 (확인한 사실)', '')} / 영향: {row.get('작품에 미치는 영향', '')} / 대응: {row.get('나의 대응 방안', '')}"])
 
+        csv_data.append(["[Step 4. 작품 스토리보드 4 컷]", ""])
+        s4_rows = ans.get("step4_df", [])
+        if s4_rows:
+            for row in s4_rows:
+                c_name = row.get("컷", "")
+                c_desc = row.get("장면 설명 · 사용 기술 · 소요 시간", "") or "(설명 미작성)"
+                c_img = row.get("스케치_img", "")
+                
+                if c_img:
+                    # 교사용 화면 박스 안에 스케치 이미지와 설명을 함께 렌더링
+                    html_display = (
+                        f"{c_desc}<br>"
+                        f"<div style='margin-top:10px;'>"
+                        f"<img src='{c_img}' style='max-width:350px; border-radius:8px; border:1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>"
+                        f"</div>"
+                    )
+                    csv_data.append([f"[{c_name}] 스케치 및 설명", html_display])
+                else:
+                    csv_data.append([f"[{c_name}] 설명 (스케치 미등록)", c_desc])
+        else:
+            csv_data.append(["스토리보드", "(미작성)"])
+            
         csv_data.append(["[Step 5. 작품 설명 카드 작성 및 갤러리 워크]", ""])
         csv_data.extend([
             ["▶ 작품 제목", ans.get("step5_title", "")],
@@ -672,6 +714,27 @@ def generate_html_content(act_name, ans, config=None):
         for row in ans.get("step3_df", []):
             if row.get("현장의 실제 조건 (확인한 사실)") or row.get("나의 대응 방안"):
                 html += f"<tr><td>{row.get('조건 영역','')}</td><td>{row.get('현장의 실제 조건 (확인한 사실)','')}</td><td>{row.get('작품에 미치는 영향','')}</td><td>{row.get('나의 대응 방안','')}</td></tr>"
+        html += "</table>"
+
+        # ----------------------------------------------------
+        # Step 4. 작품 스토리보드 4컷 HTML (스케치 이미지 + 설명)
+        # ----------------------------------------------------
+        html += "<h3>Step 4. 작품 스토리보드 4 컷</h3>"
+        html += "<table style='width:100%; border-collapse: collapse; margin-top:10px; font-size:14px;'>"
+        html += "<tr style='background-color:#f8fafc;'><th style='width:12%; padding:10px; border:1px solid #cbd5e1; text-align:center;'>컷</th><th style='width:40%; padding:10px; border:1px solid #cbd5e1; text-align:center;'>스케치</th><th style='width:48%; padding:10px; border:1px solid #cbd5e1; text-align:center;'>장면 설명 · 사용 기술 · 소요 시간</th></tr>"
+        
+        for row in ans.get("step4_df", []):
+            c_name = row.get("컷", "")
+            c_desc = row.get("장면 설명 · 사용 기술 · 소요 시간", "").replace("\n", "<br>")
+            c_img = row.get("스케치_img", "")
+            
+            if c_img:
+                img_tag = f"<img src='{c_img}' style='max-width:280px; max-height:200px; border-radius:6px; border:1px solid #e2e8f0; display:block; margin:0 auto;'>"
+            else:
+                img_tag = "<span style='color:#94a3b8; font-size:13px;'>(스케치 미등록)</span>"
+                
+            html += f"<tr><td style='text-align:center; font-weight:bold; border:1px solid #cbd5e1; padding:10px; background-color:#fafafa;'>{c_name}</td><td style='text-align:center; border:1px solid #cbd5e1; padding:10px; vertical-align:middle;'>{img_tag}</td><td style='border:1px solid #cbd5e1; padding:10px; vertical-align:top; line-height:1.6;'>{c_desc}</td></tr>"
+            
         html += "</table>"
 
         html += "<h3>Step 5. 작품 설명 카드 작성 및 갤러리 워크</h3>"
@@ -1529,39 +1592,62 @@ def render_activity3_2nd(user_key, u_info, current_role):
     st.markdown("<hr style='margin: 30px 0;'>", unsafe_allow_html=True)
 
     # ----------------------------------------------------
-    # Step 4. 작품 스토리보드 4 컷 (복구 코드)
+    # Step 4. 작품 스토리보드 4컷 (스케치 파일 업로드 + 설명)
     # ----------------------------------------------------
     st.markdown("### Step 4. 작품 스토리보드 4 컷")
     st.markdown("""
     > **안내사항**  
-    > • Step 1의 메시지를 Step 2의 벽면 위에, Step 3의 조건을 지키면서 어떻게 펼칠지 4컷으로 구성합니다.  
-    > • 그림 실력은 평가하지 않습니다. 화면 구성(스케치 내용)을 구체적인 글이나 장면 묘사로 표현해도 됩니다. 대신 설명은 구체적으로 씁니다.
+    > • 각 컷별로 **스케치한 파일(사진/캡처 이미지)**을 업로드하고, 우측에 **장면 설명**을 작성합니다.  
+    > • *(종이 1장에 4컷을 모두 그린 경우, '1 도입'에 전체 사진을 올리고 설명만 각각 작성해도 됩니다.)*
     """)
 
-    # 4컷 기본 데이터 정의 (도입, 전개, 절정, 마무리)
-    default_step4 = [
-        {"컷": "1 도입", "화면 구성 (스케치)": "", "장면 설명 · 사용 기술 · 소요 시간": ""},
-        {"컷": "2 전개", "화면 구성 (스케치)": "", "장면 설명 · 사용 기술 · 소요 시간": ""},
-        {"컷": "3 절정", "화면 구성 (스케치)": "", "장면 설명 · 사용 기술 · 소요 시간": ""},
-        {"컷": "4 마무리", "화면 구성 (스케치)": "", "장면 설명 · 사용 기술 · 소요 시간": ""}
-    ]
-    step4_list = ans.get("step4_df", default_step4)
-    if not step4_list or not isinstance(step4_list, list):
-        step4_list = default_step4
+    cut_names = ["1 도입", "2 전개", "3 절정", "4 마무리"]
+    saved_step4 = ans.get("step4_df", [])
+    step4_data = []
 
-    df_step4 = pd.DataFrame(step4_list)
-    step4_editor = st.data_editor(
-        df_step4,
-        use_container_width=True,
-        disabled=disabled_flag if 'disabled_flag' in locals() else False,
-        column_config={
-            "컷": st.column_config.TextColumn("컷", width="small", disabled=True),
-            "화면 구성 (스케치)": st.column_config.TextColumn("화면 구성 (스케치)", width="large"),
-            "장면 설명 · 사용 기술 · 소요 시간": st.column_config.TextColumn("장면 설명 · 사용 기술 · 소요 시간", width="large")
-        },
-        hide_index=True,
-        key="step4_editor_key"
-    )
+    for i, c_name in enumerate(cut_names):
+        # 기존 저장 데이터 불러오기
+        old_cut = saved_step4[i] if i < len(saved_step4) and isinstance(saved_step4[i], dict) else {}
+        old_img = old_cut.get("스케치_img", "")
+        old_desc = old_cut.get("장면 설명 · 사용 기술 · 소요 시간", "")
+
+        st.markdown(f"#### 🎬 {c_name}")
+        col_img, col_txt = st.columns([1, 1.2])
+
+        with col_img:
+            up_file = st.file_uploader(
+                f"[{c_name}] 스케치 파일 업로드 (JPG/PNG)", 
+                type=["png", "jpg", "jpeg", "webp"], 
+                key=f"step4_file_{i}",
+                disabled=disabled_flag if 'disabled_flag' in locals() else False
+            )
+            # 새 파일 업로드 시 압축 변환, 미업로드 시 기존 이미지 유지
+            if up_file is not None:
+                current_img = process_sketch_image(up_file)
+            else:
+                current_img = old_img
+
+            if current_img:
+                st.image(current_img, caption=f"{c_name} 스케치 미리보기", use_container_width=True)
+            else:
+                st.caption("📷 등록된 스케치 이미지가 없습니다.")
+
+        with col_txt:
+            desc_val = st.text_area(
+                f"[{c_name}] 장면 설명 · 사용 기술 · 소요 시간",
+                value=old_desc,
+                height=170,
+                key=f"step4_desc_{i}",
+                disabled=disabled_flag if 'disabled_flag' in locals() else False
+            )
+
+        st.markdown("<hr style='margin: 15px 0; border: 0.5px dashed #cbd5e1;'>", unsafe_allow_html=True)
+
+        step4_data.append({
+            "컷": c_name,
+            "스케치_img": current_img,
+            "장면 설명 · 사용 기술 · 소요 시간": desc_val
+        })
 
     st.markdown("---")
 
@@ -1716,6 +1802,7 @@ def render_custom_activity(user_key, u_info, current_role, act_name, config):
         if st.button("저장하기", type="primary", key=f"save_{act_name}"):
             current_data = load_json(DATA_FILE, {})
             if user_key not in current_data: current_data[user_key] = {}
+            new_ans["step4_df"] = step4_data    
             current_data[user_key][act_name] = new_ans
             save_json(DATA_FILE, current_data); ans = new_ans
             create_auto_backup(f"[{u_name}] {act_name} 저장")
