@@ -260,7 +260,7 @@ def get_act_csv_rows(selected_view, ans, config=None):
     # ----------------------------------------------------
     # 3학년 여행지리 수행평가 1
     # ----------------------------------------------------
-    elif selected_view == ACT_3_1:
+    if selected_view == ACT_3_1:
         csv_data.extend([
             ["[Part 1. 영상 기본 정보]", ""],
             ["1. 영상의 제목", ans.get("a1_1", "").strip() or "(미작성)"],
