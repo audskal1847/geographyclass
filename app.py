@@ -598,18 +598,18 @@ def generate_html_content(act_name, ans, config=None):
         html += f"<p><b>3. 영상을 선택하게 된 이유:</b></p><div class='content-box'>{ans.get('a1_3', '')}</div>"
 
         # [Part 2. 영상 감상 및 분석]
-        html += "<h3>Part 2. 영상 감상 및 분석</h3>"
-        part2_items = [
+        html += "<h3 style='margin-top:20px;'>Part 2. 영상 감상 및 분석</h3>"
+        p2_items = [
             ("1. 첫 느낌", ans.get("a2_1", "")),
-            ("▶ 인상적이었던 장소/공간", ans.get("a2_2", "")),
-            ("▶ 이유", ans.get("a2_3", "")),
-            ("▶ 누구에게 추천", ans.get("a2_4", "")),
-            ("▶ 추천하는 이유", ans.get("a2_5", "")),
-            ("4. 나만의 감상평", ans.get("a2_6", ""))
+            ("▶ 인상적이었던 장소/공간", ans.get("a2_2_1", "")),  # 👈 a2_2_1로 수정
+            ("▶ 이유", ans.get("a2_2_2", "")),                    # 👈 a2_2_2로 수정
+            ("▶ 누구에게 추천", ans.get("a2_3_1", "")),            # 👈 a2_3_1로 수정
+            ("▶ 추천하는 이유", ans.get("a2_3_2", "")),          # 👈 a2_3_2로 수정
+            ("4. 나만의 감상평", ans.get("a2_4", ""))              # 👈 a2_4로 수정
         ]
-        for title, val in part2_items:
+        for title, val in p2_items:
             c = str(val).strip().replace("\n", "<br>") if str(val).strip() else "<span style='color:#94a3b8;'>(미작성)</span>"
-            html += f"<p><b>{title}:</b></p><div class='content-box'>{c}</div>"
+            html += f"<p style='font-weight:bold; margin-top:10px; margin-bottom:4px;'>{title}</p><div class='content-box' style='background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:8px 12px; margin-bottom:10px;'>{c}</div>"
 
         # [Part 3. 나만의 여행 영상 기획]
         html += "<h3>Part 3. 나만의 여행 영상 기획</h3>"
