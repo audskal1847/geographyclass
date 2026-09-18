@@ -1583,7 +1583,9 @@ def render_activity2_2nd(user_key, u_info, current_role):
             "step4_1": step4_1,
             "step4_2": step4_2,
             "step4_3": step4_3,
-            "step4_4": step4_4
+            "step4_4_reason": step4_4_reason,
+            "step4_5": step4_5,
+            "step4_4": step4_5,  # (구버전 코드 호환용)
         }
         
         current_data[user_key][category] = new_ans
