@@ -499,7 +499,7 @@ def get_act_csv_rows(selected_view, ans, config=None):
         csv_data.extend([
             ["1. 핵심 정책 슬로건", ans.get("step4_1", "")],
             ["2. 실제 답사 및 데이터로 확인한 선택한 지역의 가장 심각한 공간 문제는 무엇이라고 생각하는가?", ans.get("step4_2", "")],
-            ["3. 한정된 150pt를 활용해 무엇을 버리고 무엇을 채웠는가? 그 이유는 무엇인가?", ans.get("step4_3", "")],
+            ["3. 한정된 100pt를 활용해 무엇을 버리고 무엇을 채웠는가? 그 이유는 무엇인가?", ans.get("step4_3", "")],
             ["4. 공간 재설계로 인해 일상이 어떻게 변화할 것이라고 생각하는가?", ans.get("step4_4", "")]
         ])
 
@@ -841,7 +841,7 @@ def generate_html_content(act_name, ans, config=None):
         html += f"<p><b>1. 핵심 정책 슬로건:</b></p><div class='content-box'>{ans.get('step4_1','')}</div>"
         html += "<div style='text-align: center; font-weight: bold; background-color: #eee; padding: 6px; margin: 15px 0;'>연설 내용 구조화 스크립트 작성</div>"
         html += f"<p><b>2. 실제 답사 및 데이터로 확인한 선택한 지역의 가장 심각한 공간 문제는 무엇이라고 생각하는가?:</b></p><div class='content-box'>{ans.get('step4_2','')}</div>"
-        html += f"<p><b>3. 한정된 150pt를 활용해 무엇을 버리고 무엇을 채웠는가? 그 이유는 무엇인가?:</b></p><div class='content-box'>{ans.get('step4_3','')}</div>"
+        html += f"<p><b>3. 한정된 100pt를 활용해 무엇을 버리고 무엇을 채웠는가? 그 이유는 무엇인가?:</b></p><div class='content-box'>{ans.get('step4_3','')}</div>"
         html += f"<p><b>4. 공간 재설계로 인해 일상이 어떻게 변화할 것이라고 생각하는가?:</b></p><div class='content-box'>{ans.get('step4_4','')}</div>"
 
     # ----------------------------------------------------
@@ -1369,7 +1369,7 @@ def render_activity2_2nd(user_key, u_info, current_role):
         <span style='font-size: 13.5px; color: #4a5568;'>: 두 개 이상의 상충되는 요구사항(예: 성능 대 비용, 유연성 대 단순성) 사이에서 최선의 선택을 하기 위해 장단점을 저울질하고 조율하는 과정. 완벽한 설계는 존재하지 않으며, 모든 설계는 무엇인가를 얻는 대신 다른 것을 포기하는 구조를 가질 수 밖에 없음</span><br><br>
         <b style='color: #2b6cb0;'>▶ 도시 개조 포인트</b><br>
         <span style='font-size: 13.5px; color: #4a5568;'>
-        : 기본 150포인트 부여, 포인트를 활용하여 기존의 비효율적, 차량 중심 공간을 보행자를 위한 친환경 인프라로!!<br>
+        : 기본 100포인트 부여, 포인트를 활용하여 기존의 비효율적, 차량 중심 공간을 보행자를 위한 친환경 인프라로!!<br>
         : 새롭게 추가하는 카테고리/코드/세부 개조 항목 관련한 포인트는 최소 10pt, 최대 20pt(10~20pt)<br>
         : 포인트는 남김 없이 모두 사용해야 함<br>
         : 최소한의 현실 가능성은 충족할 것 예) 지하철 개통, 공항 건설... ㅠ.ㅠ
@@ -1550,7 +1550,7 @@ def render_activity2_2nd(user_key, u_info, current_role):
     st.markdown("**2. 실제 답사 및 데이터로 확인한 선택한 지역의 가장 심각한 공간 문제는 무엇이라고 생각하는가?**")
     step4_2 = st.text_area("2. 실제 답사 및 데이터로 확인한 문제", value=ans.get("step4_2", ""), height=100, label_visibility="collapsed", disabled=disabled_flag, key="s4_2_input")
 
-    st.markdown("**3. 한정된 150pt를 활용해 무엇을 버리고 무엇을 채웠는가? 그 이유는 무엇인가?**")
+    st.markdown("**3. 한정된 100pt를 활용해 무엇을 버리고 무엇을 채웠는가? 그 이유는 무엇인가?**")
     step4_3 = st.text_area("3. 버리고 채운 것과 이유", value=ans.get("step4_3", ""), height=100, label_visibility="collapsed", disabled=disabled_flag, key="s4_3_input")
 
     st.markdown("**4. 공간 재설계로 인해 일상이 어떻게 변화할 것이라고 생각하는가?**")
