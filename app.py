@@ -499,9 +499,8 @@ def get_act_csv_rows(selected_view, ans, config=None):
         csv_data.extend([
             ["1. 핵심 정책 슬로건", ans.get("step4_1", "")],
             ["2. 실제 답사 및 데이터로 확인한 선택한 지역의 가장 심각한 공간 문제는 무엇이라고 생각하는가?", ans.get("step4_2", "")],
-            ["3. 한정된 150pt를 활용해 무엇을 버리고 무엇을 채웠는가?", ans.get("step4_3", "").strip() or "(미작성)"],
-            ["4. 그 이유는 무엇인가?", ans.get("step4_4_reason", "").strip() or "(미작성)"],
-            ["5. 공간 재설계로 인해 일상이 어떻게 변화할 것이라고 생각하는가?", (ans.get("step4_5") or ans.get("step4_4", "")).strip() or "(미작성)"]
+            ["3. 한정된 150pt를 활용해 무엇을 버리고 무엇을 채웠는가? 그 이유는 무엇인가?", ans.get("step4_3", "")],
+            ["4. 공간 재설계로 인해 일상이 어떻게 변화할 것이라고 생각하는가?", ans.get("step4_4", "")]
         ])
 
     # ----------------------------------------------------
@@ -842,20 +841,8 @@ def generate_html_content(act_name, ans, config=None):
         html += f"<p><b>1. 핵심 정책 슬로건:</b></p><div class='content-box'>{ans.get('step4_1','')}</div>"
         html += "<div style='text-align: center; font-weight: bold; background-color: #eee; padding: 6px; margin: 15px 0;'>연설 내용 구조화 스크립트 작성</div>"
         html += f"<p><b>2. 실제 답사 및 데이터로 확인한 선택한 지역의 가장 심각한 공간 문제는 무엇이라고 생각하는가?:</b></p><div class='content-box'>{ans.get('step4_2','')}</div>"
-        # 3. 버리고 채운 것
-        c3 = str(ans.get("step4_3", "")).strip().replace("\n", "<br>") or "<span style='color:#94a3b8;'>(미작성)</span>"
-        html += "<p style='font-weight:bold; margin-top:14px; margin-bottom:4px; color:#1e293b;'>3. 한정된 150pt를 활용해 무엇을 버리고 무엇을 채웠는가?</p>"
-        html += f"<div class='content-box' style='background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:10px 14px; line-height:1.6; font-size:13.5px;'>{c3}</div>"
-
-        # 4. 그 이유 (신규 분리)
-        c4 = str(ans.get("step4_4_reason", "")).strip().replace("\n", "<br>") or "<span style='color:#94a3b8;'>(미작성)</span>"
-        html += "<p style='font-weight:bold; margin-top:14px; margin-bottom:4px; color:#1e293b;'>4. 그 이유는 무엇인가?</p>"
-        html += f"<div class='content-box' style='background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:10px 14px; line-height:1.6; font-size:13.5px;'>{c4}</div>"
-
-        # 5. 일상 변화
-        c5 = str(ans.get("step4_5") or ans.get("step4_4", "")).strip().replace("\n", "<br>") or "<span style='color:#94a3b8;'>(미작성)</span>"
-        html += "<p style='font-weight:bold; margin-top:14px; margin-bottom:4px; color:#1e293b;'>5. 공간 재설계로 인해 일상이 어떻게 변화할 것이라고 생각하는가?</p>"
-        html += f"<div class='content-box' style='background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:10px 14px; line-height:1.6; font-size:13.5px;'>{c5}</div>"
+        html += f"<p><b>3. 한정된 150pt를 활용해 무엇을 버리고 무엇을 채웠는가? 그 이유는 무엇인가?:</b></p><div class='content-box'>{ans.get('step4_3','')}</div>"
+        html += f"<p><b>4. 공간 재설계로 인해 일상이 어떻게 변화할 것이라고 생각하는가?:</b></p><div class='content-box'>{ans.get('step4_4','')}</div>"
 
     # ----------------------------------------------------
     # 2학년 수행평가 3 (미디어 파사드)
@@ -1563,17 +1550,11 @@ def render_activity2_2nd(user_key, u_info, current_role):
     st.markdown("**2. 실제 답사 및 데이터로 확인한 선택한 지역의 가장 심각한 공간 문제는 무엇이라고 생각하는가?**")
     step4_2 = st.text_area("2. 실제 답사 및 데이터로 확인한 문제", value=ans.get("step4_2", ""), height=100, label_visibility="collapsed", disabled=disabled_flag, key="s4_2_input")
 
-    # 3. 버리고 채운 것
-    st.markdown("**3. 한정된 150pt를 활용해 무엇을 버리고 무엇을 채웠는가?**")
-    step4_3 = st.text_area("3. 버리고 채운 것", value=ans.get("step4_3", ""), height=100, label_visibility="collapsed", disabled=disabled_flag, key="s4_3_input")
+    st.markdown("**3. 한정된 150pt를 활용해 무엇을 버리고 무엇을 채웠는가? 그 이유는 무엇인가?**")
+    step4_3 = st.text_area("3. 버리고 채운 것과 이유", value=ans.get("step4_3", ""), height=100, label_visibility="collapsed", disabled=disabled_flag, key="s4_3_input")
 
-    # 4. 그 이유 (신규 분리 문항)
-    st.markdown("**4. 그 이유는 무엇인가?**")
-    step4_4_reason = st.text_area("4. 그 이유", value=ans.get("step4_4_reason", ""), height=100, label_visibility="collapsed", disabled=disabled_flag, key="s4_4_reason_input")
-
-    # 5. 일상의 변화 (기존 4번에 작성했던 학생 데이터 자동 승계)
-    st.markdown("**5. 공간 재설계로 인해 일상이 어떻게 변화할 것이라고 생각하는가?**")
-    step4_5 = st.text_area("5. 일상의 변화", value=ans.get("step4_5", ans.get("step4_4", "")), height=100, label_visibility="collapsed", disabled=disabled_flag, key="s4_5_input")
+    st.markdown("**4. 공간 재설계로 인해 일상이 어떻게 변화할 것이라고 생각하는가?**")
+    step4_4 = st.text_area("4. 일상의 변화", value=ans.get("step4_4", ""), height=100, label_visibility="collapsed", disabled=disabled_flag, key="s4_4_input")
 
     # ----------------------------------------------------
     # 저장하기 버튼 & 데이터베이스 동기화
@@ -1592,13 +1573,11 @@ def render_activity2_2nd(user_key, u_info, current_role):
             "step1_p1": step1_p1, "step1_d1": step1_d1,
             "step1_p2": step1_p2, "step1_d2": step1_d2,
             "step1_p3": step1_p3, "step1_d3": step1_d3,
-            "step2_point_df": edited_step2_point_df.to_dict('records') if ('edited_step2_point_df' in locals() and hasattr(edited_step2_point_df, 'to_dict')) else ans.get("step2_point_df", []),
+            "step2_point_df": edited_step2_point_df.to_dict('records'),
             "step4_1": step4_1,
             "step4_2": step4_2,
             "step4_3": step4_3,
-            "step4_4_reason": step4_4_reason,
-            "step4_5": step4_5,
-            "step4_4": step4_5,  # (구버전 코드 호환용)
+            "step4_4": step4_4
         }
         
         current_data[user_key][category] = new_ans
