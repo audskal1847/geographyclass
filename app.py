@@ -842,8 +842,20 @@ def generate_html_content(act_name, ans, config=None):
         html += f"<p><b>1. 핵심 정책 슬로건:</b></p><div class='content-box'>{ans.get('step4_1','')}</div>"
         html += "<div style='text-align: center; font-weight: bold; background-color: #eee; padding: 6px; margin: 15px 0;'>연설 내용 구조화 스크립트 작성</div>"
         html += f"<p><b>2. 실제 답사 및 데이터로 확인한 선택한 지역의 가장 심각한 공간 문제는 무엇이라고 생각하는가?:</b></p><div class='content-box'>{ans.get('step4_2','')}</div>"
-        html += f"<p><b>3. 한정된 150pt를 활용해 무엇을 버리고 무엇을 채웠는가? 그 이유는 무엇인가?:</b></p><div class='content-box'>{ans.get('step4_3','')}</div>"
-        html += f"<p><b>4. 공간 재설계로 인해 일상이 어떻게 변화할 것이라고 생각하는가?:</b></p><div class='content-box'>{ans.get('step4_4','')}</div>"
+        # 3. 버리고 채운 것
+        c3 = str(ans.get("step4_3", "")).strip().replace("\n", "<br>") or "<span style='color:#94a3b8;'>(미작성)</span>"
+        html += "<p style='font-weight:bold; margin-top:14px; margin-bottom:4px; color:#1e293b;'>3. 한정된 150pt를 활용해 무엇을 버리고 무엇을 채웠는가?</p>"
+        html += f"<div class='content-box' style='background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:10px 14px; line-height:1.6; font-size:13.5px;'>{c3}</div>"
+
+        # 4. 그 이유 (신규 분리)
+        c4 = str(ans.get("step4_4_reason", "")).strip().replace("\n", "<br>") or "<span style='color:#94a3b8;'>(미작성)</span>"
+        html += "<p style='font-weight:bold; margin-top:14px; margin-bottom:4px; color:#1e293b;'>4. 그 이유는 무엇인가?</p>"
+        html += f"<div class='content-box' style='background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:10px 14px; line-height:1.6; font-size:13.5px;'>{c4}</div>"
+
+        # 5. 일상 변화
+        c5 = str(ans.get("step4_5") or ans.get("step4_4", "")).strip().replace("\n", "<br>") or "<span style='color:#94a3b8;'>(미작성)</span>"
+        html += "<p style='font-weight:bold; margin-top:14px; margin-bottom:4px; color:#1e293b;'>5. 공간 재설계로 인해 일상이 어떻게 변화할 것이라고 생각하는가?</p>"
+        html += f"<div class='content-box' style='background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:10px 14px; line-height:1.6; font-size:13.5px;'>{c5}</div>"
 
     # ----------------------------------------------------
     # 2학년 수행평가 3 (미디어 파사드)
