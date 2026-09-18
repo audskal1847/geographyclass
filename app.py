@@ -1368,152 +1368,61 @@ def render_activity2_2nd(user_key, u_info, current_role):
     """, unsafe_allow_html=True)
 
     # [이 부분을 드래그하여 삭제] (930번 ~ 969번 줄)
-    step2_table_html = """
-    <table style="width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 25px; font-size: 14px; background-color: #ffffff;">
-        <thead>
-            <tr style="background-color: #f8f9fa;">
-                <th style="padding: 10px; border: 1px solid #dee2e6; text-align: center; font-weight: 700; width: 26%;">카테고리</th>
-                <th style="padding: 10px; border: 1px solid #dee2e6; text-align: center; font-weight: 700; width: 10%;">코드</th>
-                <th style="padding: 10px; border: 1px solid #dee2e6; text-align: center; font-weight: 700; width: 50%;">세부 개조 항목</th>
-                <th style="padding: 10px; border: 1px solid #dee2e6; text-align: center; font-weight: 700; width: 14%;">비용</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td rowspan="6" style="text-align: center; vertical-align: middle; font-weight: 700; background-color: #fafbfc; border: 1px solid #dee2e6;">안전한 보행 환경</td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">A-1</td>
-                <td style="padding: 8px 12px; border: 1px solid #dee2e6;">여고생 안심 하교길 스마트 로드</td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">-15pt</td>
-            </tr>
-            <tr>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">A-2</td>
-                <td style="padding: 8px 12px; border: 1px solid #dee2e6;">아파트 단지 간 담장 철거 및 공공 보행로 연결</td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">-20pt</td>
-            </tr>
-            <tr>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">A-3</td>
-                <td style="padding: 8px 12px; border: 1px solid #dee2e6;">차로 축소 및 쾌적한 보행을 위한 녹지 공간 조성</td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">-20pt</td>
-            </tr>
-            <tr>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">A-4</td>
-                <td style="padding: 8px 12px; border: 1px solid #dee2e6;">스마트 횡단보도 및 교통약자/학생 쉼터</td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">-10pt</td>
-            </tr>
-            <tr>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">A-5</td>
-                <td style="padding: 8px 12px; border: 1px solid #dee2e6;"></td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;"></td>
-            </tr>
-            <tr>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">A-6</td>
-                <td style="padding: 8px 12px; border: 1px solid #dee2e6;"></td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;"></td>
-            </tr>
-            <tr>
-                <td rowspan="5" style="text-align: center; vertical-align: middle; font-weight: 700; background-color: #fafbfc; border: 1px solid #dee2e6;">녹지 및 생태공간 구축</td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">B-1</td>
-                <td style="padding: 8px 12px; border: 1px solid #dee2e6;">아파트 상가/방치 공터 → 도심 소공원 조성</td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">-15pt</td>
-            </tr>
-            <tr>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">B-2</td>
-                <td style="padding: 8px 12px; border: 1px solid #dee2e6;">도심 바람길 숲 및 수변 산책로 조성</td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">-15pt</td>
-            </tr>
-            <tr>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">B-3</td>
-                <td style="padding: 8px 12px; border: 1px solid #dee2e6;">에코 펫파크(반려견 전용 공원 및 산책로)</td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">-15pt</td>
-            </tr>
-            <tr>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">B-4</td>
-                <td style="padding: 8px 12px; border: 1px solid #dee2e6;"></td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;"></td>
-            </tr>
-            <tr>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">B-5</td>
-                <td style="padding: 8px 12px; border: 1px solid #dee2e6;"></td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;"></td>
-            </tr>
-            <tr>
-                <td rowspan="5" style="text-align: center; vertical-align: middle; font-weight: 700; background-color: #fafbfc; border: 1px solid #dee2e6;">문화와 교육을 위한 공간</td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">C-1</td>
-                <td style="padding: 8px 12px; border: 1px solid #dee2e6;">24시간 공공 스터디 & 커뮤니티 카페</td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">-15pt</td>
-            </tr>
-            <tr>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">C-2</td>
-                <td style="padding: 8px 12px; border: 1px solid #dee2e6;">청소년 팝업 스튜디오 & 소공연장</td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">-15pt</td>
-            </tr>
-            <tr>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">C-3</td>
-                <td style="padding: 8px 12px; border: 1px solid #dee2e6;">친환경 스마트 팜</td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">-10pt</td>
-            </tr>
-            <tr>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">C-4</td>
-                <td style="padding: 8px 12px; border: 1px solid #dee2e6;"></td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;"></td>
-            </tr>
-            <tr>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">C-5</td>
-                <td style="padding: 8px 12px; border: 1px solid #dee2e6;"></td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;"></td>
-            </tr>
-            <tr>
-                <td rowspan="4" style="text-align: center; vertical-align: middle; font-weight: 700; background-color: #fafbfc; border: 1px solid #dee2e6;">효율적인 교통과 모빌리티 구축</td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">D-1</td>
-                <td style="padding: 8px 12px; border: 1px solid #dee2e6;">공유 자전거 및 킥보드 전용 도로</td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">-15pt</td>
-            </tr>
-            <tr>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">D-2</td>
-                <td style="padding: 8px 12px; border: 1px solid #dee2e6;">스마트 버스 쉘터(공기 청정, 냉난방 설비 구축)</td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">-10pt</td>
-            </tr>
-            <tr>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">D-3</td>
-                <td style="padding: 8px 12px; border: 1px solid #dee2e6;"></td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;"></td>
-            </tr>
-            <tr>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;">D-4</td>
-                <td style="padding: 8px 12px; border: 1px solid #dee2e6;"></td>
-                <td style="text-align: center; font-weight: 600; padding: 8px; border: 1px solid #dee2e6;"></td>
-            </tr>
-        </tbody>
-    </table>
-    """
-    st.markdown(step2_table_html, unsafe_allow_html=True)
-
-    # 신규 추가 개조 항목 입력칸
-    st.markdown("##### ✏️ 모둠 신규 추가 개조 항목 작성 (필요 시 작성)")
-    default_custom_df = [
-        {"코드": "A-5", "세부 개조 항목": "", "비용(10~20pt)": ""},
-        {"코드": "B-4", "세부 개조 항목": "", "비용(10~20pt)": ""},
-        {"코드": "C-4", "세부 개조 항목": "", "비용(10~20pt)": ""},
-        {"코드": "D-3", "세부 개조 항목": "", "비용(10~20pt)": ""},
+    # ----------------------------------------------------
+    # [통합] 편집·추가·삭제 가능한 대화형 트레이드오프 설계 표
+    # ----------------------------------------------------
+    default_tradeoff_rows = [
+        {"카테고리": "안전한 보행 환경", "코드": "A-1", "세부 개조 항목": "여고생 안심 하교길 스마트 로드", "비용": "-15pt"},
+        {"카테고리": "안전한 보행 환경", "코드": "A-2", "세부 개조 항목": "아파트 단지 간 담장 철거 및 공공 보행로 연결", "비용": "-20pt"},
+        {"카테고리": "안전한 보행 환경", "코드": "A-3", "세부 개조 항목": "차로 축소 및 쾌적한 보행을 위한 녹지 공간 조성", "비용": "-20pt"},
+        {"카테고리": "안전한 보행 환경", "코드": "A-4", "세부 개조 항목": "스마트 횡단보도 및 교통약자/학생 쉼터", "비용": "-10pt"},
+        {"카테고리": "녹지 및 생태공간 구축", "코드": "B-1", "세부 개조 항목": "아파트 상가/방치 공터 → 도심 소공원 조성", "비용": "-15pt"},
+        {"카테고리": "녹지 및 생태공간 구축", "코드": "B-2", "세부 개조 항목": "도심 바람길 숲 및 수변 산책로 조성", "비용": "-15pt"},
+        {"카테고리": "녹지 및 생태공간 구축", "코드": "B-3", "세부 개조 항목": "에코 펫파크(반려견 전용 공원 및 산책로)", "비용": "-15pt"},
+        {"카테고리": "문화와 교육을 위한 공간", "코드": "C-1", "세부 개조 항목": "24시간 공공 스터디 & 커뮤니티 카페", "비용": "-15pt"},
+        {"카테고리": "문화와 교육을 위한 공간", "코드": "C-2", "세부 개조 항목": "청소년 팝업 스튜디오 & 소공연장", "비용": "-15pt"},
+        {"카테고리": "문화와 교육을 위한 공간", "코드": "C-3", "세부 개조 항목": "친환경 스마트 팜", "비용": "-10pt"},
+        {"카테고리": "효율적인 교통과 모빌리티 구축", "코드": "D-1", "세부 개조 항목": "공유 자전거 및 킥보드 전용 도로", "비용": "-15pt"},
+        {"카테고리": "효율적인 교통과 모빌리티 구축", "코드": "D-2", "세부 개조 항목": "스마트 버스 쉘터(공기 청정, 냉난방 설비 구축)", "비용": "-10pt"}
     ]
-    custom_items_data = ans.get("step2_custom_df", default_custom_df)
-    custom_df = pd.DataFrame(custom_items_data)
-    edited_custom_df = st.data_editor(
-        custom_df,
+
+    saved_step2 = ans.get("step2_table_df") or ans.get("step2_custom_df") or ans.get("step2_point_df")
+    step2_display_data = saved_step2 if (saved_step2 and isinstance(saved_step2, list) and len(saved_step2) > 0) else default_tradeoff_rows
+    df_step2 = pd.DataFrame(step2_display_data)
+
+    st.markdown("##### 🛠️ 트레이드오프 설계표 (클릭하여 수정 / 하단 [+]로 행 추가 / 행 선택 후 [Delete]로 삭제)")
+    edited_step2_df = st.data_editor(
+        df_step2,
         num_rows="dynamic",
         use_container_width=True,
         hide_index=True,
         disabled=disabled_flag,
         column_config={
-            "코드": st.column_config.TextColumn("코드(예: A-5, B-4)", width="small"),
+            "카테고리": st.column_config.SelectboxColumn(
+                "카테고리",
+                options=[
+                    "안전한 보행 환경",
+                    "녹지 및 생태공간 구축",
+                    "문화와 교육을 위한 공간",
+                    "효율적인 교통과 모빌리티 구축",
+                    "모둠 자율 신규 카테고리"
+                ],
+                required=True,
+                width="medium"
+            ),
+            "코드": st.column_config.TextColumn("코드", width="small", required=True),
             "세부 개조 항목": st.column_config.TextColumn("세부 개조 항목", width="large"),
-            "비용(10~20pt)": st.column_config.TextColumn("비용", width="small"),
+            "비용": st.column_config.SelectboxColumn(
+                "비용",
+                options=["-5pt", "-10pt", "-15pt", "-20pt", "-25pt"],
+                required=True,
+                width="small"
+            ),
         },
-        key="s2_custom_editor"
+        key=f"s2_tradeoff_editor_{user_key if 'user_key' in locals() else current_user_key}"
     )
 
     st.markdown("<hr style='margin: 30px 0;'>", unsafe_allow_html=True)
-
     # ----------------------------------------------------
     # Step 4. 3분 공청회 발표를 위한 준비
     # ----------------------------------------------------
