@@ -1388,7 +1388,12 @@ def render_activity2_2nd(user_key, u_info, current_role):
 
     saved_step2 = ans.get("step2_table_df") or ans.get("step2_custom_df") or ans.get("step2_point_df")
     step2_display_data = saved_step2 if (saved_step2 and isinstance(saved_step2, list) and len(saved_step2) > 0) else default_tradeoff_rows
+    
+    # 🌟 [자동 정렬] 학생이 맨 밑에 추가해도 코드(A-1, A-2... B-1...) 순서대로 자동 배치
     df_step2 = pd.DataFrame(step2_display_data)
+    if "코드" in df_step2.columns and not df_step2.empty:
+        df_step2["sort_key"] = df_step2["코드"].astype(str).str.upper().str.strip()
+        df_step2 = df_step2.sort_values(by="sort_key").drop(columns=["sort_key"])
 
     st.markdown("##### 🛠️ 트레이드오프 설계표 (클릭하여 수정 / 하단 [+]로 행 추가 / 행 선택 후 [Delete]로 삭제)")
     edited_step2_df = st.data_editor(
@@ -1412,17 +1417,16 @@ def render_activity2_2nd(user_key, u_info, current_role):
             ),
             "코드": st.column_config.TextColumn("코드", width="small", required=True),
             "세부 개조 항목": st.column_config.TextColumn("세부 개조 항목", width="large"),
+            # 🌟 [비용 옵션] 10pt부터 30pt까지 5pt 간격 설정
             "비용": st.column_config.SelectboxColumn(
                 "비용",
-                options=["-5pt", "-10pt", "-15pt", "-20pt", "-25pt"],
+                options=["-10pt", "-15pt", "-20pt", "-25pt", "-30pt"],
                 required=True,
                 width="small"
             ),
         },
         key=f"s2_tradeoff_editor_{user_key if 'user_key' in locals() else current_user_key}"
     )
-
-    st.markdown("<hr style='margin: 30px 0;'>", unsafe_allow_html=True)
     # ----------------------------------------------------
     # Step 4. 3분 공청회 발표를 위한 준비
     # ----------------------------------------------------
