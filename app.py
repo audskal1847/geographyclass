@@ -1453,11 +1453,17 @@ def render_activity2_2nd(user_key, u_info, current_role):
     st.markdown("**2. 실제 답사 및 데이터로 확인한 선택한 지역의 가장 심각한 공간 문제는 무엇이라고 생각하는가?**")
     step4_2 = st.text_area("2. 실제 답사 및 데이터로 확인한 문제", value=ans.get("step4_2", ""), height=100, label_visibility="collapsed", disabled=disabled_flag, key="s4_2_input")
 
-    st.markdown("**3. 한정된 150pt를 활용해 무엇을 버리고 무엇을 채웠는가? 그 이유는 무엇인가?**")
-    step4_3 = st.text_area("3. 버리고 채운 것과 이유", value=ans.get("step4_3", ""), height=100, label_visibility="collapsed", disabled=disabled_flag, key="s4_3_input")
+    # 3. 버리고 채운 것
+    st.markdown("**3. 한정된 150pt를 활용해 무엇을 버리고 무엇을 채웠는가?**")
+    step4_3 = st.text_area("3. 버리고 채운 것", value=ans.get("step4_3", ""), height=100, label_visibility="collapsed", disabled=disabled_flag, key=f"s4_3_input_{user_key if 'user_key' in locals() else current_user_key}")
 
-    st.markdown("**4. 공간 재설계로 인해 일상이 어떻게 변화할 것이라고 생각하는가?**")
-    step4_4 = st.text_area("4. 일상의 변화", value=ans.get("step4_4", ""), height=100, label_visibility="collapsed", disabled=disabled_flag, key="s4_4_input")
+    # 4. 그 이유 (NameError를 일으켰던 핵심 변수 정의)
+    st.markdown("**4. 그 이유는 무엇인가?**")
+    step4_4_reason = st.text_area("4. 그 이유", value=ans.get("step4_4_reason", ans.get("step4_3_reason", "")), height=100, label_visibility="collapsed", disabled=disabled_flag, key=f"s4_4_reason_input_{user_key if 'user_key' in locals() else current_user_key}")
+
+    # 5. 일상의 변화 (기존 4번 작성 내용 자동 승계)
+    st.markdown("**5. 공간 재설계로 인해 일상이 어떻게 변화할 것이라고 생각하는가?**")
+    step4_5 = st.text_area("5. 일상의 변화", value=ans.get("step4_5", ans.get("step4_4", "")), height=100, label_visibility="collapsed", disabled=disabled_flag, key=f"s4_5_input_{user_key if 'user_key' in locals() else current_user_key}")
 
     # ----------------------------------------------------
     # 저장하기 버튼 & 데이터베이스 동기화
