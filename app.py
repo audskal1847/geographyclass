@@ -490,10 +490,15 @@ def get_act_csv_rows(selected_view, ans, config=None):
         ])
         
         csv_data.append(["[Step 2. 도시 개조 포인트를 활용한 트레이드오프 설계]", ""])
-        if ans.get("step2_custom_df"):
-            for row in ans.get("step2_custom_df", []):
-                if row.get("세부 개조 항목"):
-                    csv_data.append([f"[추가개조] {row.get('코드','')}", f"{row.get('세부 개조 항목','')} ({row.get('비용(10~20pt)','')})"])
+        s2_rows = ans.get("step2_table_df") or ans.get("step2_custom_df") or ans.get("step2_point_df", [])
+        for row in s2_rows:
+            c_cat = str(row.get("카테고리", "")).strip()
+            c_code = str(row.get("코드", "")).strip()
+            c_item = str(row.get("세부 개조 항목", "")).strip()
+            c_cost = str(row.get("비용", "")).strip()
+            if c_item:
+                cost_str = f" ({c_cost})" if c_cost else ""
+                csv_data.append([f"[{c_cat}] {c_code}", f"{c_item}{cost_str}"])
         
         csv_data.append(["[Step 4. 3분 공청회 발표를 위한 준비]", ""])
         csv_data.extend([
@@ -805,29 +810,15 @@ def generate_html_content(act_name, ans, config=None):
 
         html += "<h3>Step 2. 도시 개조 포인트를 활용한 트레이드오프 설계</h3>"
         html += """
-        <table>
-            <tr><th>카테고리</th><th>코드</th><th>세부 개조 항목</th><th>비용</th></tr>
-            <tr><td rowspan="6" style="text-align:center; vertical-align:middle; font-weight:bold;">안전한 보행 환경</td><td style="text-align:center;">A-1</td><td>여고생 안심 하교길 스마트 로드</td><td style="text-align:center;">-15pt</td></tr>
-            <tr><td style="text-align:center;">A-2</td><td>아파트 단지 간 담장 철거 및 공공 보행로 연결</td><td style="text-align:center;">-20pt</td></tr>
-            <tr><td style="text-align:center;">A-3</td><td>차로 축소 및 쾌적한 보행을 위한 녹지 공간 조성</td><td style="text-align:center;">-20pt</td></tr>
-            <tr><td style="text-align:center;">A-4</td><td>스마트 횡단보도 및 교통약자/학생 쉼터</td><td style="text-align:center;">-10pt</td></tr>
-            <tr><td style="text-align:center;">A-5</td><td></td><td style="text-align:center;"></td></tr>
-            <tr><td style="text-align:center;">A-6</td><td></td><td style="text-align:center;"></td></tr>
-            <tr><td rowspan="5" style="text-align:center; vertical-align:middle; font-weight:bold;">녹지 및 생태공간 구축</td><td style="text-align:center;">B-1</td><td>아파트 상가/방치 공터 → 도심 소공원 조성</td><td style="text-align:center;">-15pt</td></tr>
-            <tr><td style="text-align:center;">B-2</td><td>도심 바람길 숲 및 수변 산책로 조성</td><td style="text-align:center;">-15pt</td></tr>
-            <tr><td style="text-align:center;">B-3</td><td>에코 펫파크(반려견 전용 공원 및 산책로)</td><td style="text-align:center;">-15pt</td></tr>
-            <tr><td style="text-align:center;">B-4</td><td></td><td style="text-align:center;"></td></tr>
-            <tr><td style="text-align:center;">B-5</td><td></td><td style="text-align:center;"></td></tr>
-            <tr><td rowspan="5" style="text-align:center; vertical-align:middle; font-weight:bold;">문화와 교육을 위한 공간</td><td style="text-align:center;">C-1</td><td>24시간 공공 스터디 & 커뮤니티 카페</td><td style="text-align:center;">-15pt</td></tr>
-            <tr><td style="text-align:center;">C-2</td><td>청소년 팝업 스튜디오 & 소공연장</td><td style="text-align:center;">-15pt</td></tr>
-            <tr><td style="text-align:center;">C-3</td><td>친환경 스마트 팜</td><td style="text-align:center;">-10pt</td></tr>
-            <tr><td style="text-align:center;">C-4</td><td></td><td style="text-align:center;"></td></tr>
-            <tr><td style="text-align:center;">C-5</td><td></td><td style="text-align:center;"></td></tr>
-            <tr><td rowspan="4" style="text-align:center; vertical-align:middle; font-weight:bold;">효율적인 교통과 모빌리티 구축</td><td style="text-align:center;">D-1</td><td>공유 자전거 및 킥보드 전용 도로</td><td style="text-align:center;">-15pt</td></tr>
-            <tr><td style="text-align:center;">D-2</td><td>스마트 버스 쉘터(공기 청정, 냉난방 설비 구축)</td><td style="text-align:center;">-10pt</td></tr>
-            <tr><td style="text-align:center;">D-3</td><td></td><td style="text-align:center;"></td></tr>
-            <tr><td style="text-align:center;">D-4</td><td></td><td style="text-align:center;"></td></tr>
-        </table>
+        s2_rows = ans.get("step2_table_df") or ans.get("step2_custom_df") or ans.get("step2_point_df", [])
+        if s2_rows:
+            html += "<table><tr><th>카테고리</th><th>코드</th><th>세부 개조 항목</th><th>비용</th></tr>"
+            for r in s2_rows:
+                c_item = str(r.get("세부 개조 항목", "")).strip()
+                c_code = str(r.get("코드", "")).strip()
+                if c_item or c_code:
+                    html += f"<tr><td>{r.get('카테고리','')}</td><td style='text-align:center;'>{c_code}</td><td>{c_item}</td><td style='text-align:center;'>{r.get('비용','')}</td></tr>"
+            html += "</table>"
         """
         if ans.get("step2_custom_df"):
             custom_rows = [r for r in ans.get("step2_custom_df", []) if r.get("세부 개조 항목")]
@@ -1564,20 +1555,24 @@ def render_activity2_2nd(user_key, u_info, current_role):
         if user_key not in current_data:
             current_data[user_key] = {}
         
+        saved_step2_records = edited_step2_df.to_dict('records') if hasattr(edited_step2_df, 'to_dict') else []
         new_ans = {
             "m1_id": m1_id, "m1_name": m1_name, "m2_id": m2_id, "m2_name": m2_name,
             "m3_id": m3_id, "m3_name": m3_name, "m4_id": m4_id, "m4_name": m4_name,
             "step1_1": step1_1,
-            "step1_2_df": edited_step1_2_df.to_dict('records'),
+            "step1_2_df": edited_step1_2_df.to_dict('records') if hasattr(edited_step1_2_df, 'to_dict') else ans.get("step1_2_df", []),
             "step1_p1": step1_p1, "step1_d1": step1_d1,
             "step1_p2": step1_p2, "step1_d2": step1_d2,
             "step1_p3": step1_p3, "step1_d3": step1_d3,
-            "step2_custom_df": edited_custom_df.to_dict('records') if hasattr(edited_custom_df, 'to_dict') else [],
-            "step2_point_df": edited_custom_df.to_dict('records') if hasattr(edited_custom_df, 'to_dict') else [],
+            "step2_table_df": saved_step2_records,
+            "step2_custom_df": saved_step2_records,
+            "step2_point_df": saved_step2_records,
             "step4_1": step4_1,
             "step4_2": step4_2,
             "step4_3": step4_3,
-            "step4_4": step4_4
+            "step4_4_reason": step4_4_reason,
+            "step4_5": step4_5,
+            "step4_4": step4_5
         }
         
         current_data[user_key][category] = new_ans
