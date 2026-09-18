@@ -1592,7 +1592,7 @@ def render_activity2_2nd(user_key, u_info, current_role):
             "step1_p1": step1_p1, "step1_d1": step1_d1,
             "step1_p2": step1_p2, "step1_d2": step1_d2,
             "step1_p3": step1_p3, "step1_d3": step1_d3,
-            "step2_point_df": edited_step2_point_df.to_dict('records'),
+            "step2_point_df": edited_step2_point_df.to_dict('records') if ('edited_step2_point_df' in locals() and hasattr(edited_step2_point_df, 'to_dict')) else ans.get("step2_point_df", []),
             "step4_1": step4_1,
             "step4_2": step4_2,
             "step4_3": step4_3,
