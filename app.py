@@ -471,6 +471,8 @@ def get_act_csv_rows(selected_view, ans, config=None):
     elif selected_view == ACT_2_2:
         csv_data.extend([["[모둠 구성원]", ""], ["모둠 구성원", f"1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}"]])
         csv_data.append(["[Step 1. 우리 동네 현황 진단]", ""])
+        n_min_val = ans.get("step1_n_min", "15분")
+        csv_data.append(["▶ 모둠 설정 기준 시간", f"도보 {n_min_val} 도시"])
         csv_data.append(["1. 대상 지역 (예: 학교 주변 인근 OO아파트 OO단지 일대)", ans.get("step1_1", "")])
         for row in ans.get("step1_2_df", []):
             if row.get("구분") or row.get("필수 서비스 항목"):
@@ -808,9 +810,11 @@ def generate_html_content(act_name, ans, config=None):
     # ----------------------------------------------------
     elif act_name == ACT_2_2:
         html += f"<h4>모둠 구성원</h4><p>1: {ans.get('m1_id','')} {ans.get('m1_name','')} / 2: {ans.get('m2_id','')} {ans.get('m2_name','')} / 3: {ans.get('m3_id','')} {ans.get('m3_name','')} / 4: {ans.get('m4_id','')} {ans.get('m4_name','')}</p>"
+        n_min_val = ans.get("step1_n_min", "15분")
         html += "<h3>Step 1. 우리 동네 현황 진단</h3>"
+        html += f"<p><b>▶ 모둠 설정 기준 시간:</b> 도보 {n_min_val} 도시</p>"
         html += f"<p><b>1. 대상 지역:</b> {ans.get('step1_1','')}</p>"
-        html += "<h4>2. 15분 생활권 반경 내 필수 서비스 체크리스트</h4>"
+        html += f"<h4>2. {n_min_val} 생활권 반경 내 필수 서비스 체크리스트</h4>"
         html += "<table><tr><th>구분</th><th>필수 서비스 항목</th><th>충분</th><th>부족 or 없음</th></tr>"
         for row in ans.get("step1_2_df", []):
             if row.get("구분") or row.get("필수 서비스 항목"):
@@ -1332,9 +1336,25 @@ def render_activity2_2nd(user_key, u_info, current_role):
     # Step 1. 우리 동네 현황 진단
     # ----------------------------------------------------
     st.markdown("<h3 style='font-size: 22px; font-weight: 800; color: #111;'>Step 1. 우리 동네 현황 진단</h3>", unsafe_allow_html=True)
-    st.markdown("""
+    # 🌟 [모둠별 자율 N분 설정] 10분~30분 드롭다운
+    n_options = ["10분", "15분", "20분", "25분", "30분"]
+    saved_n = ans.get("step1_n_min", "15분")
+    n_idx = n_options.index(saved_n) if saved_n in n_options else 1
+
+    col_n1, col_n2 = st.columns([1.5, 2.5])
+    with col_n1:
+        step1_n_min = st.selectbox(
+            "⏱️ 우리 모둠 설계 기준 시간 (N분)",
+            options=n_options,
+            index=n_idx,
+            disabled=disabled_flag,
+            key="s1_n_min_select"
+        )
+
+    # 🌟 선택한 N분에 맞춰 안내 문구가 실시간으로 변경됨
+    st.markdown(f"""
     <div style='background-color: #f0f7ff; border-left: 4px solid #3182ce; padding: 12px 16px; border-radius: 4px; margin-bottom: 20px;'>
-        <b style='color: #2b6cb0;'>▶ 도보 15분 / 반경 1km 생활권 분석</b><br>
+        <b style='color: #2b6cb0;'>▶ 도보 {step1_n_min} 생활권 분석</b><br>
         <span style='font-size: 14px; color: #4a5568;'>: 실제 답사와 지도 앱 내용을 통한 필수 서비스 결손 현황 체크</span>
     </div>
     """, unsafe_allow_html=True)
@@ -1342,7 +1362,8 @@ def render_activity2_2nd(user_key, u_info, current_role):
     st.markdown("**1. 대상 지역** (예: 학교 주변 인근 OO아파트 OO단지 일대)")
     step1_1 = st.text_input("대상 지역 입력", value=ans.get("step1_1", ""), label_visibility="collapsed", disabled=disabled_flag, key="s1_1_2_2")
 
-    st.markdown("<br>**2. 15분 생활권 반경 내 필수 서비스 체크리스트**", unsafe_allow_html=True)
+    # 🌟 체크리스트 제목도 선택한 N분으로 자동 연동
+    st.markdown(f"<br>**2. {step1_n_min} 생활권 반경 내 필수 서비스 체크리스트**", unsafe_allow_html=True)
     default_s1_df = [
         {"구분": "주거 및 생활", "필수 서비스 항목": "생필품 마트, 일상 편의시설", "충분": False, "부족 or 없음": False},
         {"구분": "의료 및 돌봄", "필수 서비스 항목": "병원, 약국, 돌봄센터", "충분": False, "부족 or 없음": False},
@@ -1593,6 +1614,7 @@ def render_activity2_2nd(user_key, u_info, current_role):
         new_ans = {
             "m1_id": m1_id, "m1_name": m1_name, "m2_id": m2_id, "m2_name": m2_name,
             "m3_id": m3_id, "m3_name": m3_name, "m4_id": m4_id, "m4_name": m4_name,
+            "step1_n_min": step1_n_min,
             "step1_1": step1_1,
             "step1_2_df": edited_step1_2_df.to_dict('records') if hasattr(edited_step1_2_df, 'to_dict') else ans.get("step1_2_df", []),
             "step1_p1": step1_p1, "step1_d1": step1_d1,
