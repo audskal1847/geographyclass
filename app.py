@@ -1504,7 +1504,7 @@ def render_activity2_2nd(user_key, u_info, current_role):
         disabled=disabled_flag,
         column_config={
             "순번": st.column_config.NumberColumn("순번", width="small"),
-            "선택 코드": st.column_config.SelectboxColumn("선택 코드", options=code_options, width="small"),
+            "선택 코드": st.column_config.TextColumn("선택 코드", width="small"),
             "버릴 공간 -> 채울 인프라": st.column_config.TextColumn("버릴 공간 -> 채울 인프라", width="large"),
             "사용 포인트": st.column_config.SelectboxColumn("사용 포인트", options=point_options, width="small"),
             "공간 재설계 이유 및 기대효과": st.column_config.TextColumn("공간 재설계 이유 및 기대효과", width="large"),
