@@ -489,16 +489,40 @@ def get_act_csv_rows(selected_view, ans, config=None):
             ["3. 핵심 문제점 3", p3], ["3. 문제점 3 관련 데이터", d3]
         ])
         
-        csv_data.append(["[Step 2. 도시 개조 포인트를 활용한 트레이드오프 설계]", ""])
-        s2_rows = ans.get("step2_table_df") or ans.get("step2_custom_df") or ans.get("step2_point_df", [])
+        # Step 2. 도시 개조 트레이드오프 설계표 (새 열 이름 완벽 연동)
+        csv_data.append(["[Step 2. 도시 개조 트레이드오프 설계표]", ""])
+        s2_rows = ans.get("step2_tradeoff_df") or ans.get("step2_table_df") or ans.get("step2_custom_df", [])
+        has_s2_data = False
         for row in s2_rows:
-            c_cat = str(row.get("카테고리", "")).strip()
-            c_code = str(row.get("코드", "")).strip()
-            c_item = str(row.get("세부 개조 항목", "")).strip()
-            c_cost = str(row.get("비용", "")).strip()
-            if c_item:
-                cost_str = f" ({c_cost})" if c_cost else ""
-                csv_data.append([f"[{c_cat}] {c_code}", f"{c_item}{cost_str}"])
+            c_code = str(row.get("선택 코드") or row.get("코드") or "").strip()
+            if c_code == "None": c_code = ""
+            c_infra = str(row.get("버릴 공간 -> 채울 인프라") or row.get("세부 개조 항목") or "").strip()
+            if c_infra == "None": c_infra = ""
+            c_pt = str(row.get("사용 포인트") or row.get("비용") or "").strip()
+            if c_pt == "None": c_pt = ""
+            c_eff = str(row.get("공간 재설계 이유 및 기대효과") or "").strip()
+            if c_eff == "None": c_eff = ""
+            c_num = str(row.get("순번") or "").strip()
+
+            if c_code or c_infra or c_eff:
+                has_s2_data = True
+                label = f"▶ [{c_num}번] {c_code} ({c_pt})" if c_code else f"▶ [{c_num}번] 개조 항목"
+                detail = f"<b>인프라:</b> {c_infra or '(미작성)'}<br><b>이유 및 기대효과:</b> {c_eff or '(미작성)'}"
+                csv_data.append([label, detail])
+        if not has_s2_data:
+            csv_data.append(["설계표 내용", "(작성된 설계 내용이 없습니다)"])
+
+        # Step 3. N분 도시 공간 지도 스케치 (교사용 화면에 전/후 사진 출력)
+        csv_data.append(["[Step 3. N분 도시 공간 지도 스케치]", ""])
+        b_img = ans.get("step3_map_before", "")
+        a_img = ans.get("step3_map_after", "")
+        if b_img or a_img:
+            b_tag = f"<img src='{b_img}' style='max-width:320px; max-height:220px; border-radius:6px; border:1px solid #cbd5e1;'>" if b_img else "<span style='color:#94a3b8;'>(미등록)</span>"
+            a_tag = f"<img src='{a_img}' style='max-width:320px; max-height:220px; border-radius:6px; border:1px solid #cbd5e1;'>" if a_img else "<span style='color:#94a3b8;'>(미등록)</span>"
+            display_html = f"<div style='display:flex; gap:16px; margin-top:8px;'><div><b>[변경 전 지도 스케치]</b><br>{b_tag}</div><div><b>[변경 후 지도 스케치]</b><br>{a_tag}</div></div>"
+            csv_data.append(["지도 스케치 (변경 전 / 변경 후)", display_html])
+        else:
+            csv_data.append(["지도 스케치", "(등록된 지도 스케치 이미지가 없습니다)"])
         
         csv_data.append(["[Step 4. 3분 공청회 발표를 위한 준비]", ""])
         csv_data.extend([
