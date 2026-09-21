@@ -1367,65 +1367,139 @@ def render_activity2_2nd(user_key, u_info, current_role):
     </div>
     """, unsafe_allow_html=True)
 
-    # [이 부분을 드래그하여 삭제] (930번 ~ 969번 줄)
     # ----------------------------------------------------
-    # [통합] 편집·추가·삭제 가능한 대화형 트레이드오프 설계 표
+    # 1. [참고 카탈로그] 도시 개조 포인트 예시 카테고리 (학습지 1페이지 원본 서식)
     # ----------------------------------------------------
-    default_tradeoff_rows = [
-        {"카테고리": "안전한 보행 환경", "코드": "A-1", "세부 개조 항목": "여고생 안심 하교길 스마트 로드", "비용": "-15pt"},
-        {"카테고리": "안전한 보행 환경", "코드": "A-2", "세부 개조 항목": "아파트 단지 간 담장 철거 및 공공 보행로 연결", "비용": "-20pt"},
-        {"카테고리": "안전한 보행 환경", "코드": "A-3", "세부 개조 항목": "차로 축소 및 쾌적한 보행을 위한 녹지 공간 조성", "비용": "-20pt"},
-        {"카테고리": "안전한 보행 환경", "코드": "A-4", "세부 개조 항목": "스마트 횡단보도 및 교통약자/학생 쉼터", "비용": "-10pt"},
-        {"카테고리": "녹지 및 생태공간 구축", "코드": "B-1", "세부 개조 항목": "아파트 상가/방치 공터 → 도심 소공원 조성", "비용": "-15pt"},
-        {"카테고리": "녹지 및 생태공간 구축", "코드": "B-2", "세부 개조 항목": "도심 바람길 숲 및 수변 산책로 조성", "비용": "-15pt"},
-        {"카테고리": "녹지 및 생태공간 구축", "코드": "B-3", "세부 개조 항목": "에코 펫파크(반려견 전용 공원 및 산책로)", "비용": "-15pt"},
-        {"카테고리": "문화와 교육을 위한 공간", "코드": "C-1", "세부 개조 항목": "24시간 공공 스터디 & 커뮤니티 카페", "비용": "-15pt"},
-        {"카테고리": "문화와 교육을 위한 공간", "코드": "C-2", "세부 개조 항목": "청소년 팝업 스튜디오 & 소공연장", "비용": "-15pt"},
-        {"카테고리": "문화와 교육을 위한 공간", "코드": "C-3", "세부 개조 항목": "친환경 스마트 팜", "비용": "-10pt"},
-        {"카테고리": "효율적인 교통과 모빌리티 구축", "코드": "D-1", "세부 개조 항목": "공유 자전거 및 킥보드 전용 도로", "비용": "-15pt"},
-        {"카테고리": "효율적인 교통과 모빌리티 구축", "코드": "D-2", "세부 개조 항목": "스마트 버스 쉘터(공기 청정, 냉난방 설비 구축)", "비용": "-10pt"}
+    with st.expander("📋 [참고] 도시 개조 포인트 및 카테고리 예시 카탈로그 (클릭하여 펼치기/접기)", expanded=True):
+        st.markdown("""
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 13.5px; background-color: #ffffff;">
+            <thead>
+                <tr style="background-color: #f1f5f9; text-align: center;">
+                    <th style="padding: 9px; border: 1px solid #cbd5e1; width: 25%;">카테고리</th>
+                    <th style="padding: 9px; border: 1px solid #cbd5e1; width: 10%;">코드</th>
+                    <th style="padding: 9px; border: 1px solid #cbd5e1; width: 50%;">세부 개조 항목</th>
+                    <th style="padding: 9px; border: 1px solid #cbd5e1; width: 15%;">비용</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td rowspan="6" style="text-align: center; vertical-align: middle; font-weight: bold; border: 1px solid #cbd5e1; background: #fafafa;">안전한 보행 환경</td><td style="text-align: center; border: 1px solid #cbd5e1;">A-1</td><td style="border: 1px solid #cbd5e1; padding: 6px 10px;">여고생 안심 하교길 스마트 로드</td><td style="text-align: center; border: 1px solid #cbd5e1;">-15pt</td></tr>
+                <tr><td style="text-align: center; border: 1px solid #cbd5e1;">A-2</td><td style="border: 1px solid #cbd5e1; padding: 6px 10px;">아파트 단지 간 담장 철거 및 공공 보행로 연결</td><td style="text-align: center; border: 1px solid #cbd5e1;">-20pt</td></tr>
+                <tr><td style="text-align: center; border: 1px solid #cbd5e1;">A-3</td><td style="border: 1px solid #cbd5e1; padding: 6px 10px;">차로 축소 및 쾌적한 보행을 위한 녹지 공간 조성</td><td style="text-align: center; border: 1px solid #cbd5e1;">-20pt</td></tr>
+                <tr><td style="text-align: center; border: 1px solid #cbd5e1;">A-4</td><td style="border: 1px solid #cbd5e1; padding: 6px 10px;">스마트 횡단보도 및 교통약자/학생 쉼터</td><td style="text-align: center; border: 1px solid #cbd5e1;">-10pt</td></tr>
+                <tr><td style="text-align: center; border: 1px solid #cbd5e1;">A-5</td><td style="border: 1px solid #cbd5e1;"></td><td style="text-align: center; border: 1px solid #cbd5e1;"></td></tr>
+                <tr><td style="text-align: center; border: 1px solid #cbd5e1;">A-6</td><td style="border: 1px solid #cbd5e1;"></td><td style="text-align: center; border: 1px solid #cbd5e1;"></td></tr>
+                <tr><td rowspan="5" style="text-align: center; vertical-align: middle; font-weight: bold; border: 1px solid #cbd5e1; background: #fafafa;">녹지 및 생태공간 구축</td><td style="text-align: center; border: 1px solid #cbd5e1;">B-1</td><td style="border: 1px solid #cbd5e1; padding: 6px 10px;">아파트 상가/방치 공터 → 도심 소공원 조성</td><td style="text-align: center; border: 1px solid #cbd5e1;">-15pt</td></tr>
+                <tr><td style="text-align: center; border: 1px solid #cbd5e1;">B-2</td><td style="border: 1px solid #cbd5e1; padding: 6px 10px;">도심 바람길 숲 및 수변 산책로 조성</td><td style="text-align: center; border: 1px solid #cbd5e1;">-15pt</td></tr>
+                <tr><td style="text-align: center; border: 1px solid #cbd5e1;">B-3</td><td style="border: 1px solid #cbd5e1; padding: 6px 10px;">에코 펫파크(반려견 전용 공원 및 산책로)</td><td style="text-align: center; border: 1px solid #cbd5e1;">-15pt</td></tr>
+                <tr><td style="text-align: center; border: 1px solid #cbd5e1;">B-4</td><td style="border: 1px solid #cbd5e1;"></td><td style="text-align: center; border: 1px solid #cbd5e1;"></td></tr>
+                <tr><td style="text-align: center; border: 1px solid #cbd5e1;">B-5</td><td style="border: 1px solid #cbd5e1;"></td><td style="text-align: center; border: 1px solid #cbd5e1;"></td></tr>
+                <tr><td rowspan="5" style="text-align: center; vertical-align: middle; font-weight: bold; border: 1px solid #cbd5e1; background: #fafafa;">문화와 교육을 위한 공간</td><td style="text-align: center; border: 1px solid #cbd5e1;">C-1</td><td style="border: 1px solid #cbd5e1; padding: 6px 10px;">24시간 공공 스터디 & 커뮤니티 카페</td><td style="text-align: center; border: 1px solid #cbd5e1;">-15pt</td></tr>
+                <tr><td style="text-align: center; border: 1px solid #cbd5e1;">C-2</td><td style="border: 1px solid #cbd5e1; padding: 6px 10px;">청소년 팝업 스튜디오 & 소공연장</td><td style="text-align: center; border: 1px solid #cbd5e1;">-15pt</td></tr>
+                <tr><td style="text-align: center; border: 1px solid #cbd5e1;">C-3</td><td style="border: 1px solid #cbd5e1; padding: 6px 10px;">친환경 스마트 팜</td><td style="text-align: center; border: 1px solid #cbd5e1;">-10pt</td></tr>
+                <tr><td style="text-align: center; border: 1px solid #cbd5e1;">C-4</td><td style="border: 1px solid #cbd5e1;"></td><td style="text-align: center; border: 1px solid #cbd5e1;"></td></tr>
+                <tr><td style="text-align: center; border: 1px solid #cbd5e1;">C-5</td><td style="border: 1px solid #cbd5e1;"></td><td style="text-align: center; border: 1px solid #cbd5e1;"></td></tr>
+                <tr><td rowspan="4" style="text-align: center; vertical-align: middle; font-weight: bold; border: 1px solid #cbd5e1; background: #fafafa;">효율적인 교통과 모빌리티 구축</td><td style="text-align: center; border: 1px solid #cbd5e1;">D-1</td><td style="border: 1px solid #cbd5e1; padding: 6px 10px;">공유 자전거 및 킥보드 전용 도로</td><td style="text-align: center; border: 1px solid #cbd5e1;">-15pt</td></tr>
+                <tr><td style="text-align: center; border: 1px solid #cbd5e1;">D-2</td><td style="border: 1px solid #cbd5e1; padding: 6px 10px;">스마트 버스 쉘터(공기 청정, 냉난방 설비 구축)</td><td style="text-align: center; border: 1px solid #cbd5e1;">-10pt</td></tr>
+                <tr><td style="text-align: center; border: 1px solid #cbd5e1;">D-3</td><td style="border: 1px solid #cbd5e1;"></td><td style="text-align: center; border: 1px solid #cbd5e1;"></td></tr>
+                <tr><td style="text-align: center; border: 1px solid #cbd5e1;">D-4</td><td style="border: 1px solid #cbd5e1;"></td><td style="text-align: center; border: 1px solid #cbd5e1;"></td></tr>
+            </tbody>
+        </table>
+        """, unsafe_allow_html=True)
+
+    # ----------------------------------------------------
+    # 2. [학생 실제 작성 표] 도시 개조 트레이드오프 설계표 (순번 1~8)
+    # ----------------------------------------------------
+    st.markdown("##### 🛠️ 도시 개조 트레이드오프 설계표 (순번 1~8 작성 / 클릭하여 수정 / 하단 [+]로 추가 / 선택 후 [Delete]로 삭제)")
+    default_tradeoff_design = [
+        {"순번": i, "선택 코드": "", "버릴 공간 -> 채울 인프라": "", "사용 포인트": "-15pt", "공간 재설계 이유 및 기대효과": ""}
+        for i in range(1, 9)
+    ]
+    saved_tradeoff = ans.get("step2_tradeoff_df") or ans.get("step2_table_df") or default_tradeoff_design
+    df_tradeoff = pd.DataFrame(saved_tradeoff)
+
+    # 🌟 [자동 정렬] 학생이 행을 추가하더라도 '선택 코드'(A-1, A-2... B-1...) 순서대로 자동 정렬
+    if "선택 코드" in df_tradeoff.columns and not df_tradeoff.empty:
+        df_tradeoff["sort_key"] = df_tradeoff["선택 코드"].astype(str).str.upper().str.strip()
+        # 빈칸이 아닌 항목들 우선 정렬
+        df_tradeoff = df_tradeoff.sort_values(by=["sort_key", "순번"]).drop(columns=["sort_key"])
+
+    # 🌟 [비용 옵션: 최소 10pt ~ 최대 30pt, 5pt 간격]
+    point_options = ["-10pt", "-15pt", "-20pt", "-25pt", "-30pt"]
+    code_options = [
+        "A-1", "A-2", "A-3", "A-4", "A-5", "A-6",
+        "B-1", "B-2", "B-3", "B-4", "B-5",
+        "C-1", "C-2", "C-3", "C-4", "C-5",
+        "D-1", "D-2", "D-3", "D-4",
+        "자율추가"
     ]
 
-    saved_step2 = ans.get("step2_table_df") or ans.get("step2_custom_df") or ans.get("step2_point_df")
-    step2_display_data = saved_step2 if (saved_step2 and isinstance(saved_step2, list) and len(saved_step2) > 0) else default_tradeoff_rows
-    
-    # 🌟 [자동 정렬] 학생이 맨 밑에 추가해도 코드(A-1, A-2... B-1...) 순서대로 자동 배치
-    df_step2 = pd.DataFrame(step2_display_data)
-    if "코드" in df_step2.columns and not df_step2.empty:
-        df_step2["sort_key"] = df_step2["코드"].astype(str).str.upper().str.strip()
-        df_step2 = df_step2.sort_values(by="sort_key").drop(columns=["sort_key"])
-
-    st.markdown("##### 🛠️ 트레이드오프 설계표 (클릭하여 수정 / 하단 [+]로 행 추가 / 행 선택 후 [Delete]로 삭제)")
-    edited_step2_df = st.data_editor(
-        df_step2,
+    edited_step2_tradeoff_df = st.data_editor(
+        df_tradeoff,
         num_rows="dynamic",
         use_container_width=True,
         hide_index=True,
         disabled=disabled_flag,
         column_config={
-            "카테고리": st.column_config.SelectboxColumn(
-                "카테고리",
-                options=[
-                    "안전한 보행 환경",
-                    "녹지 및 생태공간 구축",
-                    "문화와 교육을 위한 공간",
-                    "효율적인 교통과 모빌리티 구축",
-                    "모둠 자율 신규 카테고리"
-                ],
-                required=True,
-                width="medium"
-            ),
-            "코드": st.column_config.TextColumn("코드", width="small", required=True),
-            "세부 개조 항목": st.column_config.TextColumn("세부 개조 항목", width="large"),
-            # 🌟 [비용 옵션] 10pt부터 30pt까지 5pt 간격 설정
-            "비용": st.column_config.SelectboxColumn(
-                "비용",
-                options=["-10pt", "-15pt", "-20pt", "-25pt", "-30pt"],
-                required=True,
-                width="small"
-            ),
+            "순번": st.column_config.NumberColumn("순번", width="small"),
+            "선택 코드": st.column_config.SelectboxColumn("선택 코드", options=code_options, width="small"),
+            "버릴 공간 -> 채울 인프라": st.column_config.TextColumn("버릴 공간 -> 채울 인프라", width="large"),
+            "사용 포인트": st.column_config.SelectboxColumn("사용 포인트", options=point_options, width="small"),
+            "공간 재설계 이유 및 기대효과": st.column_config.TextColumn("공간 재설계 이유 및 기대효과", width="large"),
         },
-        key=f"s2_tradeoff_editor_{user_key if 'user_key' in locals() else current_user_key}"
+        key=f"s2_tradeoff_design_{user_key if 'user_key' in locals() else current_user_key}"
+    )
+
+    st.markdown("<hr style='margin: 30px 0;'>", unsafe_allow_html=True)
+
+    # ----------------------------------------------------
+    # 3. [완벽 복원] Step 3. N분 도시 공간 지도 스케치 (파일 업로드 & 즉시 확인)
+    # ----------------------------------------------------
+    st.markdown("<h3 style='font-size: 22px; font-weight: 800; color: #111;'>Step 3. N분 도시 공간 지도 스케치</h3>", unsafe_allow_html=True)
+    st.markdown("""
+    <div style='background-color: #f0f7ff; border-left: 4px solid #3182ce; padding: 12px 16px; border-radius: 4px; margin-bottom: 20px;'>
+        <b style='color: #2b6cb0;'>▶ 변경 전과 변경 후의 지도 스케치 (변경 인프라 및 보행선 관련 내용 표시)</b><br>
+        <span style='font-size: 13.5px; color: #4a5568;'>
+        • 모둠에서 직접 손으로 그리거나 태블릿으로 작업한 <b>지도 스케치 사진</b>을 촬영하여 등록하세요.<br>
+        • 파일을 올리면 아래 화면에 즉시 등록 이미지가 나타납니다.
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col_map_before, col_map_after = st.columns(2)
+    saved_map_before = ans.get("step3_map_before", "")
+    saved_map_after = ans.get("step3_map_after", "")
+
+    # [전] 변경 전 지도 스케치
+    with col_map_before:
+        st.markdown("#### 🗺️ [전] 변경 전 지도 스케치")
+        up_before = st.file_uploader(
+            "변경 전 스케치 파일 (JPG, PNG)", 
+            type=["png", "jpg", "jpeg", "webp"], 
+            key=f"up_map_before_{user_key if 'user_key' in locals() else current_user_key}",
+            disabled=disabled_flag
+        )
+        current_map_before = process_sketch_image(up_before) if up_before else saved_map_before
+        if current_map_before:
+            st.image(current_map_before, caption="[변경 전] 등록된 지도 스케치", use_container_width=True)
+        else:
+            st.info("📷 등록된 '변경 전' 스케치가 없습니다.")
+
+    # [후] 변경 후 지도 스케치
+    with col_map_after:
+        st.markdown("#### 🗺️ [후] 변경 후 지도 스케치")
+        up_after = st.file_uploader(
+            "변경 후 스케치 파일 (JPG, PNG)", 
+            type=["png", "jpg", "jpeg", "webp"], 
+            key=f"up_map_after_{user_key if 'user_key' in locals() else current_user_key}",
+            disabled=disabled_flag
+        )
+        current_map_after = process_sketch_image(up_after) if up_after else saved_map_after
+        if current_map_after:
+            st.image(current_map_after, caption="[변경 후] 등록된 지도 스케치", use_container_width=True)
+        else:
+            st.info("📷 등록된 '변경 후' 스케치가 없습니다.")
+
+    st.markdown("<hr style='margin: 30px 0;'>", unsafe_allow_html=True)
     )
     # ----------------------------------------------------
     # Step 4. 3분 공청회 발표를 위한 준비
@@ -1474,7 +1548,7 @@ def render_activity2_2nd(user_key, u_info, current_role):
         if user_key not in current_data:
             current_data[user_key] = {}
         
-        saved_step2_records = edited_step2_df.to_dict('records') if hasattr(edited_step2_df, 'to_dict') else []
+        saved_tradeoff_records = edited_step2_tradeoff_df.to_dict('records') if hasattr(edited_step2_tradeoff_df, 'to_dict') else []
         new_ans = {
             "m1_id": m1_id, "m1_name": m1_name, "m2_id": m2_id, "m2_name": m2_name,
             "m3_id": m3_id, "m3_name": m3_name, "m4_id": m4_id, "m4_name": m4_name,
@@ -1483,9 +1557,19 @@ def render_activity2_2nd(user_key, u_info, current_role):
             "step1_p1": step1_p1, "step1_d1": step1_d1,
             "step1_p2": step1_p2, "step1_d2": step1_d2,
             "step1_p3": step1_p3, "step1_d3": step1_d3,
-            "step2_table_df": saved_step2_records,
-            "step2_custom_df": saved_step2_records,
-            "step2_point_df": saved_step2_records,
+            "step2_tradeoff_df": saved_tradeoff_records,
+            "step2_table_df": saved_tradeoff_records,
+            "step2_custom_df": saved_tradeoff_records,
+            "step2_point_df": saved_tradeoff_records,
+            "step3_map_before": current_map_before,
+            "step3_map_after": current_map_after,
+            "step4_1": step4_1,
+            "step4_2": step4_2,
+            "step4_3": step4_3,
+            "step4_4_reason": step4_4_reason,
+            "step4_5": step4_5,
+            "step4_4": step4_5
+        }
             "step4_1": step4_1,
             "step4_2": step4_2,
             "step4_3": step4_3,
