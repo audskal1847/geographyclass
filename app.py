@@ -1500,7 +1500,6 @@ def render_activity2_2nd(user_key, u_info, current_role):
             st.info("📷 등록된 '변경 후' 스케치가 없습니다.")
 
     st.markdown("<hr style='margin: 30px 0;'>", unsafe_allow_html=True)
-    )
     # ----------------------------------------------------
     # Step 4. 3분 공청회 발표를 위한 준비
     # ----------------------------------------------------
