@@ -808,25 +808,43 @@ def generate_html_content(act_name, ans, config=None):
         html += f"<tr><td><b>문제점 3:</b><br>{p3}</td><td><b>데이터 3:</b><br>{d3}</td></tr>"
         html += "</table>"
 
-        html += "<h3>Step 2. 도시 개조 포인트를 활용한 트레이드오프 설계</h3>"
-        html += """
-        s2_rows = ans.get("step2_table_df") or ans.get("step2_custom_df") or ans.get("step2_point_df", [])
-        if s2_rows:
-            html += "<table><tr><th>카테고리</th><th>코드</th><th>세부 개조 항목</th><th>비용</th></tr>"
-            for r in s2_rows:
-                c_item = str(r.get("세부 개조 항목", "")).strip()
-                c_code = str(r.get("코드", "")).strip()
-                if c_item or c_code:
-                    html += f"<tr><td>{r.get('카테고리','')}</td><td style='text-align:center;'>{c_code}</td><td>{c_item}</td><td style='text-align:center;'>{r.get('비용','')}</td></tr>"
+        # Step 2. 도시 개조 트레이드오프 설계표 HTML
+        html += "<h3>Step 2. 도시 개조 트레이드오프 설계표</h3>"
+        t_rows = ans.get("step2_tradeoff_df") or ans.get("step2_table_df") or ans.get("step2_custom_df", [])
+        if t_rows:
+            html += "<table style='width:100%; border-collapse:collapse; text-align:center;'><tr><th style='width:8%;'>순번</th><th style='width:14%;'>선택 코드</th><th style='width:38%;'>버릴 공간 -> 채울 인프라</th><th style='width:12%;'>사용 포인트</th><th style='width:28%;'>공간 재설계 이유 및 기대효과</th></tr>"
+            for r in t_rows:
+                c_code = str(r.get("선택 코드") or r.get("코드") or "").strip()
+                if c_code == "None": c_code = ""
+                c_infra = str(r.get("버릴 공간 -> 채울 인프라") or r.get("세부 개조 항목") or "").strip()
+                if c_infra == "None": c_infra = ""
+                c_pt = str(r.get("사용 포인트") or r.get("비용") or "").strip()
+                if c_pt == "None": c_pt = ""
+                c_eff = str(r.get("공간 재설계 이유 및 기대효과") or "").strip()
+                if c_eff == "None": c_eff = ""
+                if c_code or c_infra or c_eff:
+                    html += f"<tr><td>{r.get('순번','')}</td><td><b>{c_code}</b></td><td style='text-align:left;'>{c_infra}</td><td>{c_pt}</td><td style='text-align:left;'>{c_eff}</td></tr>"
             html += "</table>"
+
+        # Step 3. N분 도시 공간 지도 스케치 HTML
+        html += "<h3>Step 3. N분 도시 공간 지도 스케치</h3>"
+        b_img = ans.get("step3_map_before", "")
+        a_img = ans.get("step3_map_after", "")
+        b_html = f"<img src='{b_img}' style='max-width:100%; max-height:350px; border-radius:6px; border:1px solid #cbd5e1; display:block; margin:0 auto;'>" if b_img else "<p style='color:#94a3b8;'>(미등록)</p>"
+        a_html = f"<img src='{a_img}' style='max-width:100%; max-height:350px; border-radius:6px; border:1px solid #cbd5e1; display:block; margin:0 auto;'>" if a_img else "<p style='color:#94a3b8;'>(미등록)</p>"
+
+        html += f"""
+        <table style="width:100%; border-collapse:collapse; margin-top:10px;">
+            <tr style="background:#f8fafc; text-align:center;">
+                <th style="width:50%; padding:10px; border:1px solid #cbd5e1;">[전] 변경 전 지도 스케치</th>
+                <th style="width:50%; padding:10px; border:1px solid #cbd5e1;">[후] 변경 후 지도 스케치</th>
+            </tr>
+            <tr>
+                <td style="text-align:center; padding:15px; border:1px solid #cbd5e1; vertical-align:middle;">{b_html}</td>
+                <td style="text-align:center; padding:15px; border:1px solid #cbd5e1; vertical-align:middle;">{a_html}</td>
+            </tr>
+        </table>
         """
-        if ans.get("step2_custom_df"):
-            custom_rows = [r for r in ans.get("step2_custom_df", []) if r.get("세부 개조 항목")]
-            if custom_rows:
-                html += "<h4>▶ 모둠 신규 추가 개조 항목</h4><table><tr><th>코드</th><th>세부 개조 항목</th><th>비용</th></tr>"
-                for r in custom_rows:
-                    html += f"<tr><td style='text-align:center;'>{r.get('코드','')}</td><td>{r.get('세부 개조 항목','')}</td><td style='text-align:center;'>{r.get('비용(10~20pt)','')}</td></tr>"
-                html += "</table>"
 
         html += "<h3>Step 4. 3분 공청회 발표를 위한 준비</h3>"
         html += f"<p><b>1. 핵심 정책 슬로건:</b></p><div class='content-box'>{ans.get('step4_1','')}</div>"
