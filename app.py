@@ -1318,25 +1318,34 @@ def render_activity2_2nd(user_key, u_info, current_role):
         else:
             st.success(status_msg, icon="🔓")
 
-    # 모둠원 정보 입력
-    st.markdown("#### 👥 모둠 구성원 (학번/이름)")
-    c1, c2, c3, c4 = st.columns(4)
-    m1_id = c1.text_input("모둠원1(모둠장) 학번", value=ans.get("m1_id", ""), disabled=disabled_flag, key="m1_id_2_2")
-    m1_name = c1.text_input("모둠원1 이름", value=ans.get("m1_name", ""), disabled=disabled_flag, key="m1_name_2_2")
-    m2_id = c2.text_input("모둠원2 학번", value=ans.get("m2_id", ""), disabled=disabled_flag, key="m2_id_2_2")
-    m2_name = c2.text_input("모둠원2 이름", value=ans.get("m2_name", ""), disabled=disabled_flag, key="m2_name_2_2")
-    m3_id = c3.text_input("모둠원3 학번", value=ans.get("m3_id", ""), disabled=disabled_flag, key="m3_id_2_2")
-    m3_name = c3.text_input("모둠원3 이름", value=ans.get("m3_name", ""), disabled=disabled_flag, key="m3_name_2_2")
-    m4_id = c4.text_input("모둠원4 학번", value=ans.get("m4_id", ""), disabled=disabled_flag, key="m4_id_2_2")
-    m4_name = c4.text_input("모둠원4 이름", value=ans.get("m4_name", ""), disabled=disabled_flag, key="m4_name_2_2")
+    # 🌟 학생별 고유 식별자 (데이터 섞임 원천 차단 핵심 코드)
+    k_sfx = user_key if 'user_key' in locals() else current_user_key
 
-    st.markdown("<hr style='margin: 30px 0;'>", unsafe_allow_html=True)
+    # ----------------------------------------------------
+    # 모둠 구성원 (학번/이름)
+    # ----------------------------------------------------
+    st.markdown("<h4 style='font-size: 18px; font-weight: 700; color: #333;'>👥 모둠 구성원 (학번/이름)</h4>", unsafe_allow_html=True)
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        m1_id = st.text_input("모둠원1(모둠장) 학번", value=ans.get("m1_id", ""), disabled=disabled_flag, key=f"m1_id_{k_sfx}")
+        m1_name = st.text_input("모둠원1 이름", value=ans.get("m1_name", ""), disabled=disabled_flag, key=f"m1_name_{k_sfx}")
+    with c2:
+        m2_id = st.text_input("모둠원2 학번", value=ans.get("m2_id", ""), disabled=disabled_flag, key=f"m2_id_{k_sfx}")
+        m2_name = st.text_input("모둠원2 이름", value=ans.get("m2_name", ""), disabled=disabled_flag, key=f"m2_name_{k_sfx}")
+    with c3:
+        m3_id = st.text_input("모둠원3 학번", value=ans.get("m3_id", ""), disabled=disabled_flag, key=f"m3_id_{k_sfx}")
+        m3_name = st.text_input("모둠원3 이름", value=ans.get("m3_name", ""), disabled=disabled_flag, key=f"m3_name_{k_sfx}")
+    with c4:
+        m4_id = st.text_input("모둠원4 학번", value=ans.get("m4_id", ""), disabled=disabled_flag, key=f"m4_id_{k_sfx}")
+        m4_name = st.text_input("모둠원4 이름", value=ans.get("m4_name", ""), disabled=disabled_flag, key=f"m4_name_{k_sfx}")
+
+    st.markdown("<hr style='margin: 25px 0;'>", unsafe_allow_html=True)
 
     # ----------------------------------------------------
     # Step 1. 우리 동네 현황 진단
     # ----------------------------------------------------
     st.markdown("<h3 style='font-size: 22px; font-weight: 800; color: #111;'>Step 1. 우리 동네 현황 진단</h3>", unsafe_allow_html=True)
-    # 🌟 [모둠별 자율 N분 설정] 10분~30분 드롭다운
+
     n_options = ["10분", "15분", "20분", "25분", "30분"]
     saved_n = ans.get("step1_n_min", "15분")
     n_idx = n_options.index(saved_n) if saved_n in n_options else 1
@@ -1348,10 +1357,9 @@ def render_activity2_2nd(user_key, u_info, current_role):
             options=n_options,
             index=n_idx,
             disabled=disabled_flag,
-            key="s1_n_min_select"
+            key=f"s1_n_min_select_{k_sfx}"
         )
 
-    # 🌟 선택한 N분에 맞춰 안내 문구가 실시간으로 변경됨
     st.markdown(f"""
     <div style='background-color: #f0f7ff; border-left: 4px solid #3182ce; padding: 12px 16px; border-radius: 4px; margin-bottom: 20px;'>
         <b style='color: #2b6cb0;'>▶ 도보 {step1_n_min} 생활권 분석</b><br>
@@ -1360,9 +1368,8 @@ def render_activity2_2nd(user_key, u_info, current_role):
     """, unsafe_allow_html=True)
 
     st.markdown("**1. 대상 지역** (예: 학교 주변 인근 OO아파트 OO단지 일대)")
-    step1_1 = st.text_input("대상 지역 입력", value=ans.get("step1_1", ""), label_visibility="collapsed", disabled=disabled_flag, key="s1_1_2_2")
+    step1_1 = st.text_input("대상 지역 입력", value=ans.get("step1_1", ""), label_visibility="collapsed", disabled=disabled_flag, key=f"s1_1_2_2_{k_sfx}")
 
-    # 🌟 체크리스트 제목도 선택한 N분으로 자동 연동
     st.markdown(f"<br>**2. {step1_n_min} 생활권 반경 내 필수 서비스 체크리스트**", unsafe_allow_html=True)
     default_s1_df = [
         {"구분": "주거 및 생활", "필수 서비스 항목": "생필품 마트, 일상 편의시설", "충분": False, "부족 or 없음": False},
@@ -1387,28 +1394,27 @@ def render_activity2_2nd(user_key, u_info, current_role):
             "충분": st.column_config.CheckboxColumn("충분", width="small"),
             "부족 or 없음": st.column_config.CheckboxColumn("부족 or 없음", width="small"),
         },
-        key="s1_2_editor"
+        key=f"s1_2_editor_{k_sfx}"
     )
 
     st.markdown("<br>**3. 선택한 지역의 핵심 문제점** *(반드시 실제 현장 답사 및 데이터에 기반한 내용을 작성할 것)*", unsafe_allow_html=True)
-    
-    col_p1, col_d1 = st.columns([1, 1])
+    col_p1, col_d1 = st.columns([1, 2])
     with col_p1:
-        step1_p1 = st.text_area("문제점 1", value=ans.get("step1_p1", ans.get("step1_3_1", "")), height=100, disabled=disabled_flag, key="s1_p1")
+        step1_p1 = st.text_area("문제점 1", value=ans.get("step1_p1", ans.get("step1_3_1", "")), height=100, disabled=disabled_flag, key=f"s1_p1_{k_sfx}")
     with col_d1:
-        step1_d1 = st.text_area("데이터 1", value=ans.get("step1_d1", ""), height=100, disabled=disabled_flag, key="s1_d1")
+        step1_d1 = st.text_area("데이터 1", value=ans.get("step1_d1", ""), height=100, disabled=disabled_flag, key=f"s1_d1_{k_sfx}")
 
-    col_p2, col_d2 = st.columns([1, 1])
+    col_p2, col_d2 = st.columns([1, 2])
     with col_p2:
-        step1_p2 = st.text_area("문제점 2", value=ans.get("step1_p2", ans.get("step1_3_2", "")), height=100, disabled=disabled_flag, key="s1_p2")
+        step1_p2 = st.text_area("문제점 2", value=ans.get("step1_p2", ans.get("step1_3_2", "")), height=100, disabled=disabled_flag, key=f"s1_p2_{k_sfx}")
     with col_d2:
-        step1_d2 = st.text_area("데이터 2", value=ans.get("step1_d2", ""), height=100, disabled=disabled_flag, key="s1_d2")
+        step1_d2 = st.text_area("데이터 2", value=ans.get("step1_d2", ""), height=100, disabled=disabled_flag, key=f"s1_d2_{k_sfx}")
 
-    col_p3, col_d3 = st.columns([1, 1])
+    col_p3, col_d3 = st.columns([1, 2])
     with col_p3:
-        step1_p3 = st.text_area("문제점 3", value=ans.get("step1_p3", ans.get("step1_3_3", "")), height=100, disabled=disabled_flag, key="s1_p3")
+        step1_p3 = st.text_area("문제점 3", value=ans.get("step1_p3", ans.get("step1_3_3", "")), height=100, disabled=disabled_flag, key=f"s1_p3_{k_sfx}")
     with col_d3:
-        step1_d3 = st.text_area("데이터 3", value=ans.get("step1_d3", ""), height=100, disabled=disabled_flag, key="s1_d3")
+        step1_d3 = st.text_area("데이터 3", value=ans.get("step1_d3", ""), height=100, disabled=disabled_flag, key=f"s1_d3_{k_sfx}")
 
     st.markdown("<hr style='margin: 30px 0;'>", unsafe_allow_html=True)
 
