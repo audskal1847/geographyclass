@@ -2,6 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import json, os, base64, datetime, threading, io, zipfile
 import pandas as pd
+import storage
 from PIL import Image
 
 def process_sketch_image(uploaded_file, max_width=800):
@@ -131,17 +132,24 @@ def check_active(act_name, class_group):
     day_map = {0: "월", 1: "화", 2: "수", 3: "목", 4: "금", 5: "토", 6: "일"}
     current_day = day_map[now.weekday()]
     current_time = now.time()
-    schedule_strs, is_time_match = [], False
+    schedule_strs, is_time_match, grace_left = [], False, None
     for slot in slots:
         if slot['day'] != "선택안함":
             p_str = f" {slot.get('period', '')}" if slot.get('period', '') and slot.get('period') != "선택안함" else ""
             schedule_strs.append(f"{slot['day']}요일{p_str} {slot['start']} - {slot['end']}")
             if slot['day'] == current_day:
                 try:
-                    if datetime.datetime.strptime(slot["start"], "%H:%M").time() <= current_time <= datetime.datetime.strptime(slot["end"], "%H:%M").time(): is_time_match = True
+                    s_t = datetime.datetime.strptime(slot["start"], "%H:%M").time()
+                    e_dt = datetime.datetime.combine(now.date(), datetime.datetime.strptime(slot["end"], "%H:%M").time())
+                    if s_t <= current_time <= e_dt.time(): is_time_match = True
+                    elif e_dt < now <= e_dt + datetime.timedelta(minutes=GRACE_MINUTES):
+                        # 🛟 수업 종료 직후 작성 중이던 내용이 사라지지 않도록 유예 시간 동안 저장 허용
+                        left = int(((e_dt + datetime.timedelta(minutes=GRACE_MINUTES)) - now).total_seconds() // 60) + 1
+                        grace_left = left if grace_left is None else max(grace_left, left)
                 except: continue
     sched_display = ", ".join(schedule_strs) if schedule_strs else "설정된 수업 시간 없음"
     if is_time_match: return True, "✅ 현재 수업 시간입니다. 정상적으로 작성하고 저장(제출)할 수 있습니다."
+    if grace_left is not None: return True, f"⏰ 수업 시간이 끝났습니다. 작성 중인 내용을 약 {grace_left}분 안에 꼭 [저장하기] 해 주세요."
     return False, f"⏳ 현재는 정해진 수업 시간이 아닙니다. 지정된 수업 시간에만 입력할 수 있습니다.\n\n(나의 주간 수업 시간: {sched_display} / 최종 기한: {final_dl_str})"
 
 def check_active_with_exception(act_name, class_group, user_key):
@@ -169,33 +177,109 @@ def is_act_visible_for_user(act_name, class_group, user_key, config):
         except: pass
     return is_act_visible_for_class(act_name, class_group, config)
 
+# =====================================================================
+# 💾 [안전 저장 엔진 연결] storage.py
+#  - 동시 저장 시 '바뀐 항목만' 반영 → 다른 학생 자료를 덮어쓰지 않음
+#  - 파일 손상 시 빈 데이터로 덮어쓰지 않고 백업에서 복원
+#  - (선택) 구글 시트에 실시간 복제 → 서버가 초기화돼도 자동 복원
+# =====================================================================
+DRAFTS_FILE = "drafts.json"
+GRACE_MINUTES = 10   # 수업 종료 후에도 저장을 허용하는 유예 시간(분)
+_NS_BY_PATH = {USERS_FILE: "users", DATA_FILE: "data", CONFIG_FILE: "config", DRAFTS_FILE: "drafts"}
+
+def _sheets_conf():
+    """.streamlit/secrets.toml 에 구글 시트 정보가 있으면 사용, 없으면 로컬 파일만 사용"""
+    try:
+        if "gcp_service_account" in st.secrets and "gsheet_url" in st.secrets:
+            return dict(st.secrets["gcp_service_account"]), str(st.secrets["gsheet_url"])
+    except Exception:
+        pass
+    return None
+
+STORE = storage.get_store(
+    paths={"users": USERS_FILE, "data": DATA_FILE, "config": CONFIG_FILE, "drafts": DRAFTS_FILE},
+    depth={"users": 1, "data": 2, "config": 1, "drafts": 2},
+    backup_dir=BACKUP_DIR,
+    snapshot_names={"users": "users", "data": "learning_data", "config": "config"},
+    sheets_conf=_sheets_conf(),
+)
+
 def load_json(file_path, default_value):
-    with db_lock:
-        if not os.path.exists(file_path):
-            with open(file_path, "w", encoding="utf-8") as f: json.dump(default_value, f, ensure_ascii=False, indent=4)
-            return default_value
-        for _ in range(5):
-            try:
-                with open(file_path, "r", encoding="utf-8") as f: return json.load(f)
-            except: import time; time.sleep(0.1)
-        return default_value
+    ns = _NS_BY_PATH.get(file_path)
+    if ns is None:
+        try:
+            with open(file_path, "r", encoding="utf-8-sig") as f: return json.load(f)
+        except Exception: return default_value
+    data = STORE.load(ns)
+    if not data and isinstance(default_value, dict) and default_value:
+        data.update(default_value)
+    return data
 
 def save_json(file_path, data):
-    with db_lock:
+    ns = _NS_BY_PATH.get(file_path)
+    if ns is None:
         with open(file_path, "w", encoding="utf-8") as f: json.dump(data, f, ensure_ascii=False, indent=4)
+        return
+    STORE.save(ns, data)
 
-def create_auto_backup(reason="자동 스냅샷"):
-    with db_lock:
-        try:
-            now_str = get_kst_now().strftime("%Y%m%d_%H%M%S")
-            backup_bundle = {"timestamp": get_kst_now().strftime("%Y-%m-%d %H:%M:%S"), "reason": reason, "users": load_json(USERS_FILE, {}), "learning_data": load_json(DATA_FILE, {}), "config": load_json(CONFIG_FILE, {})}
-            with open(os.path.join(BACKUP_DIR, f"backup_{now_str}.json"), "w", encoding="utf-8") as f: json.dump(backup_bundle, f, ensure_ascii=False, indent=2)
-            all_bks = sorted([os.path.join(BACKUP_DIR, f) for f in os.listdir(BACKUP_DIR) if f.startswith("backup_") and f.endswith(".json")])
-            if len(all_bks) > 30:
-                for old_bk in all_bks[:-30]:
-                    try: os.remove(old_bk)
-                    except: pass
-        except: pass
+def create_auto_backup(reason="자동 스냅샷", force=False):
+    """저장할 때마다 7MB 전체를 복사하던 방식 → 변경이 있으면 최대 5분마다 1개 스냅샷.
+    (각 저장 내용은 저널과 구글 시트에 즉시 기록되므로 개별 저장은 유실되지 않습니다.)"""
+    try: STORE.request_snapshot(reason, force=force)
+    except Exception: pass
+
+# --- 학생 활동지: 서버 임시저장(draft) + 안전 제출 ---
+def _canon(obj):
+    try: return json.dumps(obj, ensure_ascii=False, sort_keys=True, default=str)
+    except Exception: return str(obj)
+
+def apply_draft(user_key, category, ans, enabled=True):
+    """저장(제출)하지 않은 임시 내용이 있으면 화면에 복원한다."""
+    if not enabled: return ans
+    draft = STORE.get("drafts", user_key, sub=category)
+    if draft and _canon(draft) != _canon(ans):
+        merged = dict(ans); merged.update(draft)
+        st.warning("📝 저장하지 않은 임시 작성 내용을 복원했습니다. 내용을 확인한 뒤 **수업 시간 안에 [저장하기]** 를 눌러야 최종 저장됩니다.", icon="♻️")
+        return merged
+    return ans
+
+def autosave_draft(user_key, category, new_ans, disabled_flag):
+    """입력칸에서 다른 곳을 클릭할 때마다(화면 갱신 시) 서버에 임시저장. 접속이 끊겨도 내용이 남는다."""
+    if disabled_flag or not user_key: return
+    try:
+        # 화면을 처음 열었을 때의 상태를 기준으로 삼아, 실제로 고친 내용이 있을 때만 임시저장
+        base_key = f"_draft_base::{user_key}::{category}"
+        now_c = _canon(new_ans)
+        if base_key not in st.session_state:
+            st.session_state[base_key] = now_c
+            return
+        if now_c == st.session_state[base_key]: return
+        saved = STORE.get("data", user_key, sub=category)
+        cur_draft = STORE.get("drafts", user_key, sub=category)
+        if _canon(new_ans) == _canon(saved if saved is not None else {}):
+            if cur_draft is not None: STORE.delete("drafts", user_key, sub=category)
+        elif _canon(new_ans) != _canon(cur_draft):
+            STORE.set("drafts", user_key, new_ans, sub=category)
+    except Exception:
+        pass
+
+def commit_activity(user_key, category, new_ans, u_name, success_msg="🎉 저장 완료!"):
+    """학생 1명 x 수행평가 1개만 저장(다른 학생 자료는 절대 건드리지 않음) 후 검증."""
+    try:
+        STORE.set("data", user_key, new_ans, sub=category)
+        if _canon(STORE.get("data", user_key, sub=category)) != _canon(new_ans):
+            raise RuntimeError("저장 확인 실패")
+        STORE.delete("drafts", user_key, sub=category)
+        st.session_state.pop(f"_draft_base::{user_key}::{category}", None)
+        create_auto_backup(f"[{u_name}] {category} 저장")
+        st.balloons(); st.success(success_msg)
+        st.session_state["_autosave_clear"] = True
+        return True
+    except storage.StorageNotReady as e:
+        st.error(f"⚠️ {e} (작성한 내용은 임시저장되어 있습니다.)")
+    except Exception as e:
+        st.error(f"⚠️ 저장 중 오류가 발생했습니다: {e}  — 화면의 내용은 지워지지 않았으니 잠시 후 다시 [저장하기]를 눌러 주세요.")
+    return False
 
 def init_system():
     with db_lock:
@@ -1026,8 +1110,60 @@ def generate_activity_html(act_name, ans, u_name):
     html += "</body></html>"
     return html
 
-def inject_custom_scripts():
-    components.html("""<script>document.addEventListener("DOMContentLoaded", function() { const parentDoc = window.parent.document; function initAutoSave() { const elements = parentDoc.querySelectorAll('input[type="text"], textarea'); elements.forEach(el => { const ariaLabel = el.getAttribute('aria-label') || ''; const key = 'autosave_' + window.parent.location.pathname + '_' + ariaLabel; if (!el.dataset.autosaveAttached && ariaLabel !== '') { el.dataset.autosaveAttached = "true"; el.addEventListener('input', () => { window.localStorage.setItem(key, el.value); }); el.addEventListener('focus', () => { const savedVal = window.localStorage.getItem(key); if (savedVal && el.value === "") { let setter = Object.getOwnPropertyDescriptor(window.parent.HTMLInputElement.prototype, "value")?.set; if(el.tagName === 'TEXTAREA') setter = Object.getOwnPropertyDescriptor(window.parent.HTMLTextAreaElement.prototype, "value")?.set; if(setter) { setter.call(el, savedVal); el.dispatchEvent(new Event('input', { bubbles: true })); } else { el.value = savedVal; } } }); } }); } setInterval(initAutoSave, 1500); });</script>""", height=0, width=0)
+AUTOSAVE_JS = """<script>
+(function(){
+  var P = window.parent, doc = P.document;
+  var PREFIX = 'asv2___SCOPE___';
+  var CLEAR = __CLEAR__;
+  var MAX_AGE = 12 * 3600 * 1000;
+  function eachKey(fn){ try { var ks = []; for (var i = 0; i < P.localStorage.length; i++) ks.push(P.localStorage.key(i)); ks.forEach(fn); } catch(e) {} }
+  // 예전 스크립트가 남긴 키(학생 구분 없이 저장되어 내용이 섞이던 원인) 정리
+  eachKey(function(k){ if (k.indexOf('autosave_') === 0) P.localStorage.removeItem(k); });
+  // 저장 성공 직후에는 이 화면의 임시 기록을 비움 / 오래된 기록도 정리
+  eachKey(function(k){
+    if (k.indexOf('asv2_') !== 0) return;
+    if (CLEAR && k.indexOf(PREFIX) === 0) { P.localStorage.removeItem(k); return; }
+    try { var o = JSON.parse(P.localStorage.getItem(k)); if (!o || Date.now() - o.t > MAX_AGE) P.localStorage.removeItem(k); } catch(e) { P.localStorage.removeItem(k); }
+  });
+  function setNative(el, v){
+    var proto = el.tagName === 'TEXTAREA' ? P.HTMLTextAreaElement.prototype : P.HTMLInputElement.prototype;
+    var d = Object.getOwnPropertyDescriptor(proto, 'value');
+    if (d && d.set) d.set.call(el, v); else el.value = v;
+    el.dispatchEvent(new P.Event('input', { bubbles: true }));
+  }
+  function attach(){
+    var seen = {};
+    var els = doc.querySelectorAll('section.main textarea, section.main input[type="text"], [data-testid="stMain"] textarea, [data-testid="stMain"] input[type="text"]');
+    var done = new Set();
+    els.forEach(function(el){
+      if (done.has(el)) return; done.add(el);
+      if (el.getAttribute('role') === 'combobox' || el.readOnly) return;
+      var label = el.getAttribute('aria-label') || '';
+      if (!label) return;
+      seen[label] = (seen[label] || 0) + 1;            // 같은 문항 이름이 여러 개여도 칸마다 따로 저장
+      el.dataset.asv2 = PREFIX + label + '#' + seen[label];
+      if (el.dataset.asv2bound) return;
+      el.dataset.asv2bound = '1';
+      el.addEventListener('input', function(){
+        if (el.disabled || !el.dataset.asv2) return;
+        try { P.localStorage.setItem(el.dataset.asv2, JSON.stringify({ v: el.value, t: Date.now() })); } catch(e) {}
+      });
+      el.addEventListener('focus', function(){
+        if (el.disabled || el.value !== '' || !el.dataset.asv2) return;
+        var o = null; try { o = JSON.parse(P.localStorage.getItem(el.dataset.asv2) || 'null'); } catch(e) {}
+        if (o && o.v && Date.now() - o.t < MAX_AGE) setNative(el, o.v);
+      });
+    });
+  }
+  attach(); setInterval(attach, 1500);
+})();
+</script>"""
+
+def inject_custom_scripts(scope_key, clear=False):
+    """브라우저 임시저장: 학생 + 화면별로 분리 저장, 같은 이름 문항도 칸별로 분리, 저장 성공 시 비움"""
+    import hashlib
+    scope = hashlib.md5(scope_key.encode("utf-8")).hexdigest()[:12]
+    components.html(AUTOSAVE_JS.replace("__SCOPE__", scope).replace("__CLEAR__", "true" if clear else "false"), height=0, width=0)
 
 # --- [4] 활동지 화면 구성 함수 ---
 def render_group_members(ans, disabled_flag, category=""):
@@ -1051,6 +1187,7 @@ def render_activity1_3th(user_key, u_info, current_role):
     u_name, u_id, u_subj, user_class = u_info.get("name", ""), u_info.get("id", ""), u_info.get("subject", "전체"), u_info.get("class_group", "")
     learning_data = load_json(DATA_FILE, {})
     owner_key, ans = get_user_activity_data(user_key, u_id, u_subj, user_class, category, learning_data)
+    ans = apply_draft(user_key, category, ans, enabled=(owner_key == user_key))
     is_active, status_msg = check_active_with_exception(category, user_class, user_key)
     disabled_flag = (current_role == "학생" and not is_active)
     if current_role == "관리자": disabled_flag = False; st.info("💡 교사/관리자 모드입니다.")
@@ -1082,18 +1219,17 @@ def render_activity1_3th(user_key, u_info, current_role):
     a3_10 = st.text_input("10) 어울리는 BGM:", value=ans.get("a3_10", ""), disabled=disabled_flag, key=f"a3_10_{category}")
     a3_11 = st.text_area("11) 그 이유는?:", value=ans.get("a3_11", ""), key=f"a3_11_{category}", disabled=disabled_flag)
     
+    new_ans = {"a1_1": a1_1, "a1_2": a1_2, "a1_3": a1_3, "a2_1": a2_1, "a2_2_1": a2_2_1, "a2_2_2": a2_2_2, "a2_3_1": a2_3_1, "a2_3_2": a2_3_2, "a2_4": a2_4, "a3_1": a3_1, "a3_2": a3_2, "a3_3": a3_3, "a3_4": a3_4, "a3_5": a3_5, "a3_6": a3_6, "a3_7": a3_7, "a3_8": a3_8, "a3_9": a3_9, "a3_10": a3_10, "a3_11": a3_11}
+    autosave_draft(user_key, category, new_ans, disabled_flag)  # 🛟 서버 임시저장
     if not disabled_flag and st.button("저장하기", type="primary", key=f"save_{category}"):
-        current_data = load_json(DATA_FILE, {}) 
-        if user_key not in current_data: current_data[user_key] = {}
-        new_ans = {"a1_1": a1_1, "a1_2": a1_2, "a1_3": a1_3, "a2_1": a2_1, "a2_2_1": a2_2_1, "a2_2_2": a2_2_2, "a2_3_1": a2_3_1, "a2_3_2": a2_3_2, "a2_4": a2_4, "a3_1": a3_1, "a3_2": a3_2, "a3_3": a3_3, "a3_4": a3_4, "a3_5": a3_5, "a3_6": a3_6, "a3_7": a3_7, "a3_8": a3_8, "a3_9": a3_9, "a3_10": a3_10, "a3_11": a3_11}
-        current_data[user_key][category] = new_ans
-        save_json(DATA_FILE, current_data); create_auto_backup(f"[{u_name}] {category} 저장"); st.balloons(); st.success("🎉 저장 완료!")
+        commit_activity(user_key, category, new_ans, u_name)
 
 def render_activity2_3th(user_key, u_info, current_role):
     category = ACT_3_2
     u_name, u_id, u_subj, user_class = u_info.get("name", ""), u_info.get("id", ""), u_info.get("subject", "전체"), u_info.get("class_group", "")
     learning_data = load_json(DATA_FILE, {})
     owner_key, ans = get_user_activity_data(user_key, u_id, u_subj, user_class, category, learning_data)
+    ans = apply_draft(user_key, category, ans, enabled=(owner_key == user_key))
     is_active, status_msg = check_active_with_exception(category, user_class, user_key)
     disabled_flag = (current_role == "학생" and not is_active)
     if current_role == "관리자": disabled_flag = False; st.info("💡 교사/관리자 모드입니다.")
@@ -1121,18 +1257,17 @@ def render_activity2_3th(user_key, u_info, current_role):
     q8_1 = st.text_input("8-1) 과거로 돌아갈 수 있다면 다시 가고 싶은 장소는?", value=ans.get("q8_1", ""), disabled=disabled_flag, key=f"q8_1_{category}")
     q8_2 = st.text_area("8-2) 그 이유는?", value=ans.get("q8_2", ""), disabled=disabled_flag, key=f"q8_2_{category}")
     
+    new_ans = {"q1_1": q1_1, "q1_2": q1_2, "q2_1": q2_1, "q2_2": q2_2, "q2_3": q2_3, "q3_1": q3_1, "q3_2": q3_2, "q3_3": q3_3, "q4_1": q4_1, "q4_2": q4_2, "q5_1": q5_1, "q5_2": q5_2, "q6_1": q6_1, "q6_2": q6_2, "q7_1": q7_1, "q7_2": q7_2, "q8_1": q8_1, "q8_2": q8_2}
+    autosave_draft(user_key, category, new_ans, disabled_flag)  # 🛟 서버 임시저장
     if not disabled_flag and st.button("저장하기", type="primary", key=f"save_{category}"):
-        current_data = load_json(DATA_FILE, {}) 
-        if user_key not in current_data: current_data[user_key] = {}
-        new_ans = {"q1_1": q1_1, "q1_2": q1_2, "q2_1": q2_1, "q2_2": q2_2, "q2_3": q2_3, "q3_1": q3_1, "q3_2": q3_2, "q3_3": q3_3, "q4_1": q4_1, "q4_2": q4_2, "q5_1": q5_1, "q5_2": q5_2, "q6_1": q6_1, "q6_2": q6_2, "q7_1": q7_1, "q7_2": q7_2, "q8_1": q8_1, "q8_2": q8_2}
-        current_data[user_key][category] = new_ans
-        save_json(DATA_FILE, current_data); create_auto_backup(f"[{u_name}] {category} 저장"); st.balloons(); st.success("🎉 저장 완료!")
+        commit_activity(user_key, category, new_ans, u_name)
 
 def render_activity3_3th(user_key, u_info, current_role):
     category = ACT_3_3
     u_name, u_id, u_subj, user_class = u_info.get("name", ""), u_info.get("id", ""), u_info.get("subject", "전체"), u_info.get("class_group", "")
     learning_data = load_json(DATA_FILE, {})
     owner_key, ans = get_user_activity_data(user_key, u_id, u_subj, user_class, category, learning_data)
+    ans = apply_draft(user_key, category, ans, enabled=(owner_key == user_key))
     is_active, status_msg = check_active_with_exception(category, user_class, user_key)
     disabled_flag = (current_role == "학생" and not is_active)
     if current_role == "관리자": disabled_flag = False; st.info("💡 교사/관리자 모드입니다.")
@@ -1214,28 +1349,27 @@ def render_activity3_3th(user_key, u_info, current_role):
     goal_1 = st.text_area("▶ 어떤 사람이 되고 싶은가?", value=ans.get("goal_1", ""), height=100, disabled=disabled_flag, key=f"goal_1_{category}")
     goal_2 = st.text_area("▶ 어떤 세계관을 갖고 싶은가?", value=ans.get("goal_2", ""), height=100, disabled=disabled_flag, key=f"goal_2_{category}")
     
+    new_ans = {
+        "s1_df": edited_s1_df.to_dict('records'), "direct_df": edited_direct_df.to_dict('records'), 
+        "ind1": ind1, "ind2": ind2, "ind3": ind3, "top5_want": edited_top5_want.to_dict('records'), 
+        "top5_notwant": edited_top5_notwant.to_dict('records'), "label_df": edited_label_df.to_dict('records'), 
+        "prej_df": edited_prej_df.to_dict('records'), "media1_1": media1_1, "media1_2": media1_2, 
+        "media2_1": media2_1, "media2_2": media2_2, "media3_1": media3_1, "media3_2": media3_2, 
+        "fake_df": edited_fake_df.to_dict('records'), "discrim_df": edited_discrim_df.to_dict('records'), 
+        "change_df": edited_change_df.to_dict('records'), "ignore_df": edited_ignore_df.to_dict('records'), 
+        "western_df": edited_western_df.to_dict('records'), "weak_df": edited_weak_df.to_dict('records'),
+        "goal_1": goal_1, "goal_2": goal_2
+    }
+    autosave_draft(user_key, category, new_ans, disabled_flag)  # 🛟 서버 임시저장
     if not disabled_flag and st.button("저장하기", type="primary", key=f"save_{category}"):
-        current_data = load_json(DATA_FILE, {}) 
-        if user_key not in current_data: current_data[user_key] = {}
-        new_ans = {
-            "s1_df": edited_s1_df.to_dict('records'), "direct_df": edited_direct_df.to_dict('records'), 
-            "ind1": ind1, "ind2": ind2, "ind3": ind3, "top5_want": edited_top5_want.to_dict('records'), 
-            "top5_notwant": edited_top5_notwant.to_dict('records'), "label_df": edited_label_df.to_dict('records'), 
-            "prej_df": edited_prej_df.to_dict('records'), "media1_1": media1_1, "media1_2": media1_2, 
-            "media2_1": media2_1, "media2_2": media2_2, "media3_1": media3_1, "media3_2": media3_2, 
-            "fake_df": edited_fake_df.to_dict('records'), "discrim_df": edited_discrim_df.to_dict('records'), 
-            "change_df": edited_change_df.to_dict('records'), "ignore_df": edited_ignore_df.to_dict('records'), 
-            "western_df": edited_western_df.to_dict('records'), "weak_df": edited_weak_df.to_dict('records'),
-            "goal_1": goal_1, "goal_2": goal_2
-        }
-        current_data[user_key][category] = new_ans
-        save_json(DATA_FILE, current_data); create_auto_backup(f"[{u_name}] {category} 저장"); st.balloons(); st.success("🎉 저장 완료!")
+        commit_activity(user_key, category, new_ans, u_name)
 
 def render_activity1_2nd(user_key, u_info, current_role):
     category = ACT_2_1
     u_name, u_id, u_subj, user_class = u_info.get("name", ""), u_info.get("id", ""), u_info.get("subject", "전체"), u_info.get("class_group", "")
     learning_data = load_json(DATA_FILE, {})
     owner_key, ans = get_user_activity_data(user_key, u_id, u_subj, user_class, category, learning_data)
+    ans = apply_draft(user_key, category, ans, enabled=(owner_key == user_key))
     is_active, status_msg = check_active_with_exception(category, user_class, user_key)
     disabled_flag = (current_role == "학생" and not is_active)
     is_member_view = False
@@ -1280,29 +1414,28 @@ def render_activity1_2nd(user_key, u_info, current_role):
     step4_3 = st.text_input("3. 기존 프레임에 대한 우리 모둠의 생각을 담은 강력한 슬로건", value=ans.get("step4_3", ""), disabled=disabled_flag, key=f"step4_3_{category}")
     step4_4 = st.text_area("4. 기존 프레임의 부정적인 부분을 상쇄할 수 있는 우리 모둠이 제안하는 울산의 거주 적합성 개선 아이디어", value=ans.get("step4_4", ""), disabled=disabled_flag, key=f"step4_4_{category}")
 
+    new_ans = {
+        "m1_id": m1_id, "m1_name": m1_name, "m2_id": m2_id, "m2_name": m2_name, "m3_id": m3_id, "m3_name": m3_name, "m4_id": m4_id, "m4_name": m4_name, 
+        "step1_1": step1_1, 
+        "step1_2": step1_2, 
+        "step1_new1": step1_new1, 
+        "step1_new2": step1_new2, 
+        "step1_3": step1_3, 
+        "step1_4": step1_4, 
+        "step2_1_period": step2_1_period, "step2_1_space": step2_1_space, "step2_1_feat": step2_1_feat, "step2_3": step2_3, 
+        "step3_df": edited_step3_df.to_dict('records'), 
+        "step4_1": step4_1, "step4_2": step4_2, "step4_3": step4_3, "step4_4": step4_4
+    }
+    autosave_draft(user_key, category, new_ans, disabled_flag)  # 🛟 서버 임시저장
     if not disabled_flag and st.button("저장하기", type="primary", key=f"save_{category}"):
-        current_data = load_json(DATA_FILE, {}) 
-        if user_key not in current_data: current_data[user_key] = {}
-        new_ans = {
-            "m1_id": m1_id, "m1_name": m1_name, "m2_id": m2_id, "m2_name": m2_name, "m3_id": m3_id, "m3_name": m3_name, "m4_id": m4_id, "m4_name": m4_name, 
-            "step1_1": step1_1, 
-            "step1_2": step1_2, 
-            "step1_new1": step1_new1, 
-            "step1_new2": step1_new2, 
-            "step1_3": step1_3, 
-            "step1_4": step1_4, 
-            "step2_1_period": step2_1_period, "step2_1_space": step2_1_space, "step2_1_feat": step2_1_feat, "step2_3": step2_3, 
-            "step3_df": edited_step3_df.to_dict('records'), 
-            "step4_1": step4_1, "step4_2": step4_2, "step4_3": step4_3, "step4_4": step4_4
-        }
-        current_data[user_key][category] = new_ans
-        save_json(DATA_FILE, current_data); create_auto_backup(f"[{u_name}] {category} 저장"); st.balloons(); st.success("🎉 저장 완료!")
+        commit_activity(user_key, category, new_ans, u_name)
 
 def render_activity2_2nd(user_key, u_info, current_role):
     category = ACT_2_2
     u_name, u_id, u_subj, user_class = u_info.get("name", ""), u_info.get("id", ""), u_info.get("subject", "전체"), u_info.get("class_group", "")
     learning_data = load_json(DATA_FILE, {})
     owner_key, ans = get_user_activity_data(user_key, u_id, u_subj, user_class, category, learning_data)
+    ans = apply_draft(user_key, category, ans, enabled=(owner_key == user_key))
     
     is_active, status_msg = check_active_with_exception(category, user_class, user_key)
     disabled_flag = (current_role == "학생" and not is_active)
@@ -1611,46 +1744,41 @@ def render_activity2_2nd(user_key, u_info, current_role):
     # 저장하기 버튼 & 데이터베이스 동기화
     # ----------------------------------------------------
     st.markdown("<br>", unsafe_allow_html=True)
+
+    saved_tradeoff_records = edited_step2_tradeoff_df.to_dict('records') if hasattr(edited_step2_tradeoff_df, 'to_dict') else []
+    new_ans = {
+        "m1_id": m1_id, "m1_name": m1_name, "m2_id": m2_id, "m2_name": m2_name,
+        "m3_id": m3_id, "m3_name": m3_name, "m4_id": m4_id, "m4_name": m4_name,
+        "step1_n_min": step1_n_min,
+        "step1_1": step1_1,
+        "step1_2_df": edited_step1_2_df.to_dict('records') if hasattr(edited_step1_2_df, 'to_dict') else ans.get("step1_2_df", []),
+        "step1_p1": step1_p1, "step1_d1": step1_d1,
+        "step1_p2": step1_p2, "step1_d2": step1_d2,
+        "step1_p3": step1_p3, "step1_d3": step1_d3,
+        "step2_tradeoff_df": saved_tradeoff_records,
+        "step2_table_df": saved_tradeoff_records,
+        "step2_custom_df": saved_tradeoff_records,
+        "step2_point_df": saved_tradeoff_records,
+        "step3_map_before": current_map_before,
+        "step3_map_after": current_map_after,
+        "step4_1": step4_1,
+        "step4_2": step4_2,
+        "step4_3": step4_3,
+        "step4_4_reason": step4_4_reason,
+        "step4_5": step4_5,
+        "step4_4": step4_5
+    }
+
+    autosave_draft(user_key, category, new_ans, disabled_flag)  # 🛟 서버 임시저장
     if not disabled_flag and st.button("저장하기", type="primary", key=f"save_{category}"):
-        current_data = load_json(DATA_FILE, {})
-        if user_key not in current_data:
-            current_data[user_key] = {}
-        
-        saved_tradeoff_records = edited_step2_tradeoff_df.to_dict('records') if hasattr(edited_step2_tradeoff_df, 'to_dict') else []
-        new_ans = {
-            "m1_id": m1_id, "m1_name": m1_name, "m2_id": m2_id, "m2_name": m2_name,
-            "m3_id": m3_id, "m3_name": m3_name, "m4_id": m4_id, "m4_name": m4_name,
-            "step1_n_min": step1_n_min,
-            "step1_1": step1_1,
-            "step1_2_df": edited_step1_2_df.to_dict('records') if hasattr(edited_step1_2_df, 'to_dict') else ans.get("step1_2_df", []),
-            "step1_p1": step1_p1, "step1_d1": step1_d1,
-            "step1_p2": step1_p2, "step1_d2": step1_d2,
-            "step1_p3": step1_p3, "step1_d3": step1_d3,
-            "step2_tradeoff_df": saved_tradeoff_records,
-            "step2_table_df": saved_tradeoff_records,
-            "step2_custom_df": saved_tradeoff_records,
-            "step2_point_df": saved_tradeoff_records,
-            "step3_map_before": current_map_before,
-            "step3_map_after": current_map_after,
-            "step4_1": step4_1,
-            "step4_2": step4_2,
-            "step4_3": step4_3,
-            "step4_4_reason": step4_4_reason,
-            "step4_5": step4_5,
-            "step4_4": step4_5
-        }
-        
-        current_data[user_key][category] = new_ans
-        save_json(DATA_FILE, current_data)
-        create_auto_backup(f"[{u_name}] {category} 저장")
-        st.balloons()
-        st.success("성공적으로 저장되었습니다!")
+        commit_activity(user_key, category, new_ans, u_name)
 
 def render_activity3_2nd(user_key, u_info, current_role):
     category = ACT_2_3
     u_name, u_id, u_subj, user_class = u_info.get("name", ""), u_info.get("id", ""), u_info.get("subject", "전체"), u_info.get("class_group", "")
     learning_data = load_json(DATA_FILE, {})
     owner_key, ans = get_user_activity_data(user_key, u_id, u_subj, user_class, category, learning_data)
+    ans = apply_draft(user_key, category, ans, enabled=(owner_key == user_key))
     
     is_active, status_msg = check_active_with_exception(category, user_class, user_key)
     disabled_flag = (current_role == "학생" and not is_active)
@@ -2047,46 +2175,41 @@ def render_activity3_2nd(user_key, u_info, current_role):
     # 저장하기 버튼
     # ----------------------------------------------------
     st.markdown("<br>", unsafe_allow_html=True)
+
+    new_ans = {
+        "ind_id": ind_id, "ind_name": ind_name, "ind_career": ind_career,
+        "step1_df": edited_step1_df.to_dict('records'),
+        "step1_keyword": step1_keyword,
+        "step1_message": step1_message,
+        "step2_matrix_df": edited_step2_df.to_dict('records'),
+        "step2_final_building": step2_final_building,
+        "step2_reason": step2_reason,
+        "step3_df": edited_step3_df.to_dict('records'),
+        "step4_df": step4_data,
+        "step4_video": saved_video,
+        "step5_title": step5_title,
+        "step5_place": step5_place,
+        "step5_desc": step5_desc,
+        "step5_identity": step5_identity,
+        "step5_condition": step5_condition,
+        "step5_change_visitor": step5_change_visitor,
+        "step5_change_resident": step5_change_resident,
+        "step5_change_market": step5_change_market,
+        "step5_change": f"[관람객] {step5_change_visitor} / [주민] {step5_change_resident} / [상권] {step5_change_market}",
+        "step6_chk_df": edited_step6_chk_df.to_dict('records'),
+        "step6_ai_df": edited_step6_ai_df.to_dict('records'),
+        "step6_reflection": step6_reflection
+    }
+
+    autosave_draft(user_key, category, new_ans, disabled_flag)  # 🛟 서버 임시저장
     if not disabled_flag and st.button("저장하기", type="primary", key=f"save_{category}"):
-        current_data = load_json(DATA_FILE, {})
-        if user_key not in current_data:
-            current_data[user_key] = {}
-        
-        new_ans = {
-            "ind_id": ind_id, "ind_name": ind_name, "ind_career": ind_career,
-            "step1_df": edited_step1_df.to_dict('records'),
-            "step1_keyword": step1_keyword,
-            "step1_message": step1_message,
-            "step2_matrix_df": edited_step2_df.to_dict('records'),
-            "step2_final_building": step2_final_building,
-            "step2_reason": step2_reason,
-            "step3_df": edited_step3_df.to_dict('records'),
-            "step4_df": step4_data,
-            "step4_video": saved_video,
-            "step5_title": step5_title,
-            "step5_place": step5_place,
-            "step5_desc": step5_desc,
-            "step5_identity": step5_identity,
-            "step5_condition": step5_condition,
-            "step5_change_visitor": step5_change_visitor,
-            "step5_change_resident": step5_change_resident,
-            "step5_change_market": step5_change_market,
-            "step5_change": f"[관람객] {step5_change_visitor} / [주민] {step5_change_resident} / [상권] {step5_change_market}",
-            "step6_chk_df": edited_step6_chk_df.to_dict('records'),
-            "step6_ai_df": edited_step6_ai_df.to_dict('records'),
-            "step6_reflection": step6_reflection
-        }
-        
-        current_data[user_key][category] = new_ans
-        save_json(DATA_FILE, current_data)
-        create_auto_backup(f"[{u_name}] {category} 저장")
-        st.balloons()
-        st.success("성공적으로 저장되었습니다!")
+        commit_activity(user_key, category, new_ans, u_name)
 
 def render_custom_activity(user_key, u_info, current_role, act_name, config):
     u_name, u_id, u_subj, user_class = u_info.get("name", ""), u_info.get("id", ""), u_info.get("subject", "전체"), u_info.get("class_group", "")
     learning_data = load_json(DATA_FILE, {})
     owner_key, ans = get_user_activity_data(user_key, u_id, u_subj, user_class, act_name, learning_data)
+    ans = apply_draft(user_key, act_name, ans, enabled=(owner_key == user_key))
     is_active, status_msg = check_active_with_exception(act_name, user_class, user_key)
     disabled_flag = (current_role == "학생" and not is_active)
     if current_role == "관리자": disabled_flag = False; st.info("💡 교사/관리자 모드입니다.")
@@ -2108,15 +2231,12 @@ def render_custom_activity(user_key, u_info, current_role, act_name, config):
         elif q_type == "textarea": 
             new_ans[q_id] = st.text_area(f"{q_label} 입력", value=ans.get(q_id, ""), height=150, disabled=disabled_flag, label_visibility="collapsed", key=f"{q_id}_{act_name}")
             
+    if custom_form: autosave_draft(user_key, act_name, new_ans, disabled_flag)  # 🛟 서버 임시저장
     if not disabled_flag:
         if st.button("저장하기", type="primary", key=f"save_{act_name}"):
-            current_data = load_json(DATA_FILE, {})
-            if user_key not in current_data: current_data[user_key] = {}
-            new_ans["step4_df"] = step4_data    
-            current_data[user_key][act_name] = new_ans
-            save_json(DATA_FILE, current_data); ans = new_ans
-            create_auto_backup(f"[{u_name}] {act_name} 저장")
-            st.balloons(); st.success("🎉 화면 저장이 완료되었습니다!")
+            # (버그 수정) 정의되지 않은 step4_data 참조로 저장할 때마다 오류가 나던 줄 제거
+            if commit_activity(user_key, act_name, new_ans, u_name, "🎉 화면 저장이 완료되었습니다!"):
+                ans = new_ans
             
     if ans:
         html_data = f"<!DOCTYPE html><html lang='ko'><head><meta charset='UTF-8'><title>{u_name}</title></head><body><h2>▶ {act_name}</h2>"
@@ -2219,6 +2339,12 @@ elif "current_page" not in st.session_state: st.session_state.current_page = "ma
 # 🚀 메인 실행부 및 사이드바 (UI 구성)
 # =====================================================================
 
+if not STORE.sheets_ready:
+    # 서버가 막 재시작되어 구글 시트에서 자료를 받아오는 중 → 예전 자료 위에 저장하는 사고를 막기 위해 잠시 대기
+    st.markdown("<h1 style='font-size:32px; font-weight:900;'>🏫 수업 및 활동 어시스트 프로그램</h1>", unsafe_allow_html=True)
+    st.warning("⏳ 저장소(구글 시트)와 자료를 동기화하는 중입니다. 10초 정도 뒤에 새로고침(F5) 해 주세요.")
+    st.stop()
+
 init_system()
 
 st.sidebar.title("🔒 인증 센터")
@@ -2296,7 +2422,10 @@ st.sidebar.markdown("<div style='text-align: center; color: #222; font-size: 18p
 
 with st.sidebar: render_privacy_policy()
 
-components.html("""<script>document.addEventListener("DOMContentLoaded", function() { const parentDoc = window.parent.document; function initAutoSave() { const elements = parentDoc.querySelectorAll('input[type="text"], textarea'); elements.forEach(el => { const ariaLabel = el.getAttribute('aria-label') || ''; const key = 'autosave_' + window.parent.location.pathname + '_' + ariaLabel; if (!el.dataset.autosaveAttached && ariaLabel !== '') { el.dataset.autosaveAttached = "true"; el.addEventListener('input', () => { window.localStorage.setItem(key, el.value); }); el.addEventListener('focus', () => { const savedVal = window.localStorage.getItem(key); if (savedVal && el.value === "") { let setter = Object.getOwnPropertyDescriptor(window.parent.HTMLInputElement.prototype, "value")?.set; if(el.tagName === 'TEXTAREA') setter = Object.getOwnPropertyDescriptor(window.parent.HTMLTextAreaElement.prototype, "value")?.set; if(setter) { setter.call(el, savedVal); el.dispatchEvent(new Event('input', { bubbles: true })); } else { el.value = savedVal; } } }); } }); } setInterval(initAutoSave, 1500); });</script>""", height=0, width=0)
+# 🛟 브라우저 임시저장 스크립트(로그인한 학생의 활동지 화면에서만, 학생·화면별로 분리)
+if st.session_state.get("logged_in") and st.session_state.get("user_info"):
+    inject_custom_scripts(f"{st.session_state.user_info.get('user_key','')}|{st.session_state.get('current_page','main')}",
+                          clear=st.session_state.pop("_autosave_clear", False))
 
 if not st.session_state.logged_in:
     st.markdown("<h1 style='font-size:36px; font-weight:900; color:#000;'>🏫 수업 및 활동 어시스트 프로그램</h1>", unsafe_allow_html=True)
@@ -2894,6 +3023,7 @@ else:
                         if up_data:
                             parsed_data = safe_parse_json(up_data, "learning_data")
                             if parsed_data is not None:
+                                STORE.snapshot_now("수동 복구 직전 상태 자동 보관")
                                 save_json(DATA_FILE, parsed_data)
                                 create_auto_backup("수동 학습 데이터 복구")
                                 st.session_state.restore_success_manual = True; st.rerun()
@@ -2906,6 +3036,7 @@ else:
                         if up_users:
                             parsed_users = safe_parse_json(up_users, "users")
                             if parsed_users is not None:
+                                STORE.snapshot_now("수동 복구 직전 상태 자동 보관")
                                 save_json(USERS_FILE, parsed_users)
                                 create_auto_backup("수동 회원 정보 복구")
                                 st.session_state.restore_success_manual = True; st.rerun()
@@ -2918,6 +3049,7 @@ else:
                         if up_config:
                             parsed_config = safe_parse_json(up_config, "config")
                             if parsed_config is not None:
+                                STORE.snapshot_now("수동 복구 직전 상태 자동 보관")
                                 save_json(CONFIG_FILE, parsed_config)
                                 create_auto_backup("수동 시스템 설정 복구")
                                 st.session_state.restore_success_manual = True; st.rerun()
@@ -2932,6 +3064,22 @@ else:
                     st.session_state.restore_success_auto = False
 
                 st.markdown("<h3 style='font-size: 26px; font-weight: 900; margin-top:20px; color:#333;'><span style='font-size: 28px;'>💾</span> 자동 백업 센터</h3>", unsafe_allow_html=True)
+
+                # 🛟 저장소 상태(구글 시트 연결/미반영 건수/경고)
+                _stt = STORE.status()
+                if _stt["sheets_enabled"]:
+                    if _stt["sheet_last_error"]:
+                        st.warning(f"☁️ 구글 시트 반영 지연 중 (대기 {_stt['sheet_pending']}건, 자동 재시도) — {_stt['sheet_last_error']}")
+                    else:
+                        st.success(f"☁️ 구글 시트 실시간 보관 연결됨 · 마지막 반영 {_stt['sheet_last_ok'] or '-'} · 대기 {_stt['sheet_pending']}건")
+                elif _stt["sheets_disabled_reason"]:
+                    st.error(f"☁️ 구글 시트 연결 실패로 서버 파일에만 저장 중입니다. 설정을 확인해 주세요: {_stt['sheets_disabled_reason']}")
+                else:
+                    st.info("☁️ 구글 시트가 연결되어 있지 않아 서버 파일에만 저장 중입니다. Streamlit Cloud는 재시작 시 파일이 초기화되므로 시트 연결을 권장합니다. (안내서 참고)")
+                if _stt["last_flush_error"]:
+                    st.error(f"💾 서버 파일 기록 오류: {_stt['last_flush_error']}")
+                for _w in _stt["warnings"]:
+                    st.warning(f"🛟 {_w}")
                 
                 bk_files = sorted([f for f in os.listdir(BACKUP_DIR) if f.startswith("backup_") and f.endswith(".json")], reverse=True)
                 total_bytes = sum([os.path.getsize(os.path.join(BACKUP_DIR, f)) for f in bk_files if os.path.isfile(os.path.join(BACKUP_DIR, f))])
@@ -2943,7 +3091,7 @@ else:
                 last_bk_time = "없음"
                 if bk_files:
                     try:
-                        with open(os.path.join(BACKUP_DIR, bk_files[0]), "r", encoding="utf-8") as lf:
+                        with open(os.path.join(BACKUP_DIR, bk_files[0]), "r", encoding="utf-8-sig") as lf:
                             last_bk_time = json.load(lf).get("timestamp", "알수없음")
                     except: last_bk_time = "확인 불가"
                 
@@ -2963,13 +3111,13 @@ else:
                 
                 st.markdown("<hr style='margin:25px 0;'>", unsafe_allow_html=True)
                 st.markdown("#### 🕒 백업 스냅샷 선택 및 원클릭 복원 (Rollback)")
-                st.info("💡 학생들의 데이터가 제출되거나 관리자 설정이 변경될 때마다 안전한 스냅샷이 실시간으로 생성됩니다. 과거 특정 시점으로 되돌리려면 아래 목록에서 선택 후 복원 버튼 누르세요.")
+                st.info("💡 학생 저장 내용은 저장 즉시 저널(및 연결 시 구글 시트)에 기록되고, 전체 스냅샷은 변경이 있을 때 최대 5분마다 자동 생성됩니다(최근 48개 보관). 복원 버튼을 누르면 복원 직전 상태도 자동 보관됩니다.")
                 
                 if bk_files:
                     bk_options = {}
                     for f_name in bk_files:
                         try:
-                            with open(os.path.join(BACKUP_DIR, f_name), "r", encoding="utf-8") as bf:
+                            with open(os.path.join(BACKUP_DIR, f_name), "r", encoding="utf-8-sig") as bf:
                                 b_info = json.load(bf)
                                 bk_options[f_name] = f"[{b_info.get('timestamp', '알수없음')}] {b_info.get('reason', '스냅샷')} ({f_name})"
                         except: bk_options[f_name] = f_name
@@ -2980,7 +3128,8 @@ else:
                     with col_r1:
                         if st.button("⏪ 선택한 시점으로 시스템 자동 복원 (1클릭 롤백)", type="primary", use_container_width=True):
                             try:
-                                with open(os.path.join(BACKUP_DIR, selected_bk_file), "r", encoding="utf-8") as bf:
+                                STORE.snapshot_now("복원 직전 상태 자동 보관")  # 🛟 잘못 복원해도 되돌릴 수 있도록
+                                with open(os.path.join(BACKUP_DIR, selected_bk_file), "r", encoding="utf-8-sig") as bf:
                                     restored_bundle = json.load(bf)
                                     if "users" in restored_bundle: save_json(USERS_FILE, restored_bundle["users"])
                                     if "learning_data" in restored_bundle: save_json(DATA_FILE, restored_bundle["learning_data"])
@@ -2990,7 +3139,7 @@ else:
                             except Exception as e: st.error(f"복원 중 오류 발생: {e}")
                     with col_r2:
                         if st.button("📸 지금 즉시 수동 스냅샷 생성", use_container_width=True):
-                            create_auto_backup("관리자 수동 스냅샷 생성")
+                            create_auto_backup("관리자 수동 스냅샷 생성", force=True)
                             st.session_state.admin_save_success = True; st.rerun()
                 else:
                     st.info("아직 생성된 백업 스냅샷이 없습니다. 학생들의 활동 제출이나 설정 저장이 일어나면 자동으로 쌓이게 됩니다.")
