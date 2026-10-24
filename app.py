@@ -32,6 +32,7 @@ import threading
 import time
 import traceback
 
+ENGINE_VERSION = "1.3 (응답 탭)"
 SEP = "||"                    # 2단계 키 구분자 (학생키||수행평가명)
 CHUNK = 40000                 # 구글 시트 셀 1칸 최대 5만 자 -> 4만 자씩 분할
 MAX_REQ_CHARS = 1_500_000     # 시트 API 요청 1회당 최대 전송량(여유 있게)
@@ -369,6 +370,7 @@ class Store:
         self.report_dirty = True
         self.last_report = 0.0
         self.report_last_error = None
+        self.report_last_ok = None
 
         self._load_local()
         if self.sheets_enabled:
@@ -788,6 +790,7 @@ class Store:
         try:
             self.report_hook(self)
             self.report_last_error = None
+            self.report_last_ok = _now()
         except Exception as e:
             self.report_dirty = True
             self.report_last_error = f"{type(e).__name__}: {e}"
@@ -810,6 +813,7 @@ class Store:
                 "last_flush_error": self.last_flush_error,
                 "warnings": list(self.load_warnings),
                 "report_last_error": self.report_last_error,
+                "report_last_ok": _kst_str(self.report_last_ok) if self.report_last_ok else None,
             }
 
     def close(self):
@@ -3973,6 +3977,9 @@ else:
                     st.error(f"💾 서버 파일 기록 오류: {_stt['last_flush_error']}")
                 for _w in _stt["warnings"]:
                     st.warning(f"🛟 {_w}")
+                if _stt.get("report_last_error"):
+                    st.warning(f"📊 응답 탭 갱신 오류(30초마다 재시도): {_stt['report_last_error']}")
+                st.caption(f"저장 엔진 버전: {getattr(storage, 'ENGINE_VERSION', '1.0 (재시작 필요)')} · 응답 탭 마지막 갱신: {_stt.get('report_last_ok') or '-'}")
                 
                 bk_files = sorted([f for f in os.listdir(BACKUP_DIR) if f.startswith("backup_") and f.endswith(".json")], reverse=True)
                 total_bytes = sum([os.path.getsize(os.path.join(BACKUP_DIR, f)) for f in bk_files if os.path.isfile(os.path.join(BACKUP_DIR, f))])
