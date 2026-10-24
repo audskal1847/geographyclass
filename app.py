@@ -1963,6 +1963,21 @@ def generate_html_content(act_name, ans, config=None):
 
     return html
 
+# --- 표의 빈칸(NaN)이 내보내기/시트에 'nan' 으로 찍히던 문제 정리 ---
+import math as _math
+def _clean_nan(x):
+    if isinstance(x, float) and _math.isnan(x): return ""
+    if isinstance(x, float) and x.is_integer(): return int(x)   # 1.0번 → 1번
+    if isinstance(x, dict): return {k: _clean_nan(v) for k, v in x.items()}
+    if isinstance(x, list): return [_clean_nan(v) for v in x]
+    return x
+_get_act_csv_rows_raw = get_act_csv_rows
+def get_act_csv_rows(selected_view, ans, config=None):
+    return _get_act_csv_rows_raw(selected_view, _clean_nan(ans), config)
+_generate_html_content_raw = generate_html_content
+def generate_html_content(act_name, ans, config=None):
+    return _generate_html_content_raw(act_name, _clean_nan(ans), config)
+
 def generate_portfolio_html(user_key, u_info, view_subj, config, learning_data):
     u_id = u_info.get('id', '')
     u_name = u_info.get('name', '학생')
