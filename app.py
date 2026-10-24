@@ -39,6 +39,7 @@ SNAPSHOT_EVERY = 300          # 변경이 있으면 최대 5분마다 전체 스
 SNAPSHOT_KEEP = 48            # 스냅샷 보관 개수
 FLUSH_EVERY = 2.0             # 전체 파일 반영 주기(초)
 SHEET_PUSH_EVERY = 5.0        # 구글 시트 반영 주기(초)
+REPORT_EVERY = 30.0           # 선생님용 응답 보기 탭 갱신 주기(초)
 
 
 def _now():
@@ -258,6 +259,53 @@ class SheetsMirror:
         't), 1, TRUE, 2, TRUE, 3, TRUE, 5, TRUE))), "아직 저장된 자료가 없습니다")'
     )
 
+    def write_table(self, title, rows, freeze_cols=3):
+        """선생님이 읽는 표(응답 보기 탭)를 통째로 다시 쓴다. 내용이 같으면 건너뜀."""
+        import hashlib
+        if not hasattr(self, "_tables"):
+            self._tables = {}
+        h = hashlib.md5(json.dumps(rows, ensure_ascii=False).encode("utf-8")).hexdigest()
+        prev = self._tables.get(title)
+        if prev and prev["hash"] == h:
+            return False
+        width = max(len(r) for r in rows) if rows else 1
+        try:
+            ws = self.sh.worksheet(title)
+            created = False
+        except Exception:
+            ws = self.sh.add_worksheet(title=title, rows=max(len(rows) + 20, 100), cols=max(width, 10))
+            created = True
+        if prev is None and not created:
+            ws.clear()  # 이번 실행에서 처음 쓰는 탭: 예전 내용 정리
+            prev = {"n": 0, "w": 0}
+        prev = prev or {"n": 0, "w": 0}
+        n_rows, n_cols = max(len(rows), prev["n"]), max(width, prev["w"])
+        if n_rows > ws.row_count:
+            ws.add_rows(n_rows - ws.row_count + 20)
+        if n_cols > ws.col_count:
+            ws.add_cols(n_cols - ws.col_count + 2)
+        padded = [list(r) + [""] * (n_cols - len(r)) for r in rows]
+        padded += [[""] * n_cols for _ in range(n_rows - len(rows))]   # 줄어든 만큼 지움
+        ws.update(range_name="A1", values=padded, value_input_option="RAW")
+        if created:
+            try:
+                ws.freeze(rows=1, cols=freeze_cols)
+                sid = ws.id
+                widths = [90, 70, 70, 70, 120, 110, 180, 300, 600]
+                reqs = [{"updateDimensionProperties": {"range": {"sheetId": sid, "dimension": "COLUMNS", "startIndex": i, "endIndex": i + 1},
+                                                       "properties": {"pixelSize": w}, "fields": "pixelSize"}} for i, w in enumerate(widths[:width])]
+                reqs.append({"repeatCell": {"range": {"sheetId": sid, "startColumnIndex": 0, "endColumnIndex": width},
+                                            "cell": {"userEnteredFormat": {"wrapStrategy": "WRAP", "verticalAlignment": "TOP"}},
+                                            "fields": "userEnteredFormat(wrapStrategy,verticalAlignment)"}})
+                reqs.append({"repeatCell": {"range": {"sheetId": sid, "startRowIndex": 0, "endRowIndex": 1},
+                                            "cell": {"userEnteredFormat": {"textFormat": {"bold": True}, "backgroundColor": {"red": 0.89, "green": 0.95, "blue": 0.99}}},
+                                            "fields": "userEnteredFormat(textFormat,backgroundColor)"}})
+                self.sh.batch_update({"requests": reqs})
+            except Exception:
+                pass
+        self._tables[title] = {"hash": h, "n": len(rows), "w": width}
+        return True
+
     def ensure_view(self):
         """선생님이 학년 → 반 → 수행평가로 걸러 볼 수 있는 읽기 전용 보기 탭(없을 때만 생성)."""
         try:
@@ -317,6 +365,10 @@ class Store:
         self.sheet_last_ok = None
         self.sheet_last_error = None
         self._stop = False
+        self.report_hook = None        # 앱이 등록: 선생님용 응답 보기 탭 생성 함수
+        self.report_dirty = True
+        self.last_report = 0.0
+        self.report_last_error = None
 
         self._load_local()
         if self.sheets_enabled:
@@ -449,6 +501,8 @@ class Store:
         self.meta[ns][k] = [ts, bool(deleted)]
         self.dirty.add(ns)
         self.changed_since_snapshot = True
+        if ns != "drafts":
+            self.report_dirty = True
         if self.sheets_enabled:
             self.sheet_pending.add((ns, k))
         if journal:
@@ -720,8 +774,28 @@ class Store:
                 if _now() - last_push >= SHEET_PUSH_EVERY:
                     last_push = _now()
                     self.push_to_sheets()
+                self.run_report()
             except Exception:
                 self.last_flush_error = traceback.format_exc(limit=2)
+
+    def run_report(self, force=False):
+        if not (self.report_hook and self.sheets_enabled and self.sheets_ready and self.sheets is not None):
+            return
+        if not force and (not self.report_dirty or _now() - self.last_report < REPORT_EVERY):
+            return
+        self.report_dirty = False
+        self.last_report = _now()
+        try:
+            self.report_hook(self)
+            self.report_last_error = None
+        except Exception as e:
+            self.report_dirty = True
+            self.report_last_error = f"{type(e).__name__}: {e}"
+
+    def meta_ts(self, ns, key):
+        with self.lock:
+            m = self.meta.get(ns, {}).get(key)
+            return m[0] if m else None
 
     def status(self):
         with self.lock:
@@ -735,6 +809,7 @@ class Store:
                 "last_flush_ok": _kst_str(self.last_flush_ok) if self.last_flush_ok else None,
                 "last_flush_error": self.last_flush_error,
                 "warnings": list(self.load_warnings),
+                "report_last_error": self.report_last_error,
             }
 
     def close(self):
@@ -1053,6 +1128,52 @@ def commit_activity(user_key, category, new_ans, u_name, success_msg="🎉 저�
         st.error(f"⚠️ 저장 중 오류가 발생했습니다: {e}  — 화면의 내용은 지워지지 않았으니 잠시 후 다시 [저장하기]를 눌러 주세요.")
     return False
 
+# --- 📊 구글 시트 '응답 보기' 탭: 수행평가마다 탭 1개, 학생 = 행, 문항 = 열 ---
+import re as _re
+def _sheet_cell(v):
+    """시트 셀용 정리: 이미지/영상은 표시만, HTML 태그 제거, 5만 자 제한"""
+    t = str(v if v is not None else "")
+    if "<" in t:
+        t = _re.sub(r"<video[^>]*>.*?</video>|<video[^>]*>", "[영상 첨부]", t, flags=_re.S)
+        t = _re.sub(r"<img[^>]*>", "[이미지 첨부]", t)
+        t = _re.sub(r"<br\s*/?>", "\n", t)
+        t = _re.sub(r"<[^>]+>", " ", t)
+    t = _re.sub(r"data:[a-z]+/[\w.+-]+;base64,[A-Za-z0-9+/=]+", "[첨부 파일]", t)
+    return t.strip()[:45000]
+
+def _sheet_tab_title(act):
+    m = _re.match(r"\[(\d학년)\]\s*(수행평가\s*\d+)", act)
+    if m: return f"응답_{m.group(1)}_{m.group(2).replace(' ', '')}"
+    return "응답_" + _re.sub(r"[\[\]\*\?/\\:]", "", act)[:40]
+
+def _sheet_report_hook(store):
+    """세로형 표: 학생 1명 x 문항 1개 = 1줄 → 반 / 학번 / 이름 / 문항으로 필터하기 쉬움"""
+    data, users, cfg = store.load("data"), store.load("users"), store.load("config")
+    header = ["반", "학번", "이름", "제출 여부", "마지막 저장", "작성자", "소제목", "문항", "답변"]
+    for subj, acts in cfg.get("subject_activities", {}).items():
+        studs = [(k, u) for k, u in users.items() if u.get("role") == "학생" and u.get("subject") == subj and u.get("approved", True)]
+        studs.sort(key=lambda x: (str(x[1].get("class_group", "")), str(x[1].get("id", ""))))
+        for act in acts:
+            rows = [header]
+            for k, u in studs:
+                owner, ans = get_user_activity_data(k, u.get("id", ""), subj, u.get("class_group", ""), act, data)
+                base = [u.get("class_group", ""), u.get("id", ""), u.get("name", "")]
+                if not ans:
+                    rows.append(base + ["미제출", "", "", "", "", ""]); continue
+                ts = store.meta_ts("data", f"{owner}||{act}")
+                saved = (datetime.datetime.utcfromtimestamp(ts) + datetime.timedelta(hours=9)).strftime("%Y-%m-%d %H:%M") if ts else ""
+                writer = "본인" if owner == k else f"모둠 대표 {owner.split('_')[-1]}"
+                section = ""
+                for row in get_act_csv_rows(act, ans, cfg):
+                    q, a = str(row[0]).strip(), (row[1] if len(row) > 1 else "")
+                    if not q: continue
+                    if a == "" and q.startswith("["):
+                        section = q.strip("[]"); continue      # 소제목 줄 → 다음 문항들의 '소제목' 칸에 표시
+                    rows.append(base + ["제출", saved, writer, section, q, _sheet_cell(a)])
+            store.sheets.write_table(_sheet_tab_title(act), rows, freeze_cols=3)
+
+STORE.report_hook = _sheet_report_hook
+
 def init_system():
     with db_lock:
         users = load_json(USERS_FILE, {})
@@ -1125,11 +1246,11 @@ def get_act_csv_rows(selected_view, ans, config=None):
 
             ["[Part 2. 영상 감상 및 분석]", ""],
             ["1. 첫 느낌", ans.get("a2_1", "").strip() or "(미작성)"],
-            ["▶ 인상적이었던 장소/공간", ans.get("a2_2", "").strip() or "(미작성)"],
-            ["▶ 이유", ans.get("a2_3", "").strip() or "(미작성)"],
-            ["▶ 누구에게 추천", ans.get("a2_4", "").strip() or "(미작성)"],
-            ["▶ 추천하는 이유", ans.get("a2_5", "").strip() or "(미작성)"],
-            ["4. 나만의 감상평", ans.get("a2_6", "").strip() or "(미작성)"],
+            ["▶ 인상적이었던 장소/공간", (ans.get("a2_2_1", "") or ans.get("a2_2", "")).strip() or "(미작성)"],
+            ["▶ 이유", (ans.get("a2_2_2", "") or ans.get("a2_3", "")).strip() or "(미작성)"],
+            ["▶ 누구에게 추천", ans.get("a2_3_1", "").strip() or "(미작성)"],
+            ["▶ 추천하는 이유", ans.get("a2_3_2", "").strip() or "(미작성)"],
+            ["4. 나만의 감상평", (ans.get("a2_4", "") if "a2_3_1" in ans else ans.get("a2_6", "")).strip() or "(미작성)"],
 
             ["[Part 3. 나만의 여행 영상 기획]", ""],
             ["1) 영상의 제목", ans.get("a3_1", "").strip() or "(미작성)"],
