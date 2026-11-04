@@ -946,7 +946,7 @@ def process_uploaded_video(uploaded_file, max_mb=10):
     return f"data:{mime};base64,{b64}"        
 
 # ===================== 🎨 미디어 파사드 이미지 도구 =====================
-from PIL import ImageOps, ImageChops, ImageEnhance, ImageFilter
+from PIL import ImageOps, ImageChops, ImageEnhance, ImageFilter, ImageDraw
 
 def _b64_to_img(b64):
     if not b64 or not isinstance(b64, str) or not b64.startswith("data:image"):
@@ -965,7 +965,22 @@ def _img_to_b64(img, fmt="JPEG", quality=82):
     mime = "jpeg" if fmt == "JPEG" else fmt.lower()
     return f"data:image/{mime};base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
 
-MF_DEFAULT_FACADE = {"l": 20, "t": 15, "w": 60, "h": 60, "dark": 65, "power": 85, "fit": "꽉 채우기"}
+MF_DEFAULT_FACADE = {"l": 20, "t": 15, "w": 60, "h": 60, "dark": 65, "power": 85, "fit": "꽉 채우기",
+                     "mode": "사각형", "q": None}
+
+def mf_rect_to_quad(s):
+    """반듯한 사각형 설정 → 네 모서리(왼쪽 위, 오른쪽 위, 오른쪽 아래, 왼쪽 아래, % 단위)"""
+    l, t, w, h = s["l"], s["t"], s["w"], s["h"]
+    return [l, t, min(100, l + w), t, min(100, l + w), min(100, t + h), l, min(100, t + h)]
+
+def _perspective_coeffs(dst, src):
+    """PIL 원근 변환 계수: 결과 이미지의 점(dst) → 원본 스케치의 점(src)"""
+    import numpy as np
+    A, B = [], []
+    for (x, y), (u, v) in zip(dst, src):
+        A.append([x, y, 1, 0, 0, 0, -u * x, -u * y]); B.append(u)
+        A.append([0, 0, 0, x, y, 1, -v * x, -v * y]); B.append(v)
+    return np.linalg.solve(np.array(A, dtype=float), np.array(B, dtype=float)).tolist()
 
 def make_facade_composite(building_b64, sketch_b64, s=None, max_w=900):
     """건물 사진을 밤처럼 어둡게 만들고, 지정한 벽면 영역에 스케치를 '빛'처럼 투사(스크린 합성 + 번짐)"""
@@ -983,6 +998,28 @@ def make_facade_composite(building_b64, sketch_b64, s=None, max_w=900):
     night = Image.blend(night, Image.new("RGB", (W, H), (8, 14, 38)), dark * 0.35)
     if sk is None:
         return _img_to_b64(night)
+    power = max(10, min(100, int(s["power"]))) / 100
+    if s.get("mode") == "네 모서리" and s.get("q") and len(s["q"]) == 8:
+        # 🧭 기울어진 벽: 스케치를 네 모서리에 맞게 원근 변형
+        q = [max(0, min(100, float(v))) for v in s["q"]]
+        pts = [(q[0] * W / 100, q[1] * H / 100), (q[2] * W / 100, q[3] * H / 100),
+               (q[4] * W / 100, q[5] * H / 100), (q[6] * W / 100, q[7] * H / 100)]
+        sk2 = ImageEnhance.Color(sk).enhance(1.35)
+        sw, sh = sk2.size
+        try:
+            coeffs = _perspective_coeffs(pts, [(0, 0), (sw, 0), (sw, sh), (0, sh)])
+            warped = sk2.transform((W, H), Image.Transform.PERSPECTIVE, coeffs, Image.Resampling.BICUBIC, fillcolor=(0, 0, 0))
+        except Exception:
+            return _img_to_b64(night)
+        mask = Image.new("L", (W, H), 0)
+        ImageDraw.Draw(mask).polygon(pts, fill=255)
+        span = max(abs(pts[1][0] - pts[0][0]), abs(pts[2][0] - pts[3][0]), 40)
+        glow = Image.composite(warped, Image.new("RGB", (W, H)), mask).filter(ImageFilter.GaussianBlur(max(6, int(span) // 25)))
+        out = Image.blend(night, ImageChops.screen(night, glow), 0.45 * power)
+        lit = ImageChops.screen(ImageEnhance.Brightness(out).enhance(0.22), warped)
+        lit = Image.blend(lit, warped, 0.35)
+        out = Image.composite(Image.blend(out, lit, power), out, mask)
+        return _img_to_b64(out)
     # 2) 투사 영역(%) → 픽셀
     l = int(W * max(0, min(95, s["l"])) / 100); t = int(H * max(0, min(95, s["t"])) / 100)
     w = max(10, int(W * max(5, min(100, s["w"])) / 100)); h = max(10, int(H * max(5, min(100, s["h"])) / 100))
@@ -995,7 +1032,6 @@ def make_facade_composite(building_b64, sketch_b64, s=None, max_w=900):
     else:
         sk2 = ImageOps.fit(sk, (w, h), Image.Resampling.LANCZOS)
     sk2 = ImageEnhance.Color(sk2).enhance(1.35)
-    power = max(10, min(100, int(s["power"]))) / 100
     # 3) 빛 번짐(글로우): 흐리게 만든 빛을 넓게 스크린 합성
     glow_layer = Image.new("RGB", (W, H), (0, 0, 0))
     glow_layer.paste(sk2, (l, t))
@@ -1029,6 +1065,28 @@ def make_facade_gif(frames_b64, seconds, width=640, fade_steps=4):
     buf = io.BytesIO()
     pal[0].save(buf, format="GIF", save_all=True, append_images=pal[1:], duration=durs, loop=0, optimize=True)
     return "data:image/gif;base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
+
+
+def mf_draw_guide(img_b64, s):
+    """미리보기 위에 빛 비출 영역의 테두리와 모서리 번호(1~4)를 표시"""
+    im = _b64_to_img(img_b64)
+    if im is None:
+        return img_b64
+    W, H = im.size
+    q = s["q"] if s.get("mode") == "네 모서리" and s.get("q") else mf_rect_to_quad(s)
+    pts = [(q[i] * W / 100, q[i + 1] * H / 100) for i in range(0, 8, 2)]
+    d = ImageDraw.Draw(im)
+    d.line(pts + [pts[0]], fill=(255, 230, 0), width=max(2, W // 300))
+    r = max(9, W // 60)
+    try:
+        from PIL import ImageFont
+        font = ImageFont.load_default(size=int(r * 1.4))
+    except Exception:
+        font = None
+    for n, (x, y) in enumerate(pts, start=1):
+        d.ellipse([x - r, y - r, x + r, y + r], fill=(255, 60, 60), outline=(255, 255, 255), width=2)
+        d.text((x, y), str(n), fill=(255, 255, 255), anchor="mm", font=font)
+    return _img_to_b64(im)
 
 
 @st.cache_data(show_spinner=False, max_entries=30)
@@ -3335,17 +3393,31 @@ def render_activity3_2nd(user_key, u_info, current_role):
     else:
         fa, fb = st.columns([1, 1.4])
         with fa:
-            st.caption("빛을 비출 벽면 위치를 맞추세요 (사진 기준 %)")
-            facade["l"] = st.slider("왼쪽 시작 위치", 0, 95, int(facade["l"]), key="mf_l", disabled=disabled_flag)
-            facade["t"] = st.slider("위쪽 시작 위치", 0, 95, int(facade["t"]), key="mf_t", disabled=disabled_flag)
-            facade["w"] = st.slider("벽면 너비", 5, 100, int(facade["w"]), key="mf_w", disabled=disabled_flag)
-            facade["h"] = st.slider("벽면 높이", 5, 100, int(facade["h"]), key="mf_h", disabled=disabled_flag)
+            facade["mode"] = st.radio("벽면 맞추기 방식", ["사각형", "네 모서리"], index=1 if facade.get("mode") == "네 모서리" else 0, horizontal=True,
+                                      format_func=lambda m: "▭ 반듯한 사각형" if m == "사각형" else "◇ 네 모서리 맞추기 (비스듬한 벽)", key="mf_mode", disabled=disabled_flag)
+            if facade["mode"] == "사각형":
+                st.caption("빛을 비출 벽면 위치를 맞추세요 (사진 기준 %)")
+                facade["l"] = st.slider("왼쪽 시작 위치", 0, 95, int(facade["l"]), key="mf_l", disabled=disabled_flag)
+                facade["t"] = st.slider("위쪽 시작 위치", 0, 95, int(facade["t"]), key="mf_t", disabled=disabled_flag)
+                facade["w"] = st.slider("벽면 너비", 5, 100, int(facade["w"]), key="mf_w", disabled=disabled_flag)
+                facade["h"] = st.slider("벽면 높이", 5, 100, int(facade["h"]), key="mf_h", disabled=disabled_flag)
+                facade["fit"] = st.radio("스케치 맞추기", ["꽉 채우기", "비율 유지"], index=0 if facade.get("fit") != "비율 유지" else 1, horizontal=True, key="mf_fit", disabled=disabled_flag)
+            else:
+                st.caption("오른쪽 사진의 빨간 번호 ①~④가 실제 벽면의 네 모서리에 오도록 맞추세요. (사진 기준 %, 가로 0=왼쪽 끝 / 세로 0=위쪽 끝)")
+                q = list(facade.get("q") or mf_rect_to_quad(facade))
+                names = ["① 왼쪽 위", "② 오른쪽 위", "③ 오른쪽 아래", "④ 왼쪽 아래"]
+                for k, nm in enumerate(names):
+                    qc1, qc2 = st.columns(2)
+                    q[2 * k] = qc1.slider(f"{nm} — 가로", 0, 100, int(round(float(q[2 * k]))), key=f"mf_q{k}x", disabled=disabled_flag)
+                    q[2 * k + 1] = qc2.slider(f"{nm} — 세로", 0, 100, int(round(float(q[2 * k + 1]))), key=f"mf_q{k}y", disabled=disabled_flag)
+                facade["q"] = q
+                st.caption("💡 모서리를 맞출 때는 오른쪽 '한 컷씩 보기'로 보면 더 빠르게 확인할 수 있습니다.")
             facade["dark"] = st.slider("밤의 어두움", 0, 95, int(facade["dark"]), key="mf_dark", disabled=disabled_flag)
             facade["power"] = st.slider("빛의 세기", 10, 100, int(facade["power"]), key="mf_power", disabled=disabled_flag)
-            facade["fit"] = st.radio("스케치 맞추기", ["꽉 채우기", "비율 유지"], index=0 if facade.get("fit") != "비율 유지" else 1, horizontal=True, key="mf_fit", disabled=disabled_flag)
+            show_guide = st.checkbox("빛 비출 영역 테두리·모서리 번호 표시", value=True, key="mf_guide")
         with fb:
             pv_options = [i for i, img in enumerate(current_images) if img]
-            fkey = tuple(sorted(facade.items()))
+            fkey = tuple((k, tuple(v) if isinstance(v, list) else v) for k, v in sorted(facade.items()))
             if pv_options:
                 view_opts = ["▶ 4컷 연속 재생", "한 컷씩 보기"] if len(pv_options) >= 2 else ["한 컷씩 보기"]
                 pv_mode = st.radio("미리보기 방식", view_opts, horizontal=True, key="mf_preview_mode")
@@ -3361,9 +3433,10 @@ def render_activity3_2nd(user_key, u_info, current_role):
                 else:
                     pv = st.radio("미리 볼 컷", pv_options, format_func=lambda i: cut_names[i], horizontal=True, key="mf_preview_cut")
                     comp = mf_cached_composite(site_photo, current_images[pv], fkey)
-                    if comp: st.image(comp, caption=f"{cut_names[pv]} — 건물 합성 미리보기", use_container_width=True)
+                    if comp: st.image(mf_draw_guide(comp, facade) if show_guide else comp, caption=f"{cut_names[pv]} — 건물 합성 미리보기", use_container_width=True)
             else:
-                st.image(mf_cached_composite(site_photo, "", fkey), caption="스케치를 올리면 벽면에 비춘 모습이 보입니다", use_container_width=True)
+                base_night = mf_cached_composite(site_photo, "", fkey)
+                st.image(mf_draw_guide(base_night, facade) if show_guide else base_night, caption="스케치를 올리면 노란 테두리 안에 빛이 비춰집니다", use_container_width=True)
 
     st.markdown("#### 🎥 최종 미디어 파사드 시뮬레이션 영상")
     saved_video = ans.get("step4_video", "")
@@ -3381,7 +3454,7 @@ def render_activity3_2nd(user_key, u_info, current_role):
                 st.warning("⚠️ 최소 2개 이상의 스케치 이미지를 업로드해야 영상을 생성할 수 있습니다.")
             else:
                 with st.spinner("시뮬레이션 영상을 만드는 중입니다..."):
-                    frames = [mf_cached_composite(site_photo, img, tuple(sorted(facade.items()))) if gif_mode.startswith("건물") else img for img, _ in pairs]
+                    frames = [mf_cached_composite(site_photo, img, tuple((k, tuple(v) if isinstance(v, list) else v) for k, v in sorted(facade.items()))) if gif_mode.startswith("건물") else img for img, _ in pairs]
                     saved_video = make_facade_gif(frames, [s or 3 for _, s in pairs]) or saved_video
                 st.success("🎉 시뮬레이션 영상이 만들어졌습니다! 하단 [저장하기]를 눌러 반영하세요. (미리보기는 컷당 최대 5초)")
     with v_col2:
