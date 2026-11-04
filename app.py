@@ -32,7 +32,7 @@ import threading
 import time
 import traceback
 
-ENGINE_VERSION = "1.3 (응답 탭)"
+ENGINE_VERSION = "1.4 (응답 탭: 앱 화면과 같은 문항)"
 SEP = "||"                    # 2단계 키 구분자 (학생키||수행평가명)
 CHUNK = 40000                 # 구글 시트 셀 1칸 최대 5만 자 -> 4만 자씩 분할
 MAX_REQ_CHARS = 1_500_000     # 시트 API 요청 1회당 최대 전송량(여유 있게)
@@ -287,12 +287,24 @@ class SheetsMirror:
             ws.add_cols(n_cols - ws.col_count + 2)
         padded = [list(r) + [""] * (n_cols - len(r)) for r in rows]
         padded += [[""] * n_cols for _ in range(n_rows - len(rows))]   # 줄어든 만큼 지움
-        ws.update(range_name="A1", values=padded, value_input_option="RAW")
-        if created:
+        # 큰 표는 요청 1회 크기 제한을 넘지 않도록 행 묶음으로 나누어 보냄
+        start, block, size = 0, [], 0
+        for r_i, row in enumerate(padded):
+            rs = sum(len(str(x)) for x in row) + 10
+            if block and size + rs > MAX_REQ_CHARS:
+                ws.update(range_name=f"A{start + 1}", values=block, value_input_option="RAW")
+                start, block, size = r_i, [], 0
+            block.append(row); size += rs
+        if block:
+            ws.update(range_name=f"A{start + 1}", values=block, value_input_option="RAW")
+        if created or title not in getattr(self, "_formatted", set()):
+            if not hasattr(self, "_formatted"):
+                self._formatted = set()
+            self._formatted.add(title)
             try:
                 ws.freeze(rows=1, cols=freeze_cols)
                 sid = ws.id
-                widths = [90, 70, 70, 70, 120, 110, 180, 300, 600]
+                widths = [90, 70, 70, 70, 120, 110, 200, 240, 200, 560]
                 reqs = [{"updateDimensionProperties": {"range": {"sheetId": sid, "dimension": "COLUMNS", "startIndex": i, "endIndex": i + 1},
                                                        "properties": {"pixelSize": w}, "fields": "pixelSize"}} for i, w in enumerate(widths[:width])]
                 reqs.append({"repeatCell": {"range": {"sheetId": sid, "startColumnIndex": 0, "endColumnIndex": width},
@@ -1150,10 +1162,200 @@ def _sheet_tab_title(act):
     if m: return f"응답_{m.group(1)}_{m.group(2).replace(' ', '')}"
     return "응답_" + _re.sub(r"[\[\]\*\?/\\:]", "", act)[:40]
 
+_FORMSPEC_SRC = r'''# 앱 화면 코드에서 '소제목(Step) → 문항 이름 → 저장 키' 순서를 읽어 오는 도구 (응답 탭용)
+import re
+
+RENDER_FUNCS = {
+    "ACT_3_1": "render_activity1_3th", "ACT_3_2": "render_activity2_3th", "ACT_3_3": "render_activity3_3th",
+    "ACT_2_1": "render_activity1_2nd", "ACT_2_2": "render_activity2_2nd", "ACT_2_3": "render_activity3_2nd",
+}
+_WIDGETS = r"file_uploader|text_input|text_area|radio|selectbox|number_input|slider|select_slider|checkbox|date_input"
+_EVENT = re.compile(
+    r"<h3[^>]*>(?P<h3>.*?)</h3>"
+    r"|st\.markdown\(\s*f?[\"']#{2,4}\s*(?P<md>[^\"'\n]+)"
+    r"|(?<!def )(?P<group>render_group_members\()"
+    r"|(?P<dfvar>\w+)\s*=\s*pd\.DataFrame\(\s*ans\.get\(\s*[\"'](?P<dfkey>[^\"']+)[\"']"
+    r"|(?:(?<=\n)|^)[ \t]*(?P<dfvar2>\w+)[ \t]*=[ \t]*pd\.DataFrame\(\s*(?P<dfsrc>\w+)\s*[,)]"
+    r"|(?:(?<=\n)|^)[ \t]*(?P<recvar>\w+)[ \t]*=[ \t]*ans\.get\(\s*[\"'](?P<reckey>[^\"']+)[\"']"
+    r"|st\.data_editor\(\s*(?P<edvar>[\w.()\[\]'\"]+)"
+    r"|(?:st|col\w*|c\d|\w+_col\w*)\.(?P<w>" + _WIDGETS + r")\(\s*f?[\"'](?P<label>[^\"']*)[\"']",
+    re.S)
+_TAG = re.compile(r"<[^>]+>")
+
+
+def _func_src(src, name):
+    i = src.find(f"def {name}(")
+    if i < 0:
+        return ""
+    j = src.find("\ndef ", i + 10)
+    return src[i:j if j > 0 else len(src)]
+
+
+def _clean(t):
+    t = _TAG.sub("", t or "").replace("&nbsp;", " ").replace("**", "")
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def _scan(code, src, out, heading):
+    var2key, pending = {}, []
+    for m in _EVENT.finditer(code):
+        if m.group("h3"):
+            heading = _clean(m.group("h3"))
+        elif m.group("md"):
+            sub = _clean(m.group("md")).lstrip("# ").split(" (")[0].strip()
+            step = heading.split(" › ")[0]
+            heading = f"{step} › {sub}" if step else sub
+        elif m.group("group"):
+            heading = _scan(_func_src(src, "render_group_members"), src, out, "모둠 구성원")
+        elif m.group("dfvar"):
+            var2key[m.group("dfvar")] = m.group("dfkey")
+        elif m.group("dfvar2"):
+            k = var2key.get(m.group("dfsrc"))
+            if k:
+                var2key[m.group("dfvar2")] = k
+                pending = [p for p in pending if p != k]
+        elif m.group("recvar"):
+            var2key[m.group("recvar")] = m.group("reckey")
+            pending.append(m.group("reckey"))
+        elif m.group("edvar"):
+            v = re.match(r"\w+", m.group("edvar"))
+            v = v.group(0) if v else ""
+            if v == "pd":   # st.data_editor(pd.DataFrame(ans.get("key"...)))
+                km = re.search(r"ans\.get\(\s*[\"']([^\"']+)", code[m.start():m.start() + 300])
+                key = km.group(1) if km else None
+            else:
+                key = var2key.get(v)
+            if key:
+                out.append(("table", heading, "", key))
+        elif m.group("w"):
+            window = code[m.end():m.end() + 700]
+            nxt = re.search(r"\n\s*\w+\s*=\s*(?:st|col\w*|c\d)\.|\n\s*st\.", window)
+            if nxt:
+                window = window[:nxt.start()]
+            km = re.search(r"ans\.get\(\s*[\"']([^\"']+)", window)
+            key = km.group(1) if km else (pending.pop(0) if pending else None)
+            if key:
+                out.append(("field", heading, _clean(m.group("label")).rstrip(":："), key))
+    return heading
+
+
+def build_specs(src, act_names):
+    """act_names: {"ACT_3_1": 실제 수행평가 이름, ...} → {수행평가 이름: [(종류, 소제목, 문항, 키), ...]}"""
+    specs = {}
+    for const, fn in RENDER_FUNCS.items():
+        name = act_names.get(const)
+        if not name:
+            continue
+        out = []
+        _scan(_func_src(src, fn), src, out, "")
+        seen, uniq = set(), []
+        for item in out:
+            if item[3] in seen:
+                continue
+            seen.add(item[3]); uniq.append(item)
+        specs[name] = uniq
+    return specs
+
+
+def _is_media(v):
+    return isinstance(v, str) and v.startswith("data:")
+
+
+def _cell(v):
+    if v is None:
+        return ""
+    if isinstance(v, bool):
+        return "✔" if v else ""
+    if _is_media(v):
+        return "[이미지/영상 첨부 – 앱에서 확인]"
+    return str(v)
+
+
+MEDIA_NAMES = {"step3_map_before": "변경 전 지도 스케치", "step3_map_after": "변경 후 지도 스케치",
+               "step4_video": "미디어 파사드 시뮬레이션 영상"}
+
+
+def json_key(v):
+    import json
+    try:
+        return json.dumps(v, ensure_ascii=False, sort_keys=True, default=str)
+    except Exception:
+        return str(v)
+
+
+def rows_for(spec, ans):
+    """반환: [(소제목, 문항, 표 항목, 답변)] — 앱 화면 순서 그대로"""
+    rows, used = [], set()
+    for kind, heading, label, key in spec:
+        used.add(key)
+        if key not in ans:
+            continue
+        val = ans.get(key)
+        if kind == "table" or (isinstance(val, list) and val and isinstance(val[0], dict)):
+            recs = val if isinstance(val, list) else []
+            for i, rec in enumerate(recs):
+                if not isinstance(rec, dict):
+                    continue
+                cols = list(rec.keys())
+                if not cols or all(_cell(rec.get(c)).strip() == "" for c in cols):
+                    continue
+                first = _cell(rec.get(cols[0])).strip()
+                row_name = first if first else f"{i + 1}행"
+                for c in cols[1:]:
+                    rows.append((heading, row_name, str(c), _cell(rec.get(c))))
+        else:
+            rows.append((heading, label, "", _cell(val)))
+    # 화면 코드에서 못 찾은 항목도 빠짐없이 끝에 표시
+    used_vals = {json_key(ans.get(k)) for k in used if k in ans}
+    for k, v in ans.items():
+        if k in used:
+            continue
+        if not _is_media(v) and not (isinstance(v, list) and v and isinstance(v[0], dict)):
+            if _cell(v).strip() and json_key(v) not in used_vals:
+                rows.append(("기타(이전 양식 항목)", k, "", _cell(v)))
+            continue
+        if _is_media(v):
+            rows.append(("첨부 자료", MEDIA_NAMES.get(k, "첨부 이미지"), "", _cell(v)))
+        elif isinstance(v, list) and v and isinstance(v[0], dict) and json_key(v) not in used_vals \
+                and not any(_is_media(x) for r in v for x in r.values()):
+            for i, rec in enumerate(v):
+                cols = list(rec.keys())
+                if not cols or all(_cell(rec.get(c)).strip() == "" for c in cols):
+                    continue
+                first = _cell(rec.get(cols[0])).strip() or f"{i + 1}행"
+                for c in cols[1:]:
+                    rows.append(("기타(이전 양식 항목)", f"{k} · {first}", str(c), _cell(rec.get(c))))
+        elif isinstance(v, list) and v and isinstance(v[0], dict) and any(_is_media(x) for r in v for x in r.values()):
+            for i, rec in enumerate(v):
+                for c, x in rec.items():
+                    if _is_media(x):
+                        rows.append(("첨부 자료", f"{i + 1}번 {c}", "", _cell(x)))
+    return rows
+'''
+if "_embedded_formspec" not in _sys.modules:
+    _fm = _types.ModuleType("_embedded_formspec")
+    exec(compile(_FORMSPEC_SRC, "embedded_formspec.py", "exec"), _fm.__dict__)
+    _sys.modules["_embedded_formspec"] = _fm
+_formspec = _sys.modules["_embedded_formspec"]
+_SPEC_CACHE = {}
+
+def _activity_specs():
+    """앱 화면 코드에서 문항 이름·순서·Step 제목을 읽어 옴(파일이 바뀌면 다시 읽음)"""
+    try:
+        path = os.path.abspath(__file__); mt = os.path.getmtime(path)
+        if _SPEC_CACHE.get("mt") != mt:
+            src = open(path, encoding="utf-8").read()
+            names = {"ACT_3_1": ACT_3_1, "ACT_3_2": ACT_3_2, "ACT_3_3": ACT_3_3, "ACT_2_1": ACT_2_1, "ACT_2_2": ACT_2_2, "ACT_2_3": ACT_2_3}
+            _SPEC_CACHE.update(mt=mt, specs=_formspec.build_specs(src, names))
+        return _SPEC_CACHE.get("specs", {})
+    except Exception:
+        return {}
+
 def _sheet_report_hook(store):
-    """세로형 표: 학생 1명 x 문항 1개 = 1줄 → 반 / 학번 / 이름 / 문항으로 필터하기 쉬움"""
+    """세로형 표: 앱 화면과 같은 문항 이름·순서. 표는 '문항(표의 행) | 표 항목(표의 열) | 답변' 으로 칸마다 한 줄"""
     data, users, cfg = store.load("data"), store.load("users"), store.load("config")
-    header = ["반", "학번", "이름", "제출 여부", "마지막 저장", "작성자", "소제목", "문항", "답변"]
+    specs = _activity_specs()
+    header = ["반", "학번", "이름", "제출 여부", "마지막 저장", "작성자", "소제목", "문항", "표 항목", "답변"]
     for subj, acts in cfg.get("subject_activities", {}).items():
         studs = [(k, u) for k, u in users.items() if u.get("role") == "학생" and u.get("subject") == subj and u.get("approved", True)]
         studs.sort(key=lambda x: (str(x[1].get("class_group", "")), str(x[1].get("id", ""))))
@@ -1163,17 +1365,22 @@ def _sheet_report_hook(store):
                 owner, ans = get_user_activity_data(k, u.get("id", ""), subj, u.get("class_group", ""), act, data)
                 base = [u.get("class_group", ""), u.get("id", ""), u.get("name", "")]
                 if not ans:
-                    rows.append(base + ["미제출", "", "", "", "", ""]); continue
+                    rows.append(base + ["미제출", "", "", "", "", "", ""]); continue
+                ans = _clean_nan(ans)
                 ts = store.meta_ts("data", f"{owner}||{act}")
                 saved = (datetime.datetime.utcfromtimestamp(ts) + datetime.timedelta(hours=9)).strftime("%Y-%m-%d %H:%M") if ts else ""
                 writer = "본인" if owner == k else f"모둠 대표 {owner.split('_')[-1]}"
-                section = ""
-                for row in get_act_csv_rows(act, ans, cfg):
-                    q, a = str(row[0]).strip(), (row[1] if len(row) > 1 else "")
-                    if not q: continue
-                    if a == "" and q.startswith("["):
-                        section = q.strip("[]"); continue      # 소제목 줄 → 다음 문항들의 '소제목' 칸에 표시
-                    rows.append(base + ["제출", saved, writer, section, q, _sheet_cell(a)])
+                head = base + ["제출", saved, writer]
+                if act in specs:
+                    for sec, q, col, a in _formspec.rows_for(specs[act], ans):
+                        rows.append(head + [sec, q, col, _sheet_cell(a)])
+                else:   # 문항 제작 탭으로 만든 활동지 등
+                    section = ""
+                    for row in get_act_csv_rows(act, ans, cfg):
+                        q, a = str(row[0]).strip(), (row[1] if len(row) > 1 else "")
+                        if not q: continue
+                        if a == "" and q.startswith("["): section = q.strip("[]"); continue
+                        rows.append(head + [section, q, "", _sheet_cell(a)])
             store.sheets.write_table(_sheet_tab_title(act), rows, freeze_cols=3)
 
 STORE.report_hook = _sheet_report_hook
