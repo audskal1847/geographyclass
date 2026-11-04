@@ -32,7 +32,7 @@ import threading
 import time
 import traceback
 
-ENGINE_VERSION = "1.5 (응답 탭: 표 가로 보기)"
+ENGINE_VERSION = "1.6 (응답 탭: 학생별 한 번만 표시)"
 SEP = "||"                    # 2단계 키 구분자 (학생키||수행평가명)
 CHUNK = 40000                 # 구글 시트 셀 1칸 최대 5만 자 -> 4만 자씩 분할
 MAX_REQ_CHARS = 1_500_000     # 시트 API 요청 1회당 최대 전송량(여유 있게)
@@ -260,12 +260,12 @@ class SheetsMirror:
         't), 1, TRUE, 2, TRUE, 3, TRUE, 5, TRUE))), "아직 저장된 자료가 없습니다")'
     )
 
-    def write_table(self, title, rows, freeze_cols=3, bold_rows=None):
+    def write_table(self, title, rows, freeze_cols=3, bold_rows=None, groups=None, group_cols=6):
         """선생님이 읽는 표(응답 보기 탭)를 통째로 다시 쓴다. 내용이 같으면 건너뜀."""
         import hashlib
         if not hasattr(self, "_tables"):
             self._tables = {}
-        h = hashlib.md5(json.dumps([rows, bold_rows or []], ensure_ascii=False).encode("utf-8")).hexdigest()
+        h = hashlib.md5(json.dumps([rows, bold_rows or [], groups or []], ensure_ascii=False).encode("utf-8")).hexdigest()
         prev = self._tables.get(title)
         if prev and prev["hash"] == h:
             return False
@@ -322,6 +322,17 @@ class SheetsMirror:
             reqs = [{"repeatCell": {"range": {"sheetId": sid, "startRowIndex": 1, "endRowIndex": max(n_rows, 2)},
                                     "cell": {"userEnteredFormat": {"textFormat": {"bold": False}, "backgroundColor": {"red": 1, "green": 1, "blue": 1}}},
                                     "fields": "userEnteredFormat(textFormat,backgroundColor)"}}]
+            # 학생별 묶음: 같은 학생의 반·학번·이름 등은 첫 줄에만 보이게(값은 남겨 두어 필터는 그대로 동작) + 학생 사이 굵은 구분선
+            reqs.append({"updateBorders": {"range": {"sheetId": sid, "startRowIndex": 1, "endRowIndex": max(n_rows, 2), "startColumnIndex": 0, "endColumnIndex": max(width, 1)},
+                                           "top": {"style": "NONE"}, "innerHorizontal": {"style": "NONE"}}})
+            for first, last in (groups or []):
+                if last > first:
+                    reqs.append({"repeatCell": {"range": {"sheetId": sid, "startRowIndex": first, "endRowIndex": last, "startColumnIndex": 0, "endColumnIndex": group_cols},
+                                                "cell": {"userEnteredFormat": {"textFormat": {"foregroundColor": {"red": 1, "green": 1, "blue": 1}}}},
+                                                "fields": "userEnteredFormat.textFormat.foregroundColor"}})
+                if first > 2:
+                    reqs.append({"updateBorders": {"range": {"sheetId": sid, "startRowIndex": first - 1, "endRowIndex": first, "startColumnIndex": 0, "endColumnIndex": max(width, 1)},
+                                                   "top": {"style": "SOLID_MEDIUM", "color": {"red": 0.35, "green": 0.45, "blue": 0.6}}}})
             for r in (bold_rows or []):
                 reqs.append({"repeatCell": {"range": {"sheetId": sid, "startRowIndex": r - 1, "endRowIndex": r, "startColumnIndex": 6},
                                             "cell": {"userEnteredFormat": {"textFormat": {"bold": True}, "backgroundColor": {"red": 0.95, "green": 0.95, "blue": 0.95}}},
@@ -1580,13 +1591,14 @@ def _sheet_report_hook(store):
         studs = [(k, u) for k, u in users.items() if u.get("role") == "학생" and u.get("subject") == subj and u.get("approved", True)]
         studs.sort(key=lambda x: (str(x[1].get("class_group", "")), str(x[1].get("id", ""))))
         for act in acts:
-            body, marks = [], []          # marks: 표 머리글 줄(굵게 표시) 위치
+            body, marks, groups = [], [], []   # marks: 표 머리글 줄(굵게) / groups: 학생별 (첫 줄, 마지막 줄)
             width = 3
             for k, u in studs:
                 owner, ans = get_user_activity_data(k, u.get("id", ""), subj, u.get("class_group", ""), act, data)
                 base = [u.get("class_group", ""), u.get("id", ""), u.get("name", "")]
+                g_first = len(body) + 2                              # 시트의 실제 줄 번호(1행은 머리글)
                 if not ans:
-                    body.append(base + ["미제출", "", "", "", "", ""]); continue
+                    body.append(base + ["미제출", "", "", "", "", ""]); groups.append((g_first, g_first)); continue
                 ans = _clean_nan(ans)
                 ts = store.meta_ts("data", f"{owner}||{act}")
                 saved = (datetime.datetime.utcfromtimestamp(ts) + datetime.timedelta(hours=9)).strftime("%Y-%m-%d %H:%M") if ts else ""
@@ -1609,9 +1621,10 @@ def _sheet_report_hook(store):
                     width = max(width, len(cells) + 1)
                     if kind == "thead": marks.append(len(body) + 2)   # 시트의 실제 줄 번호(1행은 머리글)
                     body.append(head + [show_sec] + cells)
+                groups.append((g_first, len(body) + 1))
             extra = ["표 3열", "표 4열", "표 5열", "표 6열", "표 7열", "표 8열", "표 9열", "표 10열"]
             header = ["반", "학번", "이름", "제출 여부", "마지막 저장", "작성자", "소제목", "문항 (표: 1열)", "답변 (표: 2열)"] + extra[:max(0, width - 3)]
-            store.sheets.write_table(_sheet_tab_title(act), [header] + body, freeze_cols=3, bold_rows=marks)
+            store.sheets.write_table(_sheet_tab_title(act), [header] + body, freeze_cols=3, bold_rows=marks, groups=groups)
 
 STORE.report_hook = _sheet_report_hook
 
