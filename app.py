@@ -32,7 +32,7 @@ import threading
 import time
 import traceback
 
-ENGINE_VERSION = "1.4 (응답 탭: 앱 화면과 같은 문항)"
+ENGINE_VERSION = "1.5 (응답 탭: 표 가로 보기)"
 SEP = "||"                    # 2단계 키 구분자 (학생키||수행평가명)
 CHUNK = 40000                 # 구글 시트 셀 1칸 최대 5만 자 -> 4만 자씩 분할
 MAX_REQ_CHARS = 1_500_000     # 시트 API 요청 1회당 최대 전송량(여유 있게)
@@ -260,12 +260,12 @@ class SheetsMirror:
         't), 1, TRUE, 2, TRUE, 3, TRUE, 5, TRUE))), "아직 저장된 자료가 없습니다")'
     )
 
-    def write_table(self, title, rows, freeze_cols=3):
+    def write_table(self, title, rows, freeze_cols=3, bold_rows=None):
         """선생님이 읽는 표(응답 보기 탭)를 통째로 다시 쓴다. 내용이 같으면 건너뜀."""
         import hashlib
         if not hasattr(self, "_tables"):
             self._tables = {}
-        h = hashlib.md5(json.dumps(rows, ensure_ascii=False).encode("utf-8")).hexdigest()
+        h = hashlib.md5(json.dumps([rows, bold_rows or []], ensure_ascii=False).encode("utf-8")).hexdigest()
         prev = self._tables.get(title)
         if prev and prev["hash"] == h:
             return False
@@ -304,7 +304,7 @@ class SheetsMirror:
             try:
                 ws.freeze(rows=1, cols=freeze_cols)
                 sid = ws.id
-                widths = [90, 70, 70, 70, 120, 110, 200, 240, 200, 560]
+                widths = [90, 70, 70, 70, 120, 110, 200, 220] + [360] * max(1, width - 8)
                 reqs = [{"updateDimensionProperties": {"range": {"sheetId": sid, "dimension": "COLUMNS", "startIndex": i, "endIndex": i + 1},
                                                        "properties": {"pixelSize": w}, "fields": "pixelSize"}} for i, w in enumerate(widths[:width])]
                 reqs.append({"repeatCell": {"range": {"sheetId": sid, "startColumnIndex": 0, "endColumnIndex": width},
@@ -316,6 +316,20 @@ class SheetsMirror:
                 self.sh.batch_update({"requests": reqs})
             except Exception:
                 pass
+        # 표 머리글 줄은 굵게/연한 배경 (예전 줄 서식은 먼저 지움)
+        try:
+            sid = ws.id
+            reqs = [{"repeatCell": {"range": {"sheetId": sid, "startRowIndex": 1, "endRowIndex": max(n_rows, 2)},
+                                    "cell": {"userEnteredFormat": {"textFormat": {"bold": False}, "backgroundColor": {"red": 1, "green": 1, "blue": 1}}},
+                                    "fields": "userEnteredFormat(textFormat,backgroundColor)"}}]
+            for r in (bold_rows or []):
+                reqs.append({"repeatCell": {"range": {"sheetId": sid, "startRowIndex": r - 1, "endRowIndex": r, "startColumnIndex": 6},
+                                            "cell": {"userEnteredFormat": {"textFormat": {"bold": True}, "backgroundColor": {"red": 0.95, "green": 0.95, "blue": 0.95}}},
+                                            "fields": "userEnteredFormat(textFormat,backgroundColor)"}})
+            for k in range(0, len(reqs), 500):
+                self.sh.batch_update({"requests": reqs[k:k + 500]})
+        except Exception:
+            pass
         self._tables[title] = {"hash": h, "n": len(rows), "w": width}
         return True
 
@@ -1283,8 +1297,25 @@ def json_key(v):
         return str(v)
 
 
+def _table_rows(heading, recs, label_prefix=""):
+    """앱 화면의 표 모양 그대로: 머리글 1줄 + 표의 행마다 1줄(칸은 가로로)"""
+    out, header_done = [], False
+    for i, rec in enumerate(recs if isinstance(recs, list) else []):
+        if not isinstance(rec, dict):
+            continue
+        cols = list(rec.keys())
+        if not cols or all(_cell(rec.get(c)).strip() == "" for c in cols):
+            continue
+        if not header_done:
+            out.append(("head", heading, label_prefix + str(cols[0]), [str(c) for c in cols[1:]]))
+            header_done = True
+        first = _cell(rec.get(cols[0])).strip() or f"{i + 1}행"
+        out.append(("row", heading, label_prefix + first, [_cell(rec.get(c)) for c in cols[1:]]))
+    return out
+
+
 def rows_for(spec, ans):
-    """반환: [(소제목, 문항, 표 항목, 답변)] — 앱 화면 순서 그대로"""
+    """반환: [(종류 head|row|field, 소제목, 문항, [답변 칸들])] — 앱 화면 순서 그대로"""
     rows, used = [], set()
     for kind, heading, label, key in spec:
         used.add(key)
@@ -1292,45 +1323,68 @@ def rows_for(spec, ans):
             continue
         val = ans.get(key)
         if kind == "table" or (isinstance(val, list) and val and isinstance(val[0], dict)):
-            recs = val if isinstance(val, list) else []
-            for i, rec in enumerate(recs):
-                if not isinstance(rec, dict):
-                    continue
-                cols = list(rec.keys())
-                if not cols or all(_cell(rec.get(c)).strip() == "" for c in cols):
-                    continue
-                first = _cell(rec.get(cols[0])).strip()
-                row_name = first if first else f"{i + 1}행"
-                for c in cols[1:]:
-                    rows.append((heading, row_name, str(c), _cell(rec.get(c))))
+            rows += _table_rows(heading, val)
         else:
-            rows.append((heading, label, "", _cell(val)))
+            rows.append(("field", heading, label, [_cell(val)]))
     # 화면 코드에서 못 찾은 항목도 빠짐없이 끝에 표시
     used_vals = {json_key(ans.get(k)) for k in used if k in ans}
     for k, v in ans.items():
         if k in used:
             continue
-        if not _is_media(v) and not (isinstance(v, list) and v and isinstance(v[0], dict)):
-            if _cell(v).strip() and json_key(v) not in used_vals:
-                rows.append(("기타(이전 양식 항목)", k, "", _cell(v)))
-            continue
+        is_tbl = isinstance(v, list) and v and isinstance(v[0], dict)
         if _is_media(v):
-            rows.append(("첨부 자료", MEDIA_NAMES.get(k, "첨부 이미지"), "", _cell(v)))
-        elif isinstance(v, list) and v and isinstance(v[0], dict) and json_key(v) not in used_vals \
-                and not any(_is_media(x) for r in v for x in r.values()):
-            for i, rec in enumerate(v):
-                cols = list(rec.keys())
-                if not cols or all(_cell(rec.get(c)).strip() == "" for c in cols):
-                    continue
-                first = _cell(rec.get(cols[0])).strip() or f"{i + 1}행"
-                for c in cols[1:]:
-                    rows.append(("기타(이전 양식 항목)", f"{k} · {first}", str(c), _cell(rec.get(c))))
-        elif isinstance(v, list) and v and isinstance(v[0], dict) and any(_is_media(x) for r in v for x in r.values()):
+            rows.append(("field", "첨부 자료", MEDIA_NAMES.get(k, "첨부 이미지"), [_cell(v)]))
+        elif is_tbl and any(_is_media(x) for r in v for x in r.values()):
             for i, rec in enumerate(v):
                 for c, x in rec.items():
                     if _is_media(x):
-                        rows.append(("첨부 자료", f"{i + 1}번 {c}", "", _cell(x)))
+                        rows.append(("field", "첨부 자료", f"{i + 1}번 {c}", [_cell(x)]))
+        elif is_tbl:
+            if json_key(v) not in used_vals:
+                rows += _table_rows("기타(이전 양식 항목)", v, f"{k} · ")
+        elif _cell(v).strip() and json_key(v) not in used_vals:
+            rows.append(("field", "기타(이전 양식 항목)", k, [_cell(v)]))
     return rows
+
+
+def rows_wide(spec, ans):
+    """앱 화면처럼 표를 가로로: [(종류, 소제목, [칸들])], 종류 = field | thead | trow"""
+    out, used = [], set()
+
+    def add_table(sec, recs):
+        recs = [r for r in recs if isinstance(r, dict)]
+        cols = []
+        for r in recs:
+            for c in r.keys():
+                if c not in cols:
+                    cols.append(c)
+        body = [r for r in recs if any(_cell(r.get(c)).strip() for c in cols)]
+        if not cols or not body:
+            return
+        out.append(("thead", sec, [str(c) for c in cols]))
+        for r in body:
+            out.append(("trow", sec, [_cell(r.get(c)) for c in cols]))
+
+    for kind, heading, label, key in spec:
+        used.add(key)
+        if key not in ans:
+            continue
+        val = ans.get(key)
+        if kind == "table" or (isinstance(val, list) and val and isinstance(val[0], dict)):
+            add_table(heading, val if isinstance(val, list) else [])
+        else:
+            out.append(("field", heading, [label, _cell(val)]))
+    used_vals = {json_key(ans.get(k)) for k in used if k in ans}
+    for k, v in ans.items():
+        if k in used or json_key(v) in used_vals:
+            continue
+        if _is_media(v):
+            out.append(("field", "첨부 자료", [MEDIA_NAMES.get(k, "첨부 이미지"), _cell(v)]))
+        elif isinstance(v, list) and v and isinstance(v[0], dict):
+            add_table(f"기타(이전 양식) · {k}", v)
+        elif _cell(v).strip():
+            out.append(("field", "기타(이전 양식 항목)", [k, _cell(v)]))
+    return out
 '''
 if "_embedded_formspec" not in _sys.modules:
     _fm = _types.ModuleType("_embedded_formspec")
@@ -1352,36 +1406,46 @@ def _activity_specs():
         return {}
 
 def _sheet_report_hook(store):
-    """세로형 표: 앱 화면과 같은 문항 이름·순서. 표는 '문항(표의 행) | 표 항목(표의 열) | 답변' 으로 칸마다 한 줄"""
+    """앱 화면과 같은 모양: 일반 문항은 '문항 | 답변', 표는 머리글 줄 + 가로로 펼친 행.
+    같은 학생 안에서 소제목은 처음 한 번만 표시(반·학번·이름은 필터용으로 모든 줄에 유지)"""
     data, users, cfg = store.load("data"), store.load("users"), store.load("config")
     specs = _activity_specs()
-    header = ["반", "학번", "이름", "제출 여부", "마지막 저장", "작성자", "소제목", "문항", "표 항목", "답변"]
     for subj, acts in cfg.get("subject_activities", {}).items():
         studs = [(k, u) for k, u in users.items() if u.get("role") == "학생" and u.get("subject") == subj and u.get("approved", True)]
         studs.sort(key=lambda x: (str(x[1].get("class_group", "")), str(x[1].get("id", ""))))
         for act in acts:
-            rows = [header]
+            body, marks = [], []          # marks: 표 머리글 줄(굵게 표시) 위치
+            width = 3
             for k, u in studs:
                 owner, ans = get_user_activity_data(k, u.get("id", ""), subj, u.get("class_group", ""), act, data)
                 base = [u.get("class_group", ""), u.get("id", ""), u.get("name", "")]
                 if not ans:
-                    rows.append(base + ["미제출", "", "", "", "", "", ""]); continue
+                    body.append(base + ["미제출", "", "", "", "", ""]); continue
                 ans = _clean_nan(ans)
                 ts = store.meta_ts("data", f"{owner}||{act}")
                 saved = (datetime.datetime.utcfromtimestamp(ts) + datetime.timedelta(hours=9)).strftime("%Y-%m-%d %H:%M") if ts else ""
                 writer = "본인" if owner == k else f"모둠 대표 {owner.split('_')[-1]}"
                 head = base + ["제출", saved, writer]
                 if act in specs:
-                    for sec, q, col, a in _formspec.rows_for(specs[act], ans):
-                        rows.append(head + [sec, q, col, _sheet_cell(a)])
+                    items = _formspec.rows_wide(specs[act], ans)
                 else:   # 문항 제작 탭으로 만든 활동지 등
-                    section = ""
+                    items, sec = [], ""
                     for row in get_act_csv_rows(act, ans, cfg):
                         q, a = str(row[0]).strip(), (row[1] if len(row) > 1 else "")
                         if not q: continue
-                        if a == "" and q.startswith("["): section = q.strip("[]"); continue
-                        rows.append(head + [section, q, "", _sheet_cell(a)])
-            store.sheets.write_table(_sheet_tab_title(act), rows, freeze_cols=3)
+                        if a == "" and q.startswith("["): sec = q.strip("[]"); continue
+                        items.append(("field", sec, [q, a]))
+                prev_sec = None
+                for kind, sec, cells in items:
+                    show_sec = sec if sec != prev_sec else ""      # 같은 소제목은 맨 위 한 번만
+                    prev_sec = sec
+                    cells = [_sheet_cell(c) for c in cells]
+                    width = max(width, len(cells) + 1)
+                    if kind == "thead": marks.append(len(body) + 2)   # 시트의 실제 줄 번호(1행은 머리글)
+                    body.append(head + [show_sec] + cells)
+            extra = ["표 3열", "표 4열", "표 5열", "표 6열", "표 7열", "표 8열", "표 9열", "표 10열"]
+            header = ["반", "학번", "이름", "제출 여부", "마지막 저장", "작성자", "소제목", "문항 (표: 1열)", "답변 (표: 2열)"] + extra[:max(0, width - 3)]
+            store.sheets.write_table(_sheet_tab_title(act), [header] + body, freeze_cols=3, bold_rows=marks)
 
 STORE.report_hook = _sheet_report_hook
 
