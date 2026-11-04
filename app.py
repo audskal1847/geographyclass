@@ -3444,8 +3444,17 @@ else:
                             stu_in_subj = {k: v for k, v in all_users.items() if v.get("role") == "학생" and v.get("subject") == admin_view_subj}
                             search_exc = st.text_input("🔍 연장할 학생 검색 (이름/학번)", key="search_exc")
                             filt_stu = {k: v for k, v in stu_in_subj.items() if v.get("approved", True) and search_exc.lower() in f"{v.get('class_group','')} {v.get('name','')} {v.get('id','')}".lower()}
-                            opt_stu = ["선택"] + list(filt_stu.keys())
-                            sel_stu = st.selectbox("학생 선택", opt_stu, format_func=lambda x: "선택" if x == "선택" else f"[{filt_stu[x].get('class_group')}] {filt_stu[x].get('name')} ({filt_stu[x].get('id')})", key="sel_stu_tab0")
+                            _fmt_stu = lambda x: "선택" if x == "선택" else f"[{filt_stu[x].get('class_group')}] {filt_stu[x].get('name')} ({filt_stu[x].get('id')})"
+                            _stu_keys = sorted(filt_stu.keys(), key=lambda x: (str(filt_stu[x].get('class_group', '')), str(filt_stu[x].get('id', ''))))
+                            if search_exc.strip() and not _stu_keys:
+                                st.warning("검색된 학생이 없습니다. 이름이나 학번을 다시 확인해 주세요.")
+                                sel_stu = "선택"
+                            elif search_exc.strip() and len(_stu_keys) <= 10:
+                                # 🔍 검색하면 결과가 바로 보이고 첫 번째 학생이 자동 선택됨
+                                sel_stu = st.radio(f"학생 선택 (검색 결과 {len(_stu_keys)}명)", _stu_keys, format_func=_fmt_stu, key=f"sel_stu_r_{search_exc.strip()}")
+                            else:
+                                if search_exc.strip(): st.caption(f"검색 결과가 {len(_stu_keys)}명입니다. 이름이나 학번을 더 입력하면 바로 선택할 수 있습니다.")
+                                sel_stu = st.selectbox("학생 선택", ["선택"] + _stu_keys, format_func=_fmt_stu, key="sel_stu_tab0")
                             col_ed1, col_ed2 = st.columns(2)
                             exc_date = col_ed1.date_input("연장 마감일", value=get_kst_now().date() + datetime.timedelta(days=1), key="exc_date")
                             exc_time = col_ed2.selectbox("연장 마감 시간", TIME_OPTIONS, index=get_time_index("23:50"), key="exc_time")
