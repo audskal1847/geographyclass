@@ -1671,17 +1671,224 @@ def generate_points_html(df_records):
         i += 1
     return html + "</table><br>"
 
+# ===================== 👥 모둠 활동: 대표 기록·잠금·정리 도구 =====================
+import re as _gre
+
+def _norm_id(s):
+    """'20624천수민 ', '20624 천수민' → '20624' (학번 칸에 이름이 섞여도 숫자만 읽음)"""
+    m = _gre.match(r"\s*(\d{4,5})", str(s or ""))
+    return m.group(1) if m else str(s or "").strip()
+
+def _same_id(a, b):
+    """'2816' 과 '20816' 처럼 가운데 0이 빠진 학번도 같은 학생으로 봄"""
+    a, b = _norm_id(a), _norm_id(b)
+    if not a or not b: return False
+    if a == b: return True
+    if len(a) == 4 and len(b) == 5: a, b = b, a
+    return len(a) == 5 and len(b) == 4 and a[:1] + a[2:] == b and a[1] == "0"
+
+def _group_lock_on(act, cfg=None):
+    cfg = cfg if cfg is not None else load_json(CONFIG_FILE, {})
+    return bool(cfg.get("group_lock", {}).get(act, act == ACT_2_1))   # 2학년 수행평가1은 원래부터 잠금
+
+def _rec_members(rec):
+    return {_norm_id(rec.get(f"m{i}_id", "")) for i in range(1, 5)} - {""}
+
+def _resolve_user_key(subj, cls, sid, users):
+    k = f"{subj}_{cls}_{sid}"
+    if k in users: return k
+    for kk, u in users.items():
+        if u.get("subject") == subj and u.get("class_group") == cls:
+            uid = str(u.get("id", ""))
+            if sid and (uid == sid or (len(uid) == 4 and uid[:1] + "0" + uid[1:] == sid) or (len(sid) == 4 and sid[:1] + "0" + sid[1:] == uid)):
+                return kk
+    return None
+
 def get_user_activity_data(user_key, u_id, u_subj, u_class, act_name, learning_data):
-    if act_name in [ACT_2_1, ACT_2_2]:
+    """모둠 활동: ① 선생님이 지정한 대표 기록 → ② 내 기록 → ③ 같은 모둠의 모둠장 기록 순서로 찾음"""
+    if act_name not in [ACT_2_1, ACT_2_2]:
+        return user_key, learning_data.get(user_key, {}).get(act_name, {})
+    uid = _norm_id(u_id)
+    own = learning_data.get(user_key, {}).get(act_name, {}) or {}
+    if not uid:
+        return user_key, own
+    cfg = load_json(CONFIG_FILE, {})
+    own_lid = _norm_id(own.get("m1_id", "")) if own else ""
+    for gid, rk in (cfg.get("group_rep", {}).get(act_name, {}) or {}).items():
+        cls, _, lid = gid.partition("|")
+        if cls != u_class: continue
+        rec = learning_data.get(rk, {}).get(act_name)
+        if not rec: continue
+        if rk == user_key or _same_id(lid, uid) or _same_id(own_lid, lid) or any(_same_id(uid, m) for m in _rec_members(rec)):
+            return rk, rec
+    if act_name == ACT_2_1:
+        # 2학년 수행평가1은 이미 진행된 활동이라 예전 방식 그대로(선생님이 대표를 지정한 경우만 위에서 바뀜)
         u_id_str = str(u_id).strip()
-        if not u_id_str: return user_key, learning_data.get(user_key, {}).get(act_name, {})
-        own_data = learning_data.get(user_key, {}).get(act_name, {})
-        if str(own_data.get("m1_id", "")).strip() == u_id_str: return user_key, own_data
+        if str(own.get("m1_id", "")).strip() == u_id_str and own: return user_key, own
         for k, acts in learning_data.items():
             if k.startswith(f"{u_subj}_{u_class}_"):
                 members = [str(acts.get(act_name, {}).get(f"m{i}_id", "")).strip() for i in range(1, 5)]
                 if u_id_str in members: return k, acts.get(act_name, {})
-    return user_key, learning_data.get(user_key, {}).get(act_name, {})
+        return user_key, own
+    if own and own_lid == uid:
+        return user_key, own                      # 내가 모둠장인 기록
+    lock = _group_lock_on(act_name, cfg)
+    if own and not lock:
+        return user_key, own                      # 잠금 전: 내가 저장한 곳의 내용을 그대로 보여 줌
+    best = None
+    for k, acts in learning_data.items():
+        if not k.startswith(f"{u_subj}_{u_class}_"): continue
+        rec = acts.get(act_name) or {}
+        if uid in _rec_members(rec):
+            is_leader_rec = _norm_id(rec.get("m1_id", "")) == str(k.rsplit("_", 1)[-1])
+            if best is None or (is_leader_rec and not best[2]):
+                best = (k, rec, is_leader_rec)
+    if best: return best[0], best[1]
+    return user_key, own
+
+def build_group_index(act, learning_data, users, subj):
+    """반|모둠장학번 → {records: {학생키: 기록}, leader_key, members}"""
+    groups = {}
+    for k, acts in learning_data.items():
+        rec = acts.get(act)
+        u = users.get(k, {})
+        if not rec or u.get("subject") != subj: continue
+        lid = _norm_id(rec.get("m1_id", "")) or str(u.get("id", ""))
+        lk = _resolve_user_key(subj, u.get("class_group", ""), lid, users)
+        if lk: lid = str(users[lk].get("id", lid))          # 실제 계정 학번으로 맞춤(20816 → 2816)
+        gid = f"{u.get('class_group', '')}|{lid}"
+        g = groups.setdefault(gid, {"class": u.get("class_group", ""), "leader_id": lid, "records": {}, "members": set()})
+        g["records"][k] = rec
+        g["members"] |= _rec_members(rec) | {str(u.get("id", ""))}
+    for gid, g in groups.items():
+        g["leader_key"] = _resolve_user_key(subj, g["class"], g["leader_id"], users)
+    return groups
+
+def _filled_count(rec):
+    n = 0
+    for k, v in (rec or {}).items():
+        if _gre.match(r"m\d_(id|name)$", k): continue
+        if isinstance(v, str) and v.strip() and not v.startswith("data:"): n += 1
+        elif isinstance(v, list):
+            n += sum(1 for r in v if isinstance(r, dict) for x in r.values() if isinstance(x, str) and x.strip() and x not in ("-15pt", "-10pt"))
+        elif isinstance(v, str) and v.startswith("data:"): n += 1
+    return n
+
+def _is_blank(v):
+    if v is None: return True
+    if isinstance(v, float) and v != v: return True
+    if isinstance(v, str): return v.strip() in ("", "None", "nan")
+    if isinstance(v, list): return all(isinstance(r, dict) and all(_is_blank(x) or x is False for x in r.values()) for r in v)
+    return False
+
+def merge_group_records(primary, others):
+    """모둠 기록 합치기: 빈칸은 채워진 쪽으로, 서로 다른 내용은 [모둠원 학번 작성분] 표시와 함께 모두 남김"""
+    out = json.loads(json.dumps(primary, ensure_ascii=False, default=str))
+    for oid, rec in others:
+        for k, v in rec.items():
+            if _gre.match(r"m\d_(id|name)$", k) or _is_blank(v): continue
+            cur = out.get(k)
+            if _is_blank(cur):
+                out[k] = v; continue
+            if isinstance(v, str) and isinstance(cur, str):
+                if v.strip() != cur.strip() and v.strip() not in cur and not v.startswith("data:"):
+                    out[k] = f"{cur}\n\n[모둠원 {oid} 작성분]\n{v}"
+            elif isinstance(v, list) and isinstance(cur, list):
+                cur_rows = [json.dumps(r, sort_keys=True, ensure_ascii=False, default=str) for r in cur]
+                if len(v) == len(cur) and all(isinstance(a, dict) and isinstance(b, dict) for a, b in zip(cur, v)):
+                    merged = []
+                    for a, b in zip(cur, v):
+                        row = dict(a)
+                        for c, bv in b.items():
+                            av = row.get(c)
+                            if _is_blank(av) or av is False: row[c] = bv
+                            elif isinstance(av, str) and isinstance(bv, str) and not _is_blank(bv) and bv.strip() != av.strip() and bv.strip() not in av:
+                                row[c] = f"{av} / [{oid}] {bv}"
+                        merged.append(row)
+                    out[k] = merged
+                else:
+                    out[k] = cur + [r for r in v if json.dumps(r, sort_keys=True, ensure_ascii=False, default=str) not in cur_rows and not _is_blank([r])]
+    # 사본에만 적힌 모둠원도 합친 기록의 빈 모둠원 칸에 채워 넣음(모두 같은 기록을 보도록)
+    have = _rec_members(out)
+    for _, rec in others:
+        for i in range(1, 5):
+            mid = _norm_id(rec.get(f"m{i}_id", ""))
+            if mid and mid not in have:
+                slot = next((j for j in range(1, 5) if not _norm_id(out.get(f"m{j}_id", ""))), None)
+                if slot is None: break
+                out[f"m{slot}_id"], out[f"m{slot}_name"] = rec.get(f"m{i}_id", ""), rec.get(f"m{i}_name", "")
+                have.add(mid)
+    return out
+
+def render_group_cleanup():
+    """관리자: 모둠원이 따로 저장한 사본을 모둠장 기록과 나란히 보고, 대표 지정 또는 합치기"""
+    with st.expander("🧩 모둠 기록 정리 (2학년 수행평가 1·2) — 모둠원이 따로 저장한 사본 확인·대표 지정·합치기", expanded=False):
+        subj = "2학년 도시의 미래 탐구"
+        act = st.selectbox("모둠 활동 선택", [ACT_2_2, ACT_2_1], key="gc_act")
+        cfg = load_json(CONFIG_FILE, {})
+        lock_now = _group_lock_on(act, cfg)
+        new_lock = st.toggle("🔒 모둠원 조회 전용 잠금 (켜면 모둠 대표 기록의 작성자만 작성·저장할 수 있고, 나머지 모둠원은 조회만 함)",
+                             value=lock_now, key=f"gc_lock_{act}")
+        if new_lock != lock_now:
+            fresh = load_json(CONFIG_FILE, {}); fresh.setdefault("group_lock", {})[act] = bool(new_lock); save_json(CONFIG_FILE, fresh)
+            create_auto_backup(f"[{act[:12]}] 모둠 잠금 {'켬' if new_lock else '끔'}", force=True)
+            st.rerun()
+        st.caption("💡 아래 정리를 먼저 마친 뒤 잠금을 켜는 것을 권장합니다. 어느 경우에도 원래 기록은 지워지지 않고 보관됩니다.")
+        users = load_json(USERS_FILE, {}); data = load_json(DATA_FILE, {})
+        groups = build_group_index(act, data, users, subj)
+        reps = cfg.get("group_rep", {}).get(act, {}) or {}
+        cls_filter = st.radio("반", ["전체"] + CLASSES_MAP.get(subj, []), horizontal=True, key="gc_cls")
+        todo = {gid: g for gid, g in groups.items()
+                if (cls_filter == "전체" or g["class"] == cls_filter)
+                and (len(g["records"]) > 1 or g["leader_key"] not in g["records"] or gid in reps)}
+        if not todo:
+            st.success("정리가 필요한 모둠이 없습니다. (모둠원 사본 없음)"); return
+        st.markdown(f"**정리가 필요한 모둠 {len(todo)}개** — 모둠원 사본이 있거나, 모둠장 기록이 없는 모둠입니다.")
+        for gid, g in sorted(todo.items()):
+            lname = users.get(g["leader_key"] or "", {}).get("name", "")
+            rep = reps.get(gid) or (g["leader_key"] if g["leader_key"] in g["records"] else None)
+            st.markdown(f"---\n##### [{g['class']}] 모둠장 {g['leader_id']} {lname} 모둠 &nbsp; <span style='font-size:13px;color:#64748b'>구성원 학번: {', '.join(sorted(g['members']))}</span>", unsafe_allow_html=True)
+            if g["leader_key"] not in g["records"]:
+                st.warning("이 모둠은 모둠장 본인 기록이 없습니다. 아래 기록 중 하나를 대표로 지정하거나 합쳐 주세요.")
+            keys = sorted(g["records"], key=lambda k: (k != g["leader_key"], -_filled_count(g["records"][k])))
+            cols = st.columns(min(len(keys), 3))
+            for i, k in enumerate(keys):
+                rec = g["records"][k]; u = users.get(k, {})
+                ts = STORE.meta_ts("data", f"{k}||{act}")
+                when = (datetime.datetime.utcfromtimestamp(ts) + datetime.timedelta(hours=9)).strftime("%m-%d %H:%M") if ts else "-"
+                with cols[i % len(cols)]:
+                    role = "👑 모둠장 본인 기록" if k == g["leader_key"] else "👤 모둠원 사본"
+                    star = " ✅ **현재 대표**" if k == rep else ""
+                    st.markdown(f"**{role}**{star}  \n{u.get('id')} {u.get('name')} · 작성 {_filled_count(rec)}칸 · 저장 {when}")
+                    with st.expander("내용 보기"):
+                        for row in get_act_csv_rows(act, _clean_nan(rec), cfg):
+                            q, a = str(row[0]), str(row[1] if len(row) > 1 else "")
+                            if a.strip() and not a.startswith("<") and "data:" not in a:
+                                st.markdown(f"- **{q}**: {a[:300]}")
+                    if k != rep and st.button("이 기록을 모둠 대표로 지정", key=f"gc_rep_{act}_{gid}_{k}"):
+                        fresh = load_json(CONFIG_FILE, {}); fresh.setdefault("group_rep", {}).setdefault(act, {})[gid] = k; save_json(CONFIG_FILE, fresh)
+                        create_auto_backup(f"[{g['class']} {g['leader_id']} 모둠] 대표 기록 지정", force=True)
+                        st.rerun()
+            if len(keys) > 1:
+                target = rep or keys[0]
+                others = [(users.get(k, {}).get("id", k), g["records"][k]) for k in keys if k != target]
+                merged = merge_group_records(g["records"][target], others)
+                c1, c2 = st.columns([2, 1])
+                with c1:
+                    agree = st.checkbox(f"🔗 모두 합치기: {users.get(target, {}).get('name', '')}의 기록을 기준으로 나머지 {len(others)}개를 합칩니다. "
+                                        f"(작성 {_filled_count(g['records'][target])}칸 → 합친 뒤 {_filled_count(merged)}칸, 원본은 보관)", key=f"gc_agree_{act}_{gid}")
+                with c2:
+                    if st.button("🔗 모두 합치기 실행", key=f"gc_merge_{act}_{gid}", disabled=not agree):
+                        stamp = get_kst_now().strftime("%m%d_%H%M%S")
+                        for k in keys:   # 합치기 전 원본을 모두 보관
+                            STORE.set("data", k, g["records"][k], sub=f"[보관] {act} 합치기 전 {stamp}")
+                        STORE.set("data", target, merged, sub=act)
+                        fresh = load_json(CONFIG_FILE, {}); fresh.setdefault("group_rep", {}).setdefault(act, {})[gid] = target; save_json(CONFIG_FILE, fresh)
+                        create_auto_backup(f"[{g['class']} {g['leader_id']} 모둠] 기록 합치기", force=True)
+                        st.success("합쳤습니다. 이제 이 모둠의 모든 구성원에게 합친 기록이 보입니다."); st.rerun()
+            if gid in reps and st.button("대표 지정 취소", key=f"gc_unrep_{act}_{gid}"):
+                fresh = load_json(CONFIG_FILE, {}); fresh.get("group_rep", {}).get(act, {}).pop(gid, None); save_json(CONFIG_FILE, fresh)
+                st.rerun()
 
 def get_act_csv_rows(selected_view, ans, config=None):
     if ans is None:
@@ -2801,10 +3008,15 @@ def render_activity2_2nd(user_key, u_info, current_role):
     
     is_active, status_msg = check_active_with_exception(category, user_class, user_key)
     disabled_flag = (current_role == "학생" and not is_active)
+    group_member_view = current_role == "학생" and owner_key != user_key and _group_lock_on(category)
+    if group_member_view:
+        disabled_flag = True     # 🔒 모둠원 조회 전용: 모둠 대표 기록의 작성자만 수정·저장
     if current_role == "관리자":
         disabled_flag = False
         st.info("💡 교사/관리자 모드입니다. (수정 가능)")
 
+    if group_member_view:
+        st.info("💡 **[조회 전용]** 모둠 대표가 작성·저장한 화면을 함께 보고 있습니다. 수정과 저장은 모둠 대표만 할 수 있습니다.")
     st.markdown(f"<h2 style='font-size: 26px; font-weight: 900; color: #111; padding-bottom: 10px; border-bottom: 2px solid #ccc; margin-bottom: 20px;'>♣ [2학년] 수행평가 2 - 내가 설계하는 N분 도시 with 파리의 15분 도시설계</h2>", unsafe_allow_html=True)
     
     if current_role == "학생":
@@ -4272,6 +4484,7 @@ else:
             with menu_tabs[3]:
                 col_t, col_b = st.columns([8, 2])
                 with col_t: st.markdown("### 📥 학생 학습 활동 및 제출 자료 실시간 조회")
+                render_group_cleanup()
                 with col_b:
                     if st.button("🔄 실시간 새로고침", key="refresh_dashboard_btn"):
                         st.balloons()
