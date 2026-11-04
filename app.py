@@ -1001,9 +1001,11 @@ def make_facade_composite(building_b64, sketch_b64, s=None, max_w=900):
     glow_layer.paste(sk2, (l, t))
     glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(max(6, w // 25)))
     out = Image.blend(night, ImageChops.screen(night, glow_layer), 0.45 * power)
-    # 4) 벽면에 선명한 빛 투사
+    # 4) 벽면에 선명한 빛 투사: 밝은 낮 사진이어도 영상이 또렷하도록, 투사 면을 먼저 어둡게(스크린처럼) 한 뒤 빛을 더함
     region = out.crop((l, t, l + w, t + h))
-    lit = ImageChops.screen(region, sk2)
+    screen_wall = ImageEnhance.Brightness(region).enhance(0.22)          # 건물 질감은 살짝 남김
+    lit = ImageChops.screen(screen_wall, sk2)
+    lit = Image.blend(lit, sk2, 0.35)                                     # 빛의 색을 더 선명하게
     out.paste(Image.blend(region, lit, power), (l, t))
     return _img_to_b64(out)
 
@@ -1027,6 +1029,18 @@ def make_facade_gif(frames_b64, seconds, width=640, fade_steps=4):
     buf = io.BytesIO()
     pal[0].save(buf, format="GIF", save_all=True, append_images=pal[1:], duration=durs, loop=0, optimize=True)
     return "data:image/gif;base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
+
+
+@st.cache_data(show_spinner=False, max_entries=30)
+def mf_cached_composite(site, sketch, facade_items):
+    return make_facade_composite(site, sketch, dict(facade_items))
+
+@st.cache_data(show_spinner=False, max_entries=10)
+def mf_cached_facade_gif(site, sketches, secs, facade_items):
+    """건물 합성 4컷 연속 재생 영상(같은 설정이면 다시 만들지 않음)"""
+    frames = [mf_cached_composite(site, s, facade_items) for s in sketches]
+    return make_facade_gif(frames, list(secs))
+
 
 # 🚀 기본 설정 및 페이지 구성 (사이드바 강제 열림)
 st.set_page_config(page_title="수업 및 활동 어시스트 프로그램", layout="wide", initial_sidebar_state="expanded")
@@ -3315,6 +3329,7 @@ def render_activity3_2nd(user_key, u_info, current_role):
     # 건물 합성 설정
     st.markdown("#### 🏙️ 건물 합성 시뮬레이션 — 내 스케치를 실제 건물 벽면에 비춰 보기")
     facade = dict(MF_DEFAULT_FACADE, **(ans.get("step4_facade") or {}))
+    register_gif = None
     if not site_photo:
         st.info("ℹ️ Step 2에 최종 건물 사진을 첨부하면, 스케치를 건물 벽면에 비춘 모습으로 합성할 수 있습니다.")
     else:
@@ -3330,15 +3345,31 @@ def render_activity3_2nd(user_key, u_info, current_role):
             facade["fit"] = st.radio("스케치 맞추기", ["꽉 채우기", "비율 유지"], index=0 if facade.get("fit") != "비율 유지" else 1, horizontal=True, key="mf_fit", disabled=disabled_flag)
         with fb:
             pv_options = [i for i, img in enumerate(current_images) if img]
+            fkey = tuple(sorted(facade.items()))
             if pv_options:
-                pv = st.radio("미리 볼 컷", pv_options, format_func=lambda i: cut_names[i], horizontal=True, key="mf_preview_cut")
-                comp = make_facade_composite(site_photo, current_images[pv], facade)
-                if comp: st.image(comp, caption=f"{cut_names[pv]} — 건물 합성 미리보기", use_container_width=True)
+                view_opts = ["▶ 4컷 연속 재생", "한 컷씩 보기"] if len(pv_options) >= 2 else ["한 컷씩 보기"]
+                pv_mode = st.radio("미리보기 방식", view_opts, horizontal=True, key="mf_preview_mode")
+                if pv_mode.startswith("▶"):
+                    with st.spinner("건물에 4컷을 이어서 비추는 중..."):
+                        pv_gif = mf_cached_facade_gif(site_photo, tuple(current_images[i] for i in pv_options),
+                                                      tuple((secs[i] or 3) for i in pv_options), fkey)
+                    if pv_gif:
+                        st.image(pv_gif, caption=" → ".join(cut_names[i] for i in pv_options) + " (건물 합성 연속 재생, 컷당 최대 5초)", use_container_width=True)
+                        st.caption("슬라이더를 움직이면 바뀐 설정으로 다시 재생됩니다. 마음에 들면 아래 버튼으로 최종 영상에 등록하세요.")
+                        if st.button("🎬 이 연속 재생 영상을 최종 시뮬레이션 영상으로 등록", key="mf_register_preview", disabled=disabled_flag):
+                            register_gif = pv_gif
+                else:
+                    pv = st.radio("미리 볼 컷", pv_options, format_func=lambda i: cut_names[i], horizontal=True, key="mf_preview_cut")
+                    comp = mf_cached_composite(site_photo, current_images[pv], fkey)
+                    if comp: st.image(comp, caption=f"{cut_names[pv]} — 건물 합성 미리보기", use_container_width=True)
             else:
-                st.image(make_facade_composite(site_photo, "", facade), caption="스케치를 올리면 벽면에 비춘 모습이 보입니다", use_container_width=True)
+                st.image(mf_cached_composite(site_photo, "", fkey), caption="스케치를 올리면 벽면에 비춘 모습이 보입니다", use_container_width=True)
 
     st.markdown("#### 🎥 최종 미디어 파사드 시뮬레이션 영상")
     saved_video = ans.get("step4_video", "")
+    if register_gif:
+        saved_video = register_gif
+        st.success("🎉 건물 합성 연속 재생 영상을 최종 시뮬레이션 영상으로 등록했습니다. 하단 [저장하기]를 눌러 반영하세요.")
     v_col1, v_col2 = st.columns([1, 1])
     with v_col1:
         st.markdown("**방법 A. 4컷 자동 연결 (컷 사이 부드러운 전환 + 컷별 소요 시간 반영)**")
@@ -3350,7 +3381,7 @@ def render_activity3_2nd(user_key, u_info, current_role):
                 st.warning("⚠️ 최소 2개 이상의 스케치 이미지를 업로드해야 영상을 생성할 수 있습니다.")
             else:
                 with st.spinner("시뮬레이션 영상을 만드는 중입니다..."):
-                    frames = [make_facade_composite(site_photo, img, facade) if gif_mode.startswith("건물") else img for img, _ in pairs]
+                    frames = [mf_cached_composite(site_photo, img, tuple(sorted(facade.items()))) if gif_mode.startswith("건물") else img for img, _ in pairs]
                     saved_video = make_facade_gif(frames, [s or 3 for _, s in pairs]) or saved_video
                 st.success("🎉 시뮬레이션 영상이 만들어졌습니다! 하단 [저장하기]를 눌러 반영하세요. (미리보기는 컷당 최대 5초)")
     with v_col2:
