@@ -3367,6 +3367,50 @@ MF_SHEET_SPEC = [
     ("table", _S6 + " › 자동 점검 결과", "", "step6_chk_df"),
 ]
 MF_TECH_OPTIONS = ["프로젝션 매핑", "LED 미디어월", "레이저·라이트 쇼", "인터랙티브(관람객 반응)", "AR(증강현실)", "사운드 연동", "기타"]
+# 기술 이름: (한 줄 설명, 만들 수 있는 효과, 이런 장면에 어울림, 고려할 점)
+MF_TECH_INFO = {
+    "프로젝션 매핑": ("프로젝터로 건물 벽에 영상을 비추되, 창문·기둥·모서리 같은 건물의 생김새에 딱 맞춰 영상을 '입히는' 기술",
+                  "건물이 무너지거나 움직이는 착시, 벽이 물·나무·철 같은 다른 재질로 바뀌는 변신, 창문 하나하나에 서로 다른 장면 넣기",
+                  "건물 자체가 주인공이 되는 장면, 도입부의 '건물이 깨어나는' 연출",
+                  "어두워야 잘 보임(야간 전용), 주변 간판·가로등 빛이 강하면 흐려짐, 프로젝터를 설치할 맞은편 공간 필요"),
+    "LED 미디어월": ("건물 외벽에 LED 화면(대형 전광판)을 붙여 영상을 직접 띄우는 기술",
+                  "낮에도 밝고 선명한 색, 모서리 화면을 이용해 화면 밖으로 튀어나오는 듯한 입체 착시(아나모픽) 연출",
+                  "선명한 색감이 중요한 장면, 시간대별로 바뀌는 상시 콘텐츠",
+                  "설치 비용이 큼, 너무 밝으면 빛공해·눈부심, 주거지와 가까우면 민원 가능 → 밝기·운영 시간 조절이 대응 방안이 될 수 있음"),
+    "레이저·라이트 쇼": ("레이저 빔과 무대 조명(서치라이트·무빙라이트)으로 빛줄기와 선을 벽면이나 하늘에 그리는 기술",
+                   "하늘로 뻗는 빛기둥, 건물 윤곽을 따라 그려지는 선, 음악에 맞춰 깜빡이는 강렬한 리듬",
+                   "분위기가 최고조에 이르는 절정 장면, 축제·기념 장면",
+                   "눈에 직접 닿지 않게 해야 함(안전), 하늘 방향은 항공 안전 고려, 세밀한 그림 표현은 어려움"),
+    "인터랙티브(관람객 반응)": ("센서·카메라·스마트폰으로 관람객의 움직임·소리·터치를 읽어 영상이 반응하게 하는 기술",
+                         "관람객이 손을 흔들면 꽃이 피거나 새가 날아오름, 관람객 수에 따라 빛이 밝아짐, 휴대폰으로 보낸 메시지가 벽에 떠오름",
+                         "관람객이 메시지를 '완성'하는 마무리 장면, 참여형 장면",
+                         "장비와 운영이 복잡함, 관람객이 모일 안전한 공간·동선 필요"),
+    "AR(증강현실)": ("스마트폰 카메라로 건물을 비추면 화면 속 실제 건물 위에 가상 영상이 겹쳐 보이게 하는 기술",
+                  "실제로 빛을 쏘지 않고도 건물이 변하는 장면을 보여 줌, 사람마다 다른 장면 체험",
+                  "주거지와 가까워 실제로 빛을 비추기 어려운 건물(Step 3의 빛공해·민원 조건에 대한 대응 방안)",
+                  "앱이나 QR 코드가 필요함, 여럿이 함께 보는 감동은 줄어듦"),
+    "사운드 연동": ("음악·효과음·내레이션을 영상의 장면 전환 타이밍에 맞춰 함께 들려주는 기술",
+                "장면이 바뀌는 순간의 몰입감, 지역의 소리(파도, 공장 기계음, 새소리)로 정체성 강조",
+                "모든 장면에 함께 쓰기 좋음, 특히 도입과 절정",
+                "소음 민원 가능 → 헤드폰·QR 오디오 안내가 대응 방안이 될 수 있음"),
+    "기타": ("위에 없는 기술(예: 물안개 스크린, 드론 라이트 쇼, 키네틱 조명 등)", "장면 설명에 어떤 기술인지 구체적으로 적어 주세요", "-", "-"),
+}
+
+def mf_quad_to_shape(q):
+    """네 모서리(%) → 위치·폭·높이·기울임(슬라이더용)"""
+    tlx, tly, trx, try_, brx, bry, blx, bly = [float(v) for v in q]
+    tx, bx = (tlx + trx) / 2, (blx + brx) / 2
+    ly, ry = (tly + bly) / 2, (try_ + bry) / 2
+    return {"cx": (tx + bx) / 2, "cy": (ly + ry) / 2, "top_w": trx - tlx, "bot_w": brx - blx,
+            "left_h": bly - tly, "right_h": bry - try_, "lean": tx - bx, "rise": ry - ly}
+
+def mf_shape_to_quad(s):
+    """위치·폭·높이·기울임 → 네 모서리(%)"""
+    tx, bx = s["cx"] + s["lean"] / 2, s["cx"] - s["lean"] / 2
+    ly, ry = s["cy"] - s["rise"] / 2, s["cy"] + s["rise"] / 2
+    pts = [tx - s["top_w"] / 2, ly - s["left_h"] / 2, tx + s["top_w"] / 2, ry - s["right_h"] / 2,
+           bx + s["bot_w"] / 2, ry + s["right_h"] / 2, bx - s["bot_w"] / 2, ly + s["left_h"] / 2]
+    return [round(max(0.0, min(100.0, v)), 1) for v in pts]
 MF_RUBRIC = [
     ("Step 1. 정체성 탐색", "출처가 있는 근거 자료로 지역 정체성 키워드를 찾았는가 / 메시지가 한 문장으로 분명한가", "예시 20"),
     ("Step 2. 캔버스 선정", "후보 3곳을 실제 확인(답사·로드뷰 캡처)하고 비교했는가 / 선정 이유가 Step 1과 연결되는가", "예시 15"),
@@ -3577,6 +3621,10 @@ def render_activity3_2nd(user_key, u_info, current_role):
         ▶ Step 2에서 건물 사진을 첨부했다면, 스케치를 <b>실제 건물 벽면에 비춘 모습</b>으로 합성해 볼 수 있습니다.
         </span>
     </div>""", unsafe_allow_html=True)
+    with st.expander("💡 사용 기술 알아보기 — 각 기술로 어떤 장면을 만들 수 있나요?", expanded=False):
+        st.markdown("| 기술 | 무엇인가요 | 만들 수 있는 효과 | 이런 장면에 어울려요 | 고려할 점 |\n|---|---|---|---|---|\n" +
+                    "\n".join(f"| **{k}** | {v[0]} | {v[1]} | {v[2]} | {v[3]} |" for k, v in MF_TECH_INFO.items() if k != "기타"))
+        st.caption("※ 기술의 '고려할 점'은 Step 3의 조건 진단과 연결해 보세요. 예: 주거지와 가까운 건물 → LED 밝기·운영 시간 조절, AR로 대체 등")
     cut_names = ["1 도입", "2 전개", "3 절정", "4 마무리"]
     saved_step4 = ans.get("step4_df", []) or []
     step4_data, current_images, secs = [], [], []
@@ -3595,7 +3643,11 @@ def render_activity3_2nd(user_key, u_info, current_role):
         with col_txt:
             scene = st.text_area(f"[{c_name}] 장면 설명", value=old_scene, height=110, key=f"step4_desc_{i}", disabled=disabled_flag,
                                  placeholder="이 장면에서 벽면에 무엇이 나타나고 어떻게 움직이는지, Step 1 메시지와 어떻게 이어지는지")
-            tech = st.multiselect(f"[{c_name}] 사용 기술", MF_TECH_OPTIONS, default=old_tech, key=f"step4_tech_{i}", disabled=disabled_flag)
+            tech = st.multiselect(f"[{c_name}] 사용 기술", MF_TECH_OPTIONS, default=old_tech, key=f"step4_tech_{i}", disabled=disabled_flag,
+                                  help="여러 개를 함께 고를 수 있습니다. 각 기술의 효과는 위 '💡 사용 기술 알아보기'에서 자세히 볼 수 있습니다.")
+            for tn in tech:
+                info = MF_TECH_INFO.get(tn)
+                if info: st.caption(f"✨ **{tn}**: {info[1]}")
             t1, t2 = st.columns([1.6, 1])
             color = t1.text_input(f"[{c_name}] 주요 색감·분위기", value=old.get("주요 색감", ""), key=f"step4_color_{i}", disabled=disabled_flag, placeholder="예: 새벽빛 푸른색 → 금빛")
             try: old_sec = int(float(old.get("소요 시간(초)", 0) or 0))
@@ -3628,15 +3680,34 @@ def render_activity3_2nd(user_key, u_info, current_role):
                 facade["h"] = st.slider("벽면 높이", 5, 100, int(facade["h"]), key="mf_h", disabled=disabled_flag)
                 facade["fit"] = st.radio("스케치 맞추기", ["꽉 채우기", "비율 유지"], index=0 if facade.get("fit") != "비율 유지" else 1, horizontal=True, key="mf_fit", disabled=disabled_flag)
             else:
-                st.caption("오른쪽 사진의 빨간 번호 ①~④가 실제 벽면의 네 모서리에 오도록 맞추세요. (사진 기준 %, 가로 0=왼쪽 끝 / 세로 0=위쪽 끝)")
-                q = list(facade.get("q") or mf_rect_to_quad(facade))
-                names = ["① 왼쪽 위", "② 오른쪽 위", "③ 오른쪽 아래", "④ 왼쪽 아래"]
-                for k, nm in enumerate(names):
-                    qc1, qc2 = st.columns(2)
-                    q[2 * k] = qc1.slider(f"{nm} — 가로", 0, 100, int(round(float(q[2 * k]))), key=f"mf_q{k}x", disabled=disabled_flag)
-                    q[2 * k + 1] = qc2.slider(f"{nm} — 세로", 0, 100, int(round(float(q[2 * k + 1]))), key=f"mf_q{k}y", disabled=disabled_flag)
-                facade["q"] = q
-                st.caption("💡 모서리를 맞출 때는 오른쪽 '한 컷씩 보기'로 보면 더 빠르게 확인할 수 있습니다.")
+                st.caption("오른쪽 사진의 노란 테두리가 실제 벽면과 겹치도록 ① 위치 → ② 크기 → ③ 기울기 순서로 맞추세요. (사진 크기 기준 %)")
+                sh = mf_quad_to_shape(facade.get("q") or mf_rect_to_quad(facade))
+                ri = lambda v, lo, hi: int(max(lo, min(hi, round(v))))
+                st.markdown("**① 위치** — 빛 영역 전체를 옮깁니다")
+                p1, p2 = st.columns(2)
+                sh["cx"] = p1.slider("↔ 좌우 위치", 0, 100, ri(sh["cx"], 0, 100), key="mf_s_cx", disabled=disabled_flag, help="0이면 사진 왼쪽 끝, 100이면 오른쪽 끝")
+                sh["cy"] = p2.slider("↕ 상하 위치", 0, 100, ri(sh["cy"], 0, 100), key="mf_s_cy", disabled=disabled_flag, help="0이면 사진 위쪽 끝, 100이면 아래쪽 끝")
+                st.markdown("**② 크기** — 폭과 높이를 맞춥니다")
+                w1, w2 = st.columns(2)
+                sh["top_w"] = w1.slider("⬆ 윗변 폭", 2, 100, ri(sh["top_w"], 2, 100), key="mf_s_tw", disabled=disabled_flag,
+                                        help="높은 건물을 올려다 찍어 위로 갈수록 좁아 보이면 윗변 폭을 줄이세요.")
+                sh["bot_w"] = w2.slider("⬇ 아랫변 폭", 2, 100, ri(sh["bot_w"], 2, 100), key="mf_s_bw", disabled=disabled_flag)
+                h1, h2 = st.columns(2)
+                sh["left_h"] = h1.slider("⬅ 왼쪽 높이", 2, 100, ri(sh["left_h"], 2, 100), key="mf_s_lh", disabled=disabled_flag,
+                                         help="벽을 비스듬히 찍으면 멀리 있는 쪽이 작아 보입니다. 먼 쪽의 높이를 줄이세요.")
+                sh["right_h"] = h2.slider("➡ 오른쪽 높이", 2, 100, ri(sh["right_h"], 2, 100), key="mf_s_rh", disabled=disabled_flag,
+                                          help="벽을 비스듬히 찍으면 멀리 있는 쪽이 작아 보입니다. 먼 쪽의 높이를 줄이세요.")
+                st.markdown("**③ 기울기** — 기울어진 벽에 맞춥니다")
+                t1, t2 = st.columns(2)
+                sh["lean"] = t1.slider("↗ 위쪽 좌우 기울임", -50, 50, ri(sh["lean"], -50, 50), key="mf_s_lean", disabled=disabled_flag,
+                                       help="+로 올리면 윗변이 오른쪽으로, -로 내리면 왼쪽으로 기울어집니다.")
+                sh["rise"] = t2.slider("⤵ 오른쪽 오르내림", -50, 50, ri(sh["rise"], -50, 50), key="mf_s_rise", disabled=disabled_flag,
+                                       help="+로 올리면 오른쪽 변 전체가 아래로, -로 내리면 위로 이동합니다.")
+                facade["q"] = mf_shape_to_quad(sh)
+                st.info("📐 **이럴 땐 이렇게!**  \n"
+                        "• 높은 건물을 **올려다 찍은 사진** → '윗변 폭'을 아랫변보다 줄이세요.  \n"
+                        "• 벽을 **오른쪽에서 비스듬히 찍은 사진** → 멀리 있는 '왼쪽 높이'를 줄이고, '오른쪽 오르내림'으로 윗변·아랫변 기울기를 맞추세요.  \n"
+                        "• 맞출 때는 오른쪽 '한 컷씩 보기'로 보면 더 빠르게 확인할 수 있습니다.")
             facade["dark"] = st.slider("밤의 어두움", 0, 95, int(facade["dark"]), key="mf_dark", disabled=disabled_flag)
             facade["power"] = st.slider("빛의 세기", 10, 100, int(facade["power"]), key="mf_power", disabled=disabled_flag)
             show_guide = st.checkbox("빛 비출 영역 테두리·모서리 번호 표시", value=True, key="mf_guide")
