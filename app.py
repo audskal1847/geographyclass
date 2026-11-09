@@ -1282,14 +1282,24 @@ def _canon(obj):
     except Exception: return str(obj)
 
 def apply_draft(user_key, category, ans, enabled=True):
-    """저장(제출)하지 않은 임시 내용이 있으면 화면에 복원한다."""
-    if not enabled: return ans
-    draft = STORE.get("drafts", user_key, sub=category)
-    if draft and _canon(draft) != _canon(ans):
-        merged = dict(ans); merged.update(draft)
-        st.warning("📝 저장하지 않은 임시 작성 내용을 복원했습니다. 내용을 확인한 뒤 **수업 시간 안에 [저장하기]** 를 눌러야 최종 저장됩니다.", icon="♻️")
-        return merged
-    return ans
+    """저장(제출)하지 않은 임시 내용이 있으면 화면에 복원한다.
+    ⚠️ 활동지를 보고 있는 동안에는 처음 연 시점의 내용으로 고정한다.
+    (임시저장이 갱신될 때마다 표·입력칸의 바탕 자료가 바뀌면 Streamlit 이 입력 중인 내용을 버리고 다시 그리기 때문)
+    다른 화면에 갔다 오거나 접속이 끊겼다 다시 들어오면 그때 최신 임시저장 내용으로 새로 복원한다."""
+    fk = f"_frozen_ans::{user_key}::{category}"
+    cur = f"{user_key}::{category}"
+    if st.session_state.get("_render_prev") == cur and fk in st.session_state:
+        st.session_state["_render_now"] = cur
+        return st.session_state[fk]
+    st.session_state["_render_now"] = cur
+    merged = ans
+    if enabled:
+        draft = STORE.get("drafts", user_key, sub=category)
+        if draft and _canon(draft) != _canon(ans):
+            merged = dict(ans); merged.update(draft)
+            st.warning("📝 저장하지 않은 임시 작성 내용을 복원했습니다. 내용을 확인한 뒤 **수업 시간 안에 [저장하기]** 를 눌러야 최종 저장됩니다.", icon="♻️")
+    st.session_state[fk] = merged
+    return merged
 
 def autosave_draft(user_key, category, new_ans, disabled_flag):
     """입력칸에서 다른 곳을 클릭할 때마다(화면 갱신 시) 서버에 임시저장. 접속이 끊겨도 내용이 남는다."""
@@ -1319,6 +1329,7 @@ def commit_activity(user_key, category, new_ans, u_name, success_msg="🎉 저�
             raise RuntimeError("저장 확인 실패")
         STORE.delete("drafts", user_key, sub=category)
         st.session_state.pop(f"_draft_base::{user_key}::{category}", None)
+        st.session_state[f"_frozen_ans::{user_key}::{category}"] = json.loads(json.dumps(new_ans, ensure_ascii=False, default=str))
         create_auto_backup(f"[{u_name}] {category} 저장")
         st.balloons(); st.success(success_msg)
         st.session_state["_autosave_clear"] = True
@@ -3735,9 +3746,11 @@ def render_activity3_2nd(user_key, u_info, current_role):
                 st.image(mf_draw_guide(base_night, facade) if show_guide else base_night, caption="스케치를 올리면 노란 테두리 안에 빛이 비춰집니다", use_container_width=True)
 
     st.markdown("#### 🎥 최종 미디어 파사드 시뮬레이션 영상")
-    saved_video = ans.get("step4_video", "")
+    vkey = f"_mf_video::{user_key}"
+    saved_video = st.session_state.get(vkey) or ans.get("step4_video", "")
     if register_gif:
         saved_video = register_gif
+        st.session_state[vkey] = saved_video
         st.success("🎉 건물 합성 연속 재생 영상을 최종 시뮬레이션 영상으로 등록했습니다. 하단 [저장하기]를 눌러 반영하세요.")
     v_col1, v_col2 = st.columns([1, 1])
     with v_col1:
@@ -3752,12 +3765,14 @@ def render_activity3_2nd(user_key, u_info, current_role):
                 with st.spinner("시뮬레이션 영상을 만드는 중입니다..."):
                     frames = [mf_cached_composite(site_photo, img, tuple((k, tuple(v) if isinstance(v, list) else v) for k, v in sorted(facade.items()))) if gif_mode.startswith("건물") else img for img, _ in pairs]
                     saved_video = make_facade_gif(frames, [s or 3 for _, s in pairs]) or saved_video
+                    st.session_state[vkey] = saved_video
                 st.success("🎉 시뮬레이션 영상이 만들어졌습니다! 하단 [저장하기]를 눌러 반영하세요. (미리보기는 컷당 최대 5초)")
     with v_col2:
         st.markdown("**방법 B. 직접 제작한 영상(MP4/GIF) 업로드**")
         up_video = st.file_uploader("편집 영상 업로드 (MP4, WebM, GIF / 최대 10MB)", type=["mp4", "webm", "gif"], key="step4_video_uploader", disabled=disabled_flag)
         if up_video is not None:
             saved_video = process_uploaded_video(up_video) or saved_video
+            st.session_state[vkey] = saved_video
     if saved_video:
         st.markdown("**▶ 등록된 시뮬레이션 영상 미리보기**")
         if "data:video" in saved_video: st.video(saved_video)
@@ -4058,6 +4073,10 @@ elif "current_page" not in st.session_state: st.session_state.current_page = "ma
 # =====================================================================
 # 🚀 메인 실행부 및 사이드바 (UI 구성)
 # =====================================================================
+
+# 직전 화면 갱신에서 그린 활동지 기억(같은 활동지를 계속 보고 있으면 내용 고정 유지)
+st.session_state["_render_prev"] = st.session_state.get("_render_now")
+st.session_state["_render_now"] = None
 
 if not STORE.sheets_ready:
     # 서버가 막 재시작되어 구글 시트에서 자료를 받아오는 중 → 예전 자료 위에 저장하는 사고를 막기 위해 잠시 대기
