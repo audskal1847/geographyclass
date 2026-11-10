@@ -1104,6 +1104,121 @@ def mf_draw_guide(img_b64, s):
 def mf_cached_composite(site, sketch, facade_items):
     return make_facade_composite(site, sketch, dict(facade_items))
 
+_MF_EDITOR_HTML = r'''<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; font-family: "Noto Sans KR", "Malgun Gothic", sans-serif; }
+  #wrap { position: relative; user-select: none; -webkit-user-select: none; touch-action: none; }
+  #img { width: 100%; display: block; border-radius: 10px; }
+  #svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  #poly { fill: rgba(255, 230, 0, 0.12); stroke: #ffe600; stroke-width: 2.5; vector-effect: non-scaling-stroke; cursor: move; }
+  .h { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%;
+       background: #ff3b3b; border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.5);
+       color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; cursor: grab; }
+  .h.active { transform: scale(1.25); cursor: grabbing; background: #ff7a00; }
+  #hint { font-size: 13px; color: #475569; margin: 8px 2px 2px; line-height: 1.5; }
+  #badge { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,.6); color: #fff; font-size: 12px; padding: 3px 8px; border-radius: 6px; display: none; }
+</style></head>
+<body>
+<div id="wrap">
+  <img id="img" alt="">
+  <svg id="svg" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon id="poly" points=""></polygon></svg>
+  <div class="h" data-i="0">1</div><div class="h" data-i="1">2</div>
+  <div class="h" data-i="2">3</div><div class="h" data-i="3">4</div>
+  <div id="badge"></div>
+</div>
+<div id="hint">🖱️ <b>빨간 점 ①~④</b>를 끌어 실제 벽면의 네 모서리에 맞추세요. <b>노란 테두리 안쪽</b>을 끌면 영역 전체가 움직입니다. 손을 떼면 합성 화면이 새로 그려지고 왼쪽 슬라이더 값도 함께 바뀝니다.</div>
+<script>
+(function () {
+  var q = [20, 15, 80, 15, 80, 75, 20, 75];
+  var drag = null, disabled = false;
+  var wrap = document.getElementById("wrap"), img = document.getElementById("img");
+  var poly = document.getElementById("poly"), badge = document.getElementById("badge");
+  var handles = Array.prototype.slice.call(document.querySelectorAll(".h"));
+
+  function send(type, data) {
+    var msg = { isStreamlitMessage: true, type: type };
+    for (var k in (data || {})) msg[k] = data[k];
+    window.parent.postMessage(msg, "*");
+  }
+  function setHeight() { send("streamlit:setFrameHeight", { height: document.body.scrollHeight + 4 }); }
+  function clamp(v) { return Math.max(0, Math.min(100, v)); }
+  function draw() {
+    poly.setAttribute("points", [0, 2, 4, 6].map(function (i) { return q[i] + "," + q[i + 1]; }).join(" "));
+    handles.forEach(function (h, k) { h.style.left = q[2 * k] + "%"; h.style.top = q[2 * k + 1] + "%"; });
+  }
+  function pos(e) {
+    var r = wrap.getBoundingClientRect();
+    return { x: clamp((e.clientX - r.left) / r.width * 100), y: clamp((e.clientY - r.top) / r.height * 100) };
+  }
+  handles.forEach(function (h) {
+    h.addEventListener("pointerdown", function (e) {
+      if (disabled) return;
+      e.preventDefault(); e.stopPropagation();
+      drag = { type: "corner", i: +h.dataset.i }; h.classList.add("active");
+    });
+  });
+  poly.addEventListener("pointerdown", function (e) {
+    if (disabled) return;
+    e.preventDefault();
+    var p = pos(e); drag = { type: "move", sx: p.x, sy: p.y, q0: q.slice() };
+  });
+  window.addEventListener("pointermove", function (e) {
+    if (!drag) return;
+    var p = pos(e);
+    if (drag.type === "corner") { q[2 * drag.i] = p.x; q[2 * drag.i + 1] = p.y; }
+    else {
+      var dx = p.x - drag.sx, dy = p.y - drag.sy, xs = [], ys = [];
+      for (var i = 0; i < 8; i += 2) { xs.push(drag.q0[i]); ys.push(drag.q0[i + 1]); }
+      dx = Math.max(-Math.min.apply(null, xs), Math.min(100 - Math.max.apply(null, xs), dx));
+      dy = Math.max(-Math.min.apply(null, ys), Math.min(100 - Math.max.apply(null, ys), dy));
+      for (var j = 0; j < 8; j += 2) { q[j] = drag.q0[j] + dx; q[j + 1] = drag.q0[j + 1] + dy; }
+    }
+    badge.style.display = "block"; badge.textContent = "놓으면 합성 화면이 다시 그려집니다";
+    draw();
+  });
+  function finish() {
+    if (!drag) return;
+    drag = null; badge.style.display = "none";
+    handles.forEach(function (h) { h.classList.remove("active"); });
+    send("streamlit:setComponentValue", { value: { q: q.map(function (v) { return Math.round(v * 10) / 10; }), nonce: Date.now() }, dataType: "json" });
+  }
+  window.addEventListener("pointerup", finish);
+  window.addEventListener("pointercancel", finish);
+
+  window.addEventListener("message", function (e) {
+    var d = e.data || {};
+    if (d.type !== "streamlit:render") return;
+    var a = d.args || {};
+    disabled = !!a.disabled || !!d.disabled;
+    wrap.style.opacity = disabled ? 0.6 : 1;
+    if (!drag && a.q && a.q.length === 8) q = a.q.map(Number);
+    if (a.image && img.getAttribute("src") !== a.image) img.setAttribute("src", a.image);
+    draw(); setHeight();
+  });
+  img.addEventListener("load", function () { draw(); setHeight(); });
+  window.addEventListener("resize", setHeight);
+  send("streamlit:componentReady", { apiVersion: 1 });
+})();
+</script>
+</body></html>
+'''
+
+def mf_corner_editor(image, q, disabled=False, key="mf_drag_editor"):
+    """🖱️ 사진 위에서 네 모서리를 마우스로 끌어 맞추는 부품. 손을 떼면 {'q': [...8개], 'nonce': 시각} 을 돌려줌"""
+    import tempfile, hashlib, sys as _s
+    reg = _s.modules.setdefault("_mf_editor_registry", type(_s)("_mf_editor_registry"))
+    if not hasattr(reg, "func"):
+        d = os.path.join(tempfile.gettempdir(), "mf_corner_editor_" + hashlib.md5(_MF_EDITOR_HTML.encode("utf-8")).hexdigest()[:8])
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, "index.html"), "w", encoding="utf-8") as f: f.write(_MF_EDITOR_HTML)
+        reg.func = components.declare_component("mf_corner_editor", path=d)
+    return reg.func(image=image, q=[float(v) for v in q], disabled=bool(disabled), key=key, default=None)
+
+def _sv(key, v):
+    """위젯 값을 코드에서 바꿔 넣은 경우(마우스 조절) 기본값을 다시 넘기지 않도록"""
+    return {} if key in st.session_state else {"value": v}
+
 @st.cache_data(show_spinner=False, max_entries=10)
 def mf_cached_facade_gif(site, sketches, secs, facade_items):
     """건물 합성 4컷 연속 재생 영상(같은 설정이면 다시 만들지 않음)"""
@@ -1328,7 +1443,7 @@ def commit_activity(user_key, category, new_ans, u_name, success_msg="🎉 저�
         if _canon(STORE.get("data", user_key, sub=category)) != _canon(new_ans):
             raise RuntimeError("저장 확인 실패")
         STORE.delete("drafts", user_key, sub=category)
-        st.session_state.pop(f"_draft_base::{user_key}::{category}", None)
+        st.session_state[f"_draft_base::{user_key}::{category}"] = _canon(new_ans)   # 저장한 상태를 기준으로, 다음 변경부터 바로 임시저장
         st.session_state[f"_frozen_ans::{user_key}::{category}"] = json.loads(json.dumps(new_ans, ensure_ascii=False, default=str))
         create_auto_backup(f"[{u_name}] {category} 저장")
         st.balloons(); st.success(success_msg)
@@ -3679,9 +3794,17 @@ def render_activity3_2nd(user_key, u_info, current_role):
     if not site_photo:
         st.info("ℹ️ Step 2에 최종 건물 사진을 첨부하면, 스케치를 건물 벽면에 비춘 모습으로 합성할 수 있습니다.")
     else:
+        ev = st.session_state.get("mf_drag_editor")
+        if isinstance(ev, dict) and ev.get("q") and len(ev["q"]) == 8 and ev.get("nonce") != st.session_state.get("_mf_drag_applied") and not disabled_flag:
+            st.session_state["_mf_drag_applied"] = ev.get("nonce")
+            shp = mf_quad_to_shape(ev["q"])
+            st.session_state["mf_mode"] = "네 모서리"      # 마우스로 맞추면 '네 모서리' 방식으로 전환
+            for k_, f_, lo_, hi_ in [("mf_s_cx", "cx", 0, 100), ("mf_s_cy", "cy", 0, 100), ("mf_s_tw", "top_w", 2, 100), ("mf_s_bw", "bot_w", 2, 100),
+                                     ("mf_s_lh", "left_h", 2, 100), ("mf_s_rh", "right_h", 2, 100), ("mf_s_lean", "lean", -50, 50), ("mf_s_rise", "rise", -50, 50)]:
+                st.session_state[k_] = int(max(lo_, min(hi_, round(shp[f_]))))
         fa, fb = st.columns([1, 1.4])
         with fa:
-            facade["mode"] = st.radio("벽면 맞추기 방식", ["사각형", "네 모서리"], index=1 if facade.get("mode") == "네 모서리" else 0, horizontal=True,
+            facade["mode"] = st.radio("벽면 맞추기 방식", ["사각형", "네 모서리"], **({} if "mf_mode" in st.session_state else {"index": 1 if facade.get("mode") == "네 모서리" else 0}), horizontal=True,
                                       format_func=lambda m: "▭ 반듯한 사각형" if m == "사각형" else "◇ 네 모서리 맞추기 (비스듬한 벽)", key="mf_mode", disabled=disabled_flag)
             if facade["mode"] == "사각형":
                 st.caption("빛을 비출 벽면 위치를 맞추세요 (사진 기준 %)")
@@ -3696,23 +3819,23 @@ def render_activity3_2nd(user_key, u_info, current_role):
                 ri = lambda v, lo, hi: int(max(lo, min(hi, round(v))))
                 st.markdown("**① 위치** — 빛 영역 전체를 옮깁니다")
                 p1, p2 = st.columns(2)
-                sh["cx"] = p1.slider("↔ 좌우 위치", 0, 100, ri(sh["cx"], 0, 100), key="mf_s_cx", disabled=disabled_flag, help="0이면 사진 왼쪽 끝, 100이면 오른쪽 끝")
-                sh["cy"] = p2.slider("↕ 상하 위치", 0, 100, ri(sh["cy"], 0, 100), key="mf_s_cy", disabled=disabled_flag, help="0이면 사진 위쪽 끝, 100이면 아래쪽 끝")
+                sh["cx"] = p1.slider("↔ 좌우 위치", 0, 100, key="mf_s_cx", **_sv("mf_s_cx", ri(sh["cx"], 0, 100)), disabled=disabled_flag, help="0이면 사진 왼쪽 끝, 100이면 오른쪽 끝")
+                sh["cy"] = p2.slider("↕ 상하 위치", 0, 100, key="mf_s_cy", **_sv("mf_s_cy", ri(sh["cy"], 0, 100)), disabled=disabled_flag, help="0이면 사진 위쪽 끝, 100이면 아래쪽 끝")
                 st.markdown("**② 크기** — 폭과 높이를 맞춥니다")
                 w1, w2 = st.columns(2)
-                sh["top_w"] = w1.slider("⬆ 윗변 폭", 2, 100, ri(sh["top_w"], 2, 100), key="mf_s_tw", disabled=disabled_flag,
+                sh["top_w"] = w1.slider("⬆ 윗변 폭", 2, 100, key="mf_s_tw", **_sv("mf_s_tw", ri(sh["top_w"], 2, 100)), disabled=disabled_flag,
                                         help="높은 건물을 올려다 찍어 위로 갈수록 좁아 보이면 윗변 폭을 줄이세요.")
-                sh["bot_w"] = w2.slider("⬇ 아랫변 폭", 2, 100, ri(sh["bot_w"], 2, 100), key="mf_s_bw", disabled=disabled_flag)
+                sh["bot_w"] = w2.slider("⬇ 아랫변 폭", 2, 100, key="mf_s_bw", **_sv("mf_s_bw", ri(sh["bot_w"], 2, 100)), disabled=disabled_flag)
                 h1, h2 = st.columns(2)
-                sh["left_h"] = h1.slider("⬅ 왼쪽 높이", 2, 100, ri(sh["left_h"], 2, 100), key="mf_s_lh", disabled=disabled_flag,
+                sh["left_h"] = h1.slider("⬅ 왼쪽 높이", 2, 100, key="mf_s_lh", **_sv("mf_s_lh", ri(sh["left_h"], 2, 100)), disabled=disabled_flag,
                                          help="벽을 비스듬히 찍으면 멀리 있는 쪽이 작아 보입니다. 먼 쪽의 높이를 줄이세요.")
-                sh["right_h"] = h2.slider("➡ 오른쪽 높이", 2, 100, ri(sh["right_h"], 2, 100), key="mf_s_rh", disabled=disabled_flag,
+                sh["right_h"] = h2.slider("➡ 오른쪽 높이", 2, 100, key="mf_s_rh", **_sv("mf_s_rh", ri(sh["right_h"], 2, 100)), disabled=disabled_flag,
                                           help="벽을 비스듬히 찍으면 멀리 있는 쪽이 작아 보입니다. 먼 쪽의 높이를 줄이세요.")
                 st.markdown("**③ 기울기** — 기울어진 벽에 맞춥니다")
                 t1, t2 = st.columns(2)
-                sh["lean"] = t1.slider("↗ 위쪽 좌우 기울임", -50, 50, ri(sh["lean"], -50, 50), key="mf_s_lean", disabled=disabled_flag,
+                sh["lean"] = t1.slider("↗ 위쪽 좌우 기울임", -50, 50, key="mf_s_lean", **_sv("mf_s_lean", ri(sh["lean"], -50, 50)), disabled=disabled_flag,
                                        help="+로 올리면 윗변이 오른쪽으로, -로 내리면 왼쪽으로 기울어집니다.")
-                sh["rise"] = t2.slider("⤵ 오른쪽 오르내림", -50, 50, ri(sh["rise"], -50, 50), key="mf_s_rise", disabled=disabled_flag,
+                sh["rise"] = t2.slider("⤵ 오른쪽 오르내림", -50, 50, key="mf_s_rise", **_sv("mf_s_rise", ri(sh["rise"], -50, 50)), disabled=disabled_flag,
                                        help="+로 올리면 오른쪽 변 전체가 아래로, -로 내리면 위로 이동합니다.")
                 facade["q"] = mf_shape_to_quad(sh)
                 st.info("📐 **이럴 땐 이렇게!**  \n"
@@ -3725,9 +3848,17 @@ def render_activity3_2nd(user_key, u_info, current_role):
         with fb:
             pv_options = [i for i, img in enumerate(current_images) if img]
             fkey = tuple((k, tuple(v) if isinstance(v, list) else v) for k, v in sorted(facade.items()))
-            if pv_options:
-                view_opts = ["▶ 4컷 연속 재생", "한 컷씩 보기"] if len(pv_options) >= 2 else ["한 컷씩 보기"]
-                pv_mode = st.radio("미리보기 방식", view_opts, horizontal=True, key="mf_preview_mode")
+            view_opts = (["▶ 4컷 연속 재생"] if len(pv_options) >= 2 else []) + (["한 컷씩 보기"] if pv_options else []) + ["🖱️ 마우스로 직접 맞추기"]
+            pv_mode = st.radio("미리보기 방식", view_opts, horizontal=True, key="mf_preview_mode")
+            if pv_mode.startswith("🖱️"):
+                base_img = mf_cached_composite(site_photo, current_images[pv_options[0]] if pv_options else "", fkey)
+                cur_q = facade["q"] if facade.get("mode") == "네 모서리" and facade.get("q") else mf_rect_to_quad(facade)
+                try:
+                    mf_corner_editor(base_img, cur_q, disabled=disabled_flag)
+                except Exception as _e:
+                    st.warning(f"마우스 조절 화면을 불러오지 못했습니다. 왼쪽 슬라이더로 조절해 주세요. ({_e})")
+                st.caption("모서리를 맞춘 뒤 '▶ 4컷 연속 재생'으로 바꾸면 작품 전체를 확인할 수 있습니다.")
+            elif pv_options:
                 if pv_mode.startswith("▶"):
                     with st.spinner("건물에 4컷을 이어서 비추는 중..."):
                         pv_gif = mf_cached_facade_gif(site_photo, tuple(current_images[i] for i in pv_options),
