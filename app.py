@@ -2951,6 +2951,17 @@ AUTOSAVE_JS = """<script>
 })();
 </script>"""
 
+def lock_table_headers():
+    """활동지 표의 맨 윗줄(제목줄)을 눌러도 정렬·열 이동이 일어나지 않게 투명 덮개를 씌움.
+    (휴대폰·태블릿에서 제목줄을 잘못 건드려 행·열 순서가 바뀌던 문제 방지. 칸 입력은 그대로 가능)"""
+    st.markdown("""<style>
+    [data-testid="stDataFrame"], [data-testid="stDataEditor"], div.stDataFrame { position: relative; }
+    [data-testid="stDataFrame"]::after, [data-testid="stDataEditor"]::after, div.stDataFrame::after {
+        content: ""; position: absolute; left: 0; right: 0; top: 0; height: 35px;
+        z-index: 20; background: transparent; cursor: default; pointer-events: auto;
+    }
+    </style>""", unsafe_allow_html=True)
+
 def inject_custom_scripts(scope_key, clear=False):
     """브라우저 임시저장: 학생 + 화면별로 분리 저장, 같은 이름 문항도 칸별로 분리, 저장 성공 시 비움"""
     import hashlib
@@ -4434,6 +4445,7 @@ else:
             st.error(f"🚫 현재 [{user_class_group}]은(는) 이 수행평가가 비공개 상태입니다.")
             if st.button("⬅️ 메인 화면으로 돌아가기", use_container_width=True): change_page("main")
         else:
+            lock_table_headers()   # 표 제목줄 잘못 터치 → 행·열 순서 바뀜 방지
             if act_name == ACT_3_1: render_activity1_3th(current_user_key, u_info, current_role)
             elif act_name == ACT_3_2: render_activity2_3th(current_user_key, u_info, current_role)
             elif act_name == ACT_3_3: render_activity3_3th(current_user_key, u_info, current_role)
@@ -4885,6 +4897,7 @@ else:
                             u_info_sel = all_users[selected_student]
                             acts_for_subj = load_json(CONFIG_FILE, {}).get("subject_activities", {}).get(view_subj, [])
                             filter_act = st.selectbox("활동지 필터링", ["전체 활동지 보기"] + acts_for_subj)
+                            lock_table_headers()
                             for act in acts_for_subj:
                                 if filter_act != "전체 활동지 보기" and act != filter_act: continue
                                 if act == ACT_3_1: render_activity1_3th(selected_student, u_info_sel, current_role)
