@@ -1464,6 +1464,159 @@ STORE = storage.get_store(
     sheets_conf=_sheets_conf(),
 )
 
+# ===================== ☁️ 구글 시트 용량 관리 =====================
+# 구글 시트 문서 하나에 담을 수 있는 용량에는 한계가 있습니다. 영상(MP4·GIF)처럼 큰 파일까지 시트에 올리면
+# "This document is too large to continue editing" 오류로 시트 저장이 모두 멈춥니다.
+# → 일정 크기(SHEET_MEDIA_MAX 글자)보다 큰 첨부 파일은 시트에 올리지 않고 '표시'만 남깁니다.
+#   (글·표·사진(스케치) 같은 일반 자료는 그대로 시트에 보관 / 영상은 앱 서버에 보관)
+SHEET_MEDIA_MAX = 700_000          # 약 0.5MB. 스케치·사진은 보통 이보다 작고, 영상은 훨씬 큼
+MEDIA_OMIT = "__MEDIA_OMITTED__"
+
+def _is_omitted(v):
+    return isinstance(v, str) and v.startswith(MEDIA_OMIT)
+
+def _media_ok(v):
+    """화면에 보여 줄 수 있는 첨부 파일만 돌려줌 (시트에 올리지 않은 표시는 빈 값)"""
+    return "" if (not isinstance(v, str) or _is_omitted(v)) else v
+
+def _sheet_slim(v):
+    if isinstance(v, str):
+        if len(v) > SHEET_MEDIA_MAX and v.startswith("data:"):
+            mime = v[5:v.find(";")] if ";" in v[:80] else "media"
+            return f"{MEDIA_OMIT}:{mime}:{len(v)}"
+        return v
+    if isinstance(v, dict):
+        return {k: _sheet_slim(x) for k, x in v.items()}
+    if isinstance(v, list):
+        return [_sheet_slim(x) for x in v]
+    return v
+
+def _restore_omitted(new, base):
+    """임시 작성 내용 등에 '시트에 안 올린 표시'가 있으면, 같은 자리의 실제 파일(base)로 되돌림"""
+    if _is_omitted(new):
+        return base if isinstance(base, str) and base and not _is_omitted(base) else new
+    if isinstance(new, dict) and isinstance(base, dict):
+        return {k: _restore_omitted(v, base.get(k)) for k, v in new.items()}
+    if isinstance(new, list) and isinstance(base, list):
+        return [_restore_omitted(v, base[i] if i < len(base) else None) for i, v in enumerate(new)]
+    return new
+
+def _is_quota_err(e):
+    t = str(e)
+    return "429" in t or "Quota" in t or "RATE_LIMIT" in t
+
+def _install_sheet_slimming():
+    """저장 엔진(재시작 없이 유지되는 모듈)의 시트 쓰기 함수를 바꿔 끼움: 큰 첨부 제외 + 줄어든 칸 비우기 + 나눠 보내기"""
+    SM = getattr(storage, "SheetsMirror", None)
+    if SM is None or getattr(SM, "_slim_ver", 0) >= 1:
+        return
+    orig = getattr(SM, "_orig_push", None) or SM.push
+    SM._orig_push = orig
+
+    def push(self, ns, items):
+        import time as _t
+        if not items:
+            return
+        if ns in ("data", "drafts"):
+            items = [(k, ts, d, None if d else _sheet_slim(v)) for k, ts, d, v in items]
+        ws = self._get_ws(ns)
+        old = {}
+        try:   # 예전 조각 수(D열) → 이번에 줄어든 만큼 뒤쪽 칸을 비워 용량을 줄임
+            col_a, col_d = ws.col_values(1), ws.col_values(4)
+            for i, k in enumerate(col_a[1:], start=2):
+                if k:
+                    try: old[k] = (i, int(col_d[i - 1]) if i - 1 < len(col_d) and str(col_d[i - 1]).strip() else 0)
+                    except ValueError: old[k] = (i, 0)
+        except Exception:
+            pass
+        for g in range(0, len(items), 25):     # 한꺼번에 많이 보내면 구글 쓰기 한도(분당 60회)에 걸리므로 나눠 보냄
+            part = items[g:g + 25]
+            for attempt in range(6):
+                try:
+                    orig(self, ns, part)
+                    break
+                except Exception as e:
+                    if _is_quota_err(e) and attempt < 5:
+                        _t.sleep(20 + attempt * 10)
+                        continue
+                    raise
+            if len(items) > 25:
+                _t.sleep(1.2)
+        clears = []
+        for k, ts, d, v in items:
+            if k in old:
+                r, n0 = old[k]
+                n1 = 0 if d else -(-len(json.dumps(v, ensure_ascii=False)) // storage.CHUNK)
+                if n0 > n1:
+                    clears.append(f"{SM._col_letter(SM.FIRST_DATA_COL + n1)}{r}:{SM._col_letter(SM.FIRST_DATA_COL + n0 - 1)}{r}")
+        for g in range(0, len(clears), 200):
+            ws.batch_clear(clears[g:g + 200])
+
+    SM.push = push
+    SM._slim_ver = 1
+
+_install_sheet_slimming()
+
+def sheet_shrink_now(log=None):
+    """현재 시트에서 큰 첨부 파일이 들어 있는 줄을 가볍게 다시 쓰고, 남는 열을 지움. 반환: (줄 수, 지운 열 수)"""
+    sm = STORE.sheets
+    if sm is None:
+        raise RuntimeError("구글 시트가 연결되어 있지 않습니다.")
+    rows_done, cols_deleted = 0, 0
+    for ns in ("data", "drafts"):
+        ws = sm._get_ws(ns)
+        col_a, col_d = ws.col_values(1), ws.col_values(4)
+        big = []
+        for i, k in enumerate(col_a[1:], start=2):
+            try: n = int(col_d[i - 1]) if i - 1 < len(col_d) and str(col_d[i - 1]).strip() else 0
+            except ValueError: n = 0
+            if k and n * storage.CHUNK > SHEET_MEDIA_MAX:
+                big.append(k)
+        items = []
+        with STORE.lock:
+            for k in big:
+                m = STORE.meta[ns].get(k)
+                if not m: continue
+                v = None if m[1] else STORE._get_flat(ns, k)
+                items.append((k, m[0], m[1] or v is None, v))
+        if items:
+            sm.push(ns, items)
+            rows_done += len(items)
+        # 남는 열 지우기
+        col_d = ws.col_values(4)
+        need = 0
+        for x in col_d[1:]:
+            try: need = max(need, int(x))
+            except (ValueError, TypeError): pass
+        keep = max(sm.FIRST_DATA_COL - 1 + need + 2, 12)
+        ws2 = sm.sh.worksheet(ns)
+        if ws2.col_count > keep:
+            cols_deleted += ws2.col_count - keep
+            ws2.delete_columns(keep + 1, ws2.col_count)
+            sm.ws[ns] = sm.sh.worksheet(ns)
+            sm.cols[ns] = sm.ws[ns].col_count
+        if log: log(f"{ns}: 큰 첨부 {len(items)}줄 정리")
+    return rows_done, cols_deleted
+
+def sheet_switch_to(url):
+    """새 구글 시트로 옮기기: 서버에 있는 최신 자료 전체를 새 시트에 올림 (재시작 없이)"""
+    conf = _sheets_conf()
+    if not conf:
+        raise RuntimeError("secrets 에 서비스 계정(gcp_service_account) 정보가 없습니다.")
+    new = storage.SheetsMirror(conf[0], url.strip())     # 열 수 없으면 여기서 오류
+    with STORE.lock:
+        STORE.sheets = new
+        STORE.sheets_enabled = True
+        STORE.sheets_ready = False         # 백그라운드에서 10초 안에 새 시트와 병합 → 서버 자료 전체를 새 시트로 올림
+        STORE.sheets_disabled_reason = None
+        STORE.sheet_backoff_until = 0.0
+        STORE.sheet_fail_count = 0
+        STORE.sheet_last_error = None
+        STORE.report_dirty = True
+        STORE.last_report = 0.0
+        STORE.report_last_error = None
+    return new.sh.title if hasattr(new.sh, "title") else url
+
 def load_json(file_path, default_value):
     ns = _NS_BY_PATH.get(file_path)
     if ns is None:
@@ -1508,7 +1661,7 @@ def apply_draft(user_key, category, ans, enabled=True):
     if enabled:
         draft = STORE.get("drafts", user_key, sub=category)
         if draft and _canon(draft) != _canon(ans):
-            merged = dict(ans); merged.update(draft)
+            merged = dict(ans); merged.update({k: _restore_omitted(v, ans.get(k)) for k, v in draft.items()})
             st.warning("📝 저장하지 않은 임시 작성 내용을 복원했습니다. 내용을 확인한 뒤 **수업 시간 안에 [저장하기]** 를 눌러야 최종 저장됩니다.", icon="♻️")
     st.session_state[fk] = merged
     return merged
@@ -1557,6 +1710,8 @@ import re as _re
 def _sheet_cell(v):
     """시트 셀용 정리: 이미지/영상은 표시만, HTML 태그 제거, 5만 자 제한"""
     t = str(v if v is not None else "")
+    if t.startswith("__MEDIA_OMITTED__"):
+        return "[영상 첨부 – 용량이 커서 앱에서만 확인]"
     if "<" in t:
         t = _re.sub(r"<video[^>]*>.*?</video>|<video[^>]*>", "[영상 첨부]", t, flags=_re.S)
         t = _re.sub(r"<img[^>]*>", "[이미지 첨부]", t)
@@ -1810,6 +1965,7 @@ def _sheet_report_hook(store):
     같은 학생 안에서 소제목은 처음 한 번만 표시(반·학번·이름은 필터용으로 모든 줄에 유지)"""
     data, users, cfg = store.load("data"), store.load("users"), store.load("config")
     specs = _activity_specs()
+    errors = []
     for subj, acts in cfg.get("subject_activities", {}).items():
         studs = [(k, u) for k, u in users.items() if u.get("role") == "학생" and u.get("subject") == subj and u.get("approved", True)]
         studs.sort(key=lambda x: (str(x[1].get("class_group", "")), str(x[1].get("id", ""))))
@@ -1848,7 +2004,15 @@ def _sheet_report_hook(store):
                 groups.append((g_first, len(body) + 1))
             extra = ["표 3열", "표 4열", "표 5열", "표 6열", "표 7열", "표 8열", "표 9열", "표 10열"]
             header = ["반", "학번", "이름", "제출 여부", "마지막 저장", "작성자", "소제목", "문항 (표: 1열)", "답변 (표: 2열)"] + extra[:max(0, width - 3)]
-            store.sheets.write_table(_sheet_tab_title(act), [header] + body, freeze_cols=3, bold_rows=marks, groups=groups)
+            try:   # 한 탭에서 오류가 나도 나머지 탭은 계속 갱신
+                store.sheets.write_table(_sheet_tab_title(act), [header] + body, freeze_cols=3, bold_rows=marks, groups=groups)
+            except Exception as _e:
+                errors.append(f"{_sheet_tab_title(act)}: {type(_e).__name__}: {str(_e)[:160]}")
+                if "429" in str(_e) or "Quota" in str(_e):
+                    __import__("time").sleep(20)          # 구글 시트 쓰기 한도 초과 → 잠시 쉬었다가 다음 탭
+    store.report_tab_errors = errors
+    if errors:
+        raise RuntimeError(" / ".join(errors))    # 30초 뒤 실패한 탭만 다시 시도(성공한 탭은 내용이 같아 건너뜀)
 
 STORE.report_hook = _sheet_report_hook
 # 앱 코드(app.py)가 바뀌면 학생 입력이 없어도 응답 탭을 한 번 새로 씀 (항목 이름 변경 등이 시트에 바로 반영되도록)
@@ -2453,7 +2617,7 @@ def get_act_csv_rows(selected_view, ans, config=None):
             csv_data.append(["스토리보드", "(미작성)"])
 
         # 최종 시뮬레이션 영상 출력
-        sim_video = ans.get("step4_video", "")
+        sim_video = _media_ok(ans.get("step4_video", ""))
         if sim_video:
             if "data:video" in sim_video:
                 v_tag = f"<video src='{sim_video}' controls style='max-width:450px; border-radius:8px; border:1px solid #94a3b8;'></video>"
@@ -2814,7 +2978,7 @@ def generate_html_content(act_name, ans, config=None):
         html += "</table>"
 
         # 시뮬레이션 영상 HTML 출력
-        sim_v = ans.get("step4_video", "")
+        sim_v = _media_ok(ans.get("step4_video", ""))
         if sim_v:
             html += "<div style='margin-top:15px; padding:15px; background-color:#f8fafc; border-radius:8px; border:1px solid #e2e8f0; text-align:center;'>"
             html += "<p style='font-weight:bold; font-size:15px; margin-bottom:10px; color:#1e293b;'>🎬 미디어 파사드 모션 시뮬레이션</p>"
@@ -4236,7 +4400,9 @@ def render_activity3_2nd(user_key, u_info, current_role):
 
     st.markdown("#### 🎥 최종 미디어 파사드 시뮬레이션 영상")
     vkey = f"_mf_video::{user_key}"
-    saved_video = st.session_state.get(vkey) or ans.get("step4_video", "")
+    saved_video = _media_ok(st.session_state.get(vkey)) or _media_ok(ans.get("step4_video", ""))
+    if not saved_video and _is_omitted(ans.get("step4_video")):
+        st.warning("⚠️ 서버가 다시 시작되면서 등록했던 영상 파일이 지워졌습니다. [자동 생성]을 다시 누르거나 영상을 다시 올린 뒤 [저장하기]를 눌러 주세요.")
     if register_gif:
         saved_video = register_gif
         st.session_state[vkey] = saved_video
@@ -4389,7 +4555,7 @@ def _mf_gallery(user_key, u_info, current_role, disabled_flag, learning_data):
         tk, tu, ta = works[pick]
         g1, g2 = st.columns([1.2, 1])
         with g1:
-            media = ta.get("step4_video") or next((c.get("스케치_img") for c in ta.get("step4_df", []) if c.get("스케치_img")), "")
+            media = _media_ok(ta.get("step4_video")) or next((c.get("스케치_img") for c in ta.get("step4_df", []) if c.get("스케치_img")), "")
             if media and "data:video" in media: st.video(media)
             elif media: st.image(media, use_container_width=True)
         with g2:
@@ -5330,6 +5496,36 @@ else:
                     if _ok: st.success("✅ 응답 탭을 새로 썼습니다. 구글 시트 화면을 새로고침(F5)해서 확인하세요.")
                     elif _err: st.error(f"⚠️ 응답 탭 갱신 오류: {_err}")
                     else: st.info("⏳ 요청은 보냈지만 아직 끝나지 않았습니다. 1분 뒤 구글 시트를 새로고침해 보세요.")
+                _too_big = any("too large" in str(x or "").lower() for x in (_stt.get("sheet_last_error"), _stt.get("report_last_error")))
+                if _stt["sheets_enabled"] or _too_big:
+                    with st.expander("🧰 구글 시트 용량 문제 해결 (\"This document is too large\" 오류가 날 때)", expanded=_too_big):
+                        if _too_big:
+                            st.error("🚨 구글 시트 문서가 용량 한도를 넘어 **시트 저장이 멈춘 상태**입니다. 학생 자료는 앱 서버에 안전하게 저장되고 있지만, "
+                                     "**지금 Reboot 하면 시트에 아직 못 올린 자료가 사라집니다. 해결될 때까지 Reboot 하지 마세요.**")
+                        st.markdown(f"- 시트에 아직 못 올린 자료: **{_stt.get('sheet_pending', 0)}건**  \n"
+                                    f"- 영상처럼 큰 첨부 파일(약 0.5MB 초과)은 이제 시트에 올리지 않습니다. 글·표·스케치·사진은 그대로 시트에 보관됩니다.")
+                        st.markdown("**방법 1. 지금 시트에서 큰 영상 빼기** — 먼저 시도해 보세요.")
+                        if st.button("🧹 시트 용량 줄이기 (큰 영상 빼기 + 빈 열 지우기)", key="btn_sheet_shrink"):
+                            with st.spinner("시트를 정리하는 중입니다... (1~3분)"):
+                                try:
+                                    _r, _c = sheet_shrink_now()
+                                    STORE.sheet_backoff_until = 0.0; STORE.report_dirty = True; STORE.last_report = 0.0
+                                    st.success(f"✅ 정리 완료: 큰 첨부가 든 줄 {_r}개를 가볍게 다시 쓰고, 빈 열 {_c}개를 지웠습니다. 1~2분 뒤 이 화면을 새로고침해서 '대기 0건'이 되는지 확인하세요.")
+                                except Exception as _e:
+                                    st.error(f"⚠️ 지금 시트에서는 정리할 수 없습니다: {type(_e).__name__}: {str(_e)[:200]}  \n→ 아래 **방법 2(새 시트로 옮기기)** 를 진행해 주세요.")
+                        st.markdown("**방법 2. 새 구글 시트로 옮기기** — 방법 1이 안 되면 진행하세요. (지금 시트는 그대로 남겨 두면 예전 기록 보관용이 됩니다)")
+                        _sa = (_sheets_conf() or ({}, ""))[0].get("client_email", "(secrets 의 client_email)")
+                        st.markdown(f"① 새 구글 시트를 만들고 [공유]에서 아래 주소를 **편집자**로 추가하세요.  \n`{_sa}`  \n"
+                                    "② 새 시트 주소(URL)를 아래 칸에 붙여 넣고 [새 시트로 옮기기]를 누르세요. 서버에 있는 최신 자료 전체가 새 시트로 올라갑니다(몇 분 걸림).  \n"
+                                    "③ **반드시** Streamlit 앱 설정의 Secrets 에서 `gsheet_url` 을 새 주소로 바꿔 저장하세요. (안 바꾸면 나중에 Reboot 할 때 예전 시트에서 불러옵니다)")
+                        _new_url = st.text_input("새 구글 시트 주소", key="new_sheet_url", placeholder="https://docs.google.com/spreadsheets/d/...")
+                        if st.button("📦 새 시트로 옮기기", key="btn_sheet_switch", disabled=not _new_url.strip().startswith("https://docs.google.com/spreadsheets/")):
+                            try:
+                                _t = sheet_switch_to(_new_url)
+                                st.success(f"✅ 새 시트 '{_t}' 에 연결했습니다. 몇 분 동안 자료 전체가 올라갑니다. 이 화면을 새로고침해 '대기 0건'이 되면 완료입니다.  \n"
+                                           "⚠️ 이제 Secrets 의 `gsheet_url` 을 새 주소로 꼭 바꿔 주세요.")
+                            except Exception as _e:
+                                st.error(f"⚠️ 새 시트를 열 수 없습니다. 공유(편집자)와 주소를 확인하세요: {type(_e).__name__}: {str(_e)[:200]}")
                 
                 bk_files = sorted([f for f in os.listdir(BACKUP_DIR) if f.startswith("backup_") and f.endswith(".json")], reverse=True)
                 total_bytes = sum([os.path.getsize(os.path.join(BACKUP_DIR, f)) for f in bk_files if os.path.isfile(os.path.join(BACKUP_DIR, f))])
