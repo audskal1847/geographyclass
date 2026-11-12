@@ -1585,7 +1585,7 @@ _EVENT = re.compile(
     r"|(?P<dfvar>\w+)\s*=\s*pd\.DataFrame\(\s*ans\.get\(\s*[\"'](?P<dfkey>[^\"']+)[\"']"
     r"|(?:(?<=\n)|^)[ \t]*(?P<dfvar2>\w+)[ \t]*=[ \t]*pd\.DataFrame\(\s*(?P<dfsrc>\w+)\s*[,)]"
     r"|(?:(?<=\n)|^)[ \t]*(?P<recvar>\w+)[ \t]*=[ \t]*ans\.get\(\s*[\"'](?P<reckey>[^\"']+)[\"']"
-    r"|st\.data_editor\(\s*(?P<edvar>[\w.()\[\]'\"]+)"
+    r"|(?:st\.data_editor|grid_editor)\(\s*(?P<edvar>[\w.()\[\]'\"]+)"
     r"|(?:st|col\w*|c\d|\w+_col\w*)\.(?P<w>" + _WIDGETS + r")\(\s*f?[\"'](?P<label>[^\"']*)[\"']",
     re.S)
 _TAG = re.compile(r"<[^>]+>")
@@ -2951,6 +2951,22 @@ AUTOSAVE_JS = """<script>
 })();
 </script>"""
 
+def _star_picker(label, key, prev, disabled):
+    """별 5개를 직접 눌러 점수를 고르는 칸 (1~5점, 0 = 아직 안 누름)"""
+    st.markdown(f"**{label}**")
+    if hasattr(st, "feedback"):
+        if key not in st.session_state and prev > 0:
+            st.session_state[key] = int(prev) - 1          # 저장된 별 개수로 시작
+        try:
+            v = st.feedback("stars", key=key, disabled=disabled)
+        except TypeError:
+            v = st.feedback("stars", key=key)
+        n = 0 if v is None else int(v) + 1
+        st.caption(f"{'★' * n}{'☆' * (5 - n)}  ({n}점)" if n else "☆ 별을 눌러 점수를 고르세요")
+        return n
+    return st.select_slider(label, options=[0, 1, 2, 3, 4, 5], value=int(prev), disabled=disabled, label_visibility="collapsed",
+                            format_func=lambda v: "미평가" if v == 0 else "★" * v + "☆" * (5 - v), key=key)
+
 def lock_table_headers():
     """활동지 표의 맨 윗줄(제목줄)을 눌러도 정렬·열 이동이 일어나지 않게 투명 덮개를 씌움.
     (휴대폰·태블릿에서 제목줄을 잘못 건드려 행·열 순서가 바뀌던 문제 방지. 칸 입력은 그대로 가능)"""
@@ -2961,6 +2977,156 @@ def lock_table_headers():
         z-index: 20; background: transparent; cursor: default; pointer-events: auto;
     }
     </style>""", unsafe_allow_html=True)
+
+# ===================== 🧱 활동지 표 (순서가 절대 바뀌지 않는 칸 입력 표) =====================
+GRID_CSS = """<style>
+[class*="st-key-tblgrid_"] [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 4px !important; margin-bottom: -10px; }
+[class*="st-key-tblgrid_"] [data-testid="stColumn"], [class*="st-key-tblgrid_"] [data-testid="column"] { min-width: 0 !important; }
+[class*="st-key-tblgrid_"] textarea { font-size: 14.5px; line-height: 1.45; }
+.tg-head { background:#eef2f7; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px; font-weight:800; color:#1e293b;
+           font-size:14.5px; line-height:1.4; white-space:pre-wrap; word-break:keep-all; overflow-wrap:anywhere; height:100%; }
+.tg-head small { display:block; font-weight:500; color:#64748b; font-size:12.5px; margin-top:3px; }
+.tg-label { background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px; font-weight:700; color:#0f172a;
+            font-size:14.5px; line-height:1.45; white-space:pre-wrap; word-break:keep-all; overflow-wrap:anywhere; min-height:68px; }
+.tg-cell { border:1px solid #e2e8f0; border-radius:6px; padding:8px 10px; color:#111; font-size:14.5px; line-height:1.45;
+           white-space:pre-wrap; overflow-wrap:anywhere; min-height:44px; background:#fff; }
+</style>"""
+
+def _tg_cfg(column_config, col):
+    c = (column_config or {}).get(col)
+    if isinstance(c, str):
+        return {"label": c}
+    if isinstance(c, dict):
+        tc = c.get("type_config") or {}
+        return {"label": c.get("label") or col, "help": c.get("help"), "width": c.get("width"),
+                "type": tc.get("type"), "options": tc.get("options")}
+    return {"label": col}
+
+def _tg_norm(v):
+    import re as _re2
+    return _re2.sub(r"\s+", " ", str(v or "")).strip()
+
+def _tg_esc(v):
+    import html as _h
+    return _h.escape(str(v if v is not None else ""))
+
+def grid_editor(data, *, key, column_config=None, disabled=False, num_rows="fixed", lock_cols=None, **_ignored):
+    """st.data_editor 대신 쓰는 활동지 표.
+    - 칸마다 입력칸이 따로 있어 제목줄을 눌러도 정렬·열 이동·행 순서 변경이 절대 일어나지 않음
+    - 제목(맨 윗줄)과 고정 항목(맨 왼쪽 열)은 글자가 모두 보이게 줄바꿈 표시, 학생이 지우거나 고칠 수 없음
+    - 줄 추가가 가능한 표는 [➕ 줄 추가] / [➖ 마지막 줄 삭제] 버튼으로만 줄 수 변경 (고정 항목 줄은 삭제 불가)
+    반환값은 st.data_editor 와 같은 DataFrame (열 순서 그대로)."""
+    import hashlib
+    df = data if isinstance(data, pd.DataFrame) else pd.DataFrame(data)
+    cols = [str(c) for c in df.columns]
+    df.columns = cols
+    base = df.astype(object).where(pd.notna(df), None).to_dict("records")
+    cfgs = {c: _tg_cfg(column_config, c) for c in cols}
+    for c in cols:
+        if not cfgs[c].get("type") and len(df) and df[c].dtype == bool:
+            cfgs[c]["type"] = "checkbox"
+    # 🔒 고정(잠금) 칸 판단
+    locked_all = set()
+    lock_vals = {}
+    if isinstance(disabled, (list, tuple, set)):
+        locked_all |= {str(c) for c in disabled}
+    for c, rule in (lock_cols or {}).items():
+        if rule == "all":
+            locked_all.add(c)
+        else:
+            lock_vals[c] = {_tg_norm(v) for v in rule}
+    if num_rows != "dynamic" and cols and base and all(_tg_norm(r.get(cols[0])) for r in base) \
+            and cfgs[cols[0]].get("type") in (None, "text"):
+        locked_all.add(cols[0])           # 고정 줄 표의 맨 왼쪽 열이 모두 채워져 있으면 '항목 이름' 열로 보고 잠금
+    def is_locked(r, c):
+        if c in locked_all:
+            return True
+        return c in lock_vals and _tg_norm(r.get(c)) in lock_vals[c] and _tg_norm(r.get(c)) != ""
+    read_only = disabled is True
+    widths = []
+    for c in cols:
+        w = cfgs[c].get("width")
+        widths.append({"small": 1.0, "medium": 2.0, "large": 3.0}.get(w, 1.0 if cfgs[c].get("type") in ("checkbox", "number") else 2.0))
+    scope = st.session_state.get("_render_now", "")
+    p = "tg_" + hashlib.md5((scope + "|" + key + "|" + json.dumps(base, ensure_ascii=False, default=str, sort_keys=True)).encode("utf-8")).hexdigest()[:12]
+    nkey = p + "::n"
+    if nkey not in st.session_state:
+        st.session_state[nkey] = len(base)
+    n = st.session_state[nkey] if (num_rows == "dynamic" and not read_only) else len(base)
+    blank = {c: (False if cfgs[c].get("type") == "checkbox" else None if cfgs[c].get("type") == "number" else "") for c in cols}
+    rows = [dict(base[i]) if i < len(base) else dict(blank) for i in range(n)]
+
+    st.markdown(GRID_CSS, unsafe_allow_html=True)
+    try:
+        box = st.container(key=f"tblgrid_{p}")
+    except TypeError:
+        box = st.container()
+    out = []
+    with box:
+        hc = st.columns(widths)
+        for j, c in enumerate(cols):
+            hlp = cfgs[c].get("help")
+            hc[j].markdown(f"<div class='tg-head'>{_tg_esc(cfgs[c]['label'])}{'<small>' + _tg_esc(hlp) + '</small>' if hlp else ''}</div>", unsafe_allow_html=True)
+        for i, r in enumerate(rows):
+            # 줄 높이: 이 줄에서 가장 긴 글이 다 보이도록
+            lines = 2
+            for j, c in enumerate(cols):
+                v = str(st.session_state.get(f"{p}::{i}::{j}", r.get(c)) or "")
+                per = max(8, int(widths[j] * 11))
+                lines = max(lines, sum(max(1, -(-len(seg) // per)) for seg in v.split("\n")))
+            h = int(max(68, min(260, 18 + lines * 22)))
+            rc = st.columns(widths)
+            new = {}
+            row_label = _tg_norm(r.get(cols[0])) or f"{i + 1}번째 줄"
+            for j, c in enumerate(cols):
+                k = f"{p}::{i}::{j}"
+                v = r.get(c)
+                t = cfgs[c].get("type")
+                with rc[j]:
+                    if read_only or is_locked(r, c):
+                        if t == "checkbox":
+                            st.markdown(f"<div class='tg-cell' style='text-align:center'>{'✔' if v else ''}</div>", unsafe_allow_html=True)
+                        else:
+                            cls = "tg-label" if is_locked(r, c) else "tg-cell"
+                            st.markdown(f"<div class='{cls}'>{_tg_esc('' if v is None else v)}</div>", unsafe_allow_html=True)
+                        new[c] = v
+                    elif t == "checkbox":
+                        new[c] = st.checkbox(f"{cfgs[c]['label']} ({row_label})", key=k, label_visibility="collapsed", **_sv(k, bool(v)))
+                    elif t == "selectbox":
+                        opts = list(cfgs[c].get("options") or [])
+                        if v not in opts and v not in (None, ""):
+                            opts = [v] + opts
+                        if not opts:
+                            opts = [""]
+                        idx = opts.index(v) if v in opts else 0
+                        new[c] = st.selectbox(f"{cfgs[c]['label']} ({row_label})", opts, key=k, label_visibility="collapsed",
+                                              **({} if k in st.session_state else {"index": idx}))
+                    elif t == "number":
+                        try:
+                            nv = None if v in (None, "") else int(float(v))
+                        except Exception:
+                            nv = None
+                        new[c] = st.number_input(f"{cfgs[c]['label']} ({row_label})", step=1, key=k, label_visibility="collapsed", **_sv(k, nv))
+                    else:
+                        new[c] = st.text_area(f"{cfgs[c]['label']} ({row_label})", key=k, height=h, label_visibility="collapsed",
+                                              placeholder=str(cfgs[c]["label"]), **_sv(k, "" if v is None else str(v)))
+            out.append(new)
+        if num_rows == "dynamic" and not read_only:
+            min_n = max([i + 1 for i, r in enumerate(rows) if any(is_locked(r, c) for c in cols)] + [1])
+            def _add():
+                st.session_state[nkey] = st.session_state.get(nkey, n) + 1
+            def _del():
+                cur = st.session_state.get(nkey, n)
+                if cur > min_n:
+                    for jj in range(len(cols)):
+                        st.session_state.pop(f"{p}::{cur - 1}::{jj}", None)
+                    st.session_state[nkey] = cur - 1
+            b1, b2, _sp = st.columns([1, 1, 3])
+            b1.button("➕ 줄 추가", key=p + "::add", on_click=_add, use_container_width=True)
+            b2.button("➖ 마지막 줄 삭제", key=p + "::del", on_click=_del, disabled=n <= min_n, use_container_width=True)
+    res = pd.DataFrame(out, columns=cols) if out else pd.DataFrame(columns=cols)
+    return res
+
 
 def inject_custom_scripts(scope_key, clear=False):
     """브라우저 임시저장: 학생 + 화면별로 분리 저장, 같은 이름 문항도 칸별로 분리, 저장 성공 시 비움"""
@@ -3085,12 +3251,12 @@ def render_activity3_3th(user_key, u_info, current_role):
     s1_df = pd.DataFrame(ans.get("s1_df", [{"대륙": c, "관심도": "선택", "지식수준": "선택"} for c in ["아시아", "유럽", "북아메리카", "남아메리카", "아프리카", "오세아니아"]]))
     
     st.markdown("**1. 대륙별 관심도 및 지식 수준 체크**")
-    edited_s1_df = st.data_editor(s1_df, column_config={"관심도": st.column_config.SelectboxColumn("관심도", options=levels), "지식수준": st.column_config.SelectboxColumn("지식수준", options=levels)}, disabled=s1_dis, hide_index=True, use_container_width=True, key=f"s1_df_{category}")
+    edited_s1_df = grid_editor(s1_df, column_config={"관심도": st.column_config.SelectboxColumn("관심도", options=levels), "지식수준": st.column_config.SelectboxColumn("지식수준", options=levels)}, disabled=s1_dis, hide_index=True, use_container_width=True, key=f"s1_df_{category}")
     
     st.markdown("**2. (개인적 경험에 기반) 특정 국가에 대한 기억과 인상에 대한 분석**")
     st.caption("[직접 경험]")
     direct_df = pd.DataFrame(ans.get("direct_df", [{"여행해 본 국가": "", "해당 국가에 대한 구체적인 기억 혹은 인상": ""} for _ in range(3)]))
-    edited_direct_df = st.data_editor(direct_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"direct_df_{category}")
+    edited_direct_df = grid_editor(direct_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"direct_df_{category}")
     
     st.caption("[간접 경험]")
     ind1 = st.text_input("즐겨 보는 외국 영화/드라마는 어느 나라 작품?", value=ans.get("ind1", ""), disabled=disabled_flag, key=f"ind1_{category}")
@@ -3099,20 +3265,20 @@ def render_activity3_3th(user_key, u_info, current_role):
     
     st.markdown("**3. 꼭 가보고 싶은 Top 5 국가와 그 이유**")
     top5_want = pd.DataFrame(ans.get("top5_want", [{"국가 혹은 지역": "", "이유": ""} for _ in range(5)]))
-    edited_top5_want = st.data_editor(top5_want, num_rows="fixed", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"top5_want_{category}")
+    edited_top5_want = grid_editor(top5_want, num_rows="fixed", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"top5_want_{category}")
     
     st.markdown("**4. 절대 가고 싶지 않은 Top 5 국가와 그 이유**")
     top5_notwant = pd.DataFrame(ans.get("top5_notwant", [{"국가 혹은 지역": "", "이유": ""} for _ in range(5)]))
-    edited_top5_notwant = st.data_editor(top5_notwant, num_rows="fixed", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"top5_notwant_{category}")
+    edited_top5_notwant = grid_editor(top5_notwant, num_rows="fixed", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"top5_notwant_{category}")
     
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>2. 특정 대륙/국가에 대한 자신의 편견과 고정관념</h3>", unsafe_allow_html=True)
     st.markdown("**1. 국가별 한 단어 라벨링**")
     label_df = pd.DataFrame(ans.get("label_df", [{"가 보고 싶은 국가": "", "한 단어 라벨": "", "가고 싶지 않은 국가": "", "한 단어 라벨(부정)": ""} for _ in range(3)]))
-    edited_label_df = st.data_editor(label_df, column_config={"한 단어 라벨(부정)": st.column_config.TextColumn("한 단어 라벨")}, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"label_df_{category}")
+    edited_label_df = grid_editor(label_df, column_config={"한 단어 라벨(부정)": st.column_config.TextColumn("한 단어 라벨")}, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"label_df_{category}")
     
     st.markdown("**2. 개인적으로 가장 강한 편견을 가진 국가**")
     prej_df = pd.DataFrame(ans.get("prej_df", [{"국가명": "", "편견 내용": "", "편견 형성 과정 혹은 이유": ""} for _ in range(2)]))
-    edited_prej_df = st.data_editor(prej_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"prej_df_{category}")
+    edited_prej_df = grid_editor(prej_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"prej_df_{category}")
     
     st.markdown("**3. 미디어와 교육의 영향으로 인한 인식 발견**")
     col1, col2 = st.columns(2)
@@ -3125,28 +3291,28 @@ def render_activity3_3th(user_key, u_info, current_role):
     
     st.markdown("**4. 부정확한 정보나 과장된 인식 발견** (▶ 사실과 다른 내용들)")
     fake_df = pd.DataFrame(ans.get("fake_df", [{"국가명": "", "잘못 알고 있었던 내용": "", "실제 사실": ""} for _ in range(3)]))
-    edited_fake_df = st.data_editor(fake_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"fake_df_{category}")
+    edited_fake_df = grid_editor(fake_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"fake_df_{category}")
     
     st.markdown("**5. 우월감이나 차별 의식 점검**")
     discrim_df = pd.DataFrame(ans.get("discrim_df", [{"어떤 국가에 대해?": "", "어떤 측면에서": "", "그 이유": ""} for _ in range(2)]))
-    edited_discrim_df = st.data_editor(discrim_df, column_config={"그 이유": st.column_config.TextColumn("우월감이나 차별 의식을 느끼는 부분")}, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"discrim_df_{category}")
+    edited_discrim_df = grid_editor(discrim_df, column_config={"그 이유": st.column_config.TextColumn("우월감이나 차별 의식을 느끼는 부분")}, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"discrim_df_{category}")
 
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>3. 포용적이고 균형잡힌 세계관을 위한 노력</h3>", unsafe_allow_html=True)
     st.markdown("**1. 편견을 바꾸고 싶은 국가**")
     change_df = pd.DataFrame(ans.get("change_df", [{"어떤 국가에 대해?": "", "현재의 편견": "", "올바른 정보를 찾기 위한 계획": ""} for _ in range(2)]))
-    edited_change_df = st.data_editor(change_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"change_df_{category}")
+    edited_change_df = grid_editor(change_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"change_df_{category}")
     
     st.markdown("**2. 가장 무관심했던 대륙 혹은 국가**")
     ignore_df = pd.DataFrame(ans.get("ignore_df", [{"선택 대륙/국가": "", "무관심 이유": "", "관심 확장을 위한 정보 수집 방법": ""} for _ in range(2)]))
-    edited_ignore_df = st.data_editor(ignore_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"ignore_df_{category}")
+    edited_ignore_df = grid_editor(ignore_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"ignore_df_{category}")
     
     st.markdown("**3. 서구 중심적 시각에서 벗어나기**")
     western_df = pd.DataFrame(ans.get("western_df", [{"현재 가지고 있는 서구 중심적 시각": "", "개선 방법": ""} for _ in range(2)]))
-    edited_western_df = st.data_editor(western_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"western_df_{category}")
+    edited_western_df = grid_editor(western_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"western_df_{category}")
 
     st.markdown("**4. 약소국 관점 이해하기**")
     weak_df = pd.DataFrame(ans.get("weak_df", [{"주목해 볼 국가": "", "그 이유": ""} for _ in range(2)]))
-    edited_weak_df = st.data_editor(weak_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"weak_df_{category}")
+    edited_weak_df = grid_editor(weak_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"weak_df_{category}")
 
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>4. 목표로 하는 세계관</h3>", unsafe_allow_html=True)
     goal_1 = st.text_area("▶ 어떤 사람이 되고 싶은가?", value=ans.get("goal_1", ""), height=100, disabled=disabled_flag, key=f"goal_1_{category}")
@@ -3207,7 +3373,7 @@ def render_activity1_2nd(user_key, u_info, current_role):
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 3. 살기 좋은 울산의 조건: 거주 적합성 진단</h3>", unsafe_allow_html=True)
     st.markdown("<div class='guide-box'><strong>▶ 교과서 38쪽 내용 中</strong><br>일정한 곳에 머물러 살기 알맞은 조건이나 성질을 거주 적합성이라고 합니다. 이는 지속가능성, 이동성, 안전 및 보안, 서비스 효율성, 경제 성장, 도시 평판 등 삶의 질과 관련된 6대 요소로 이루어집니다. 개인의 연령, 직업, 가치관에 따라 선호하는 거주 적합성은 각기 다르게 나타납니다.<br><br><strong>* 우리의 시선으로 본 울산의 거주 적합성 스코어보드</strong><br>울산에서 살아가는 10대 고등학생인 여러분의 관점에서, 현재 울산의 거주 적합성 요소를 5점 만점으로 평가하고 그 까닭을 서술해 보세요.</div>", unsafe_allow_html=True)
     step3_df = pd.DataFrame(ans.get("step3_df", [{"거주 적합성 요인": "경제 성장", "만족도 점수": "⭐⭐⭐⭐", "한 줄 평가": ""}] + [{"거주 적합성 요인": "", "만족도 점수": "⭐⭐⭐", "한 줄 평가": ""} for _ in range(4)]))
-    edited_step3_df = st.data_editor(step3_df, column_config={"만족도 점수": st.column_config.SelectboxColumn("만족도 점수", options=["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"])}, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"step3_df_{category}")
+    edited_step3_df = grid_editor(step3_df, column_config={"만족도 점수": st.column_config.SelectboxColumn("만족도 점수", options=["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"])}, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key=f"step3_df_{category}")
 
     st.markdown("---")
     st.markdown("<h3 style='font-size: 24px; font-weight: 800; color: #111; margin-top: 30px; margin-bottom: 15px;'>Step 4. 우리의 방식으로 해 보는 울산 브랜딩: 정체성 리뉴얼</h3>", unsafe_allow_html=True)
@@ -3323,7 +3489,7 @@ def render_activity2_2nd(user_key, u_info, current_role):
     ]
     s1_df_data = ans.get("step1_2_df", default_s1_df)
     s1_df = pd.DataFrame(s1_df_data)
-    edited_step1_2_df = st.data_editor(
+    edited_step1_2_df = grid_editor(
         s1_df,
         num_rows="dynamic",
         use_container_width=True,
@@ -3335,7 +3501,8 @@ def render_activity2_2nd(user_key, u_info, current_role):
             "충분": st.column_config.CheckboxColumn("충분", width="small"),
             "부족 or 없음": st.column_config.CheckboxColumn("부족 or 없음", width="small"),
         },
-        key=f"s1_2_editor_{k_sfx}"
+        key=f"s1_2_editor_{k_sfx}",
+        lock_cols={"구분": [d["구분"] for d in default_s1_df], "필수 서비스 항목": [d["필수 서비스 항목"] for d in default_s1_df]},
     )
 
     st.markdown("<br>**3. 선택한 지역의 핵심 문제점** *(반드시 실제 현장 답사 및 데이터에 기반한 내용을 작성할 것)*", unsafe_allow_html=True)
@@ -3419,7 +3586,7 @@ def render_activity2_2nd(user_key, u_info, current_role):
     # ----------------------------------------------------
     # 2. [학생 실제 작성 표] 도시 개조 트레이드오프 설계표 (순번 1~8)
     # ----------------------------------------------------
-    st.markdown("##### 🛠️ 도시 개조 트레이드오프 설계표 (순번 1~8 작성 / 클릭하여 수정 / 하단 [+]로 추가 / 선택 후 [Delete]로 삭제)")
+    st.markdown("##### 🛠️ 도시 개조 트레이드오프 설계표 (순번 1~8 작성 / 칸을 눌러 입력 / [➕ 줄 추가]·[➖ 마지막 줄 삭제] 버튼으로 줄 수 조절)")
     default_tradeoff_design = [
         {"순번": i, "선택 코드": "", "버릴 공간 -> 채울 인프라": "", "사용 포인트": "-15pt", "공간 재설계 이유 및 기대효과": ""}
         for i in range(1, 9)
@@ -3428,10 +3595,7 @@ def render_activity2_2nd(user_key, u_info, current_role):
     df_tradeoff = pd.DataFrame(saved_tradeoff)
 
     # 🌟 [자동 정렬] 학생이 행을 추가하더라도 '선택 코드'(A-1, A-2... B-1...) 순서대로 자동 정렬
-    if "선택 코드" in df_tradeoff.columns and not df_tradeoff.empty:
-        df_tradeoff["sort_key"] = df_tradeoff["선택 코드"].astype(str).str.upper().str.strip()
-        # 빈칸이 아닌 항목들 우선 정렬
-        df_tradeoff = df_tradeoff.sort_values(by=["sort_key", "순번"]).drop(columns=["sort_key"])
+    # (자동 정렬은 입력 도중 줄 순서가 바뀌는 문제를 일으켜 사용하지 않음 — 학생이 적은 순서 그대로 유지)
 
     # 🌟 [비용 옵션: 최소 10pt ~ 최대 30pt, 5pt 간격]
     point_options = ["-10pt", "-15pt", "-20pt", "-25pt", "-30pt"]
@@ -3443,7 +3607,7 @@ def render_activity2_2nd(user_key, u_info, current_role):
         "자율추가"
     ]
 
-    edited_step2_tradeoff_df = st.data_editor(
+    edited_step2_tradeoff_df = grid_editor(
         df_tradeoff,
         num_rows="dynamic",
         use_container_width=True,
@@ -3648,7 +3812,7 @@ def mf_shape_to_quad(s):
 MF_RUBRIC = [
     ("Step 1. 정체성 탐색", "출처가 있는 근거 자료로 지역 정체성 키워드를 찾았는가 / 메시지가 한 문장으로 분명한가", "예시 20"),
     ("Step 2. 캔버스 선정", "후보 3곳을 실제 확인(답사·로드뷰 캡처)하고 비교했는가 / 선정 이유가 Step 1과 연결되는가", "예시 15"),
-    ("Step 3. 조건 진단·대응", "6개 조건을 사실로 확인했는가 / 제약을 작품의 조형 요소로 뒤집어 활용했는가", "예시 20"),
+    ("Step 3. 조건 진단·대응", "5개 조건을 사실로 확인했는가 / 제약을 작품의 조형 요소로 뒤집어 활용했는가", "예시 20"),
     ("Step 4. 스토리보드", "도입-전개-절정-마무리 흐름이 메시지와 연결되는가 / 기술·색감·시간이 구체적인가 / 건물 합성 시뮬레이션", "예시 25"),
     ("Step 5. 작품 설명 카드", "근거를 인용해 설명했는가 / 관람객·주민·상권 변화를 구체적으로 제시했는가", "예시 15"),
     ("Step 6. 성찰·AI 활용", "AI 활용을 정직하게 기록했는가 / 진로와 연결한 성찰이 있는가", "예시 5"),
@@ -3675,7 +3839,7 @@ def _mf_auto_check(n):
     s3 = n.get("step3_df", [])
     miss3 = [str(r.get("조건 영역", "")).split("\n")[0] for r in s3
              if not (_mf_filled(r.get("현장의 실제 조건 (확인한 사실)")) and _mf_filled(r.get("나의 대응 방안")))]
-    res.append((len(s3) >= 6 and not miss3, "Step 3 조건 6개 모두 '실제 조건 + 대응 방안'",
+    res.append((len(s3) >= 5 and not miss3, "Step 3 조건 5개 모두 '실제 조건 + 대응 방안'",
                 ("빈칸: " + ", ".join(miss3)) if miss3 else f"{len(s3)}개"))
     cuts = n.get("step4_df", [])
     no_img = [c.get("컷", "") for c in cuts if not c.get("스케치_img")]
@@ -3767,8 +3931,9 @@ def render_activity3_2nd(user_key, u_info, current_role):
     for c in s1_cols:
         if c not in s1_df.columns: s1_df[c] = ""
     s1_df = s1_df[s1_cols].fillna("")
-    edited_step1_df = st.data_editor(s1_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag,
-                                     column_config=_mf_table_titles(s1_cols), key="s1_df_editor_2_3")
+    edited_step1_df = grid_editor(s1_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag,
+                                     column_config=_mf_table_titles(s1_cols), key="s1_df_editor_2_3",
+                                     lock_cols={"구분": [d["구분"] for d in default_s1_df]})
 
     st.markdown("<br>**내가 최종 선택한 핵심 키워드 혹은 문장**", unsafe_allow_html=True)
     step1_keyword = st.text_input("최종 선택 키워드", value=ans.get("step1_keyword", ""), label_visibility="collapsed", disabled=disabled_flag, key="s1_keyword_2_3")
@@ -3792,15 +3957,16 @@ def render_activity3_2nd(user_key, u_info, current_role):
     star_row = next((r for r in s2_data if str(r.get("검토 항목", "")).startswith("적합도")), None)
     table_rows = [r for r in s2_data if r is not star_row]
     s2_df = pd.DataFrame(table_rows).fillna("")
-    edited_step2_df = st.data_editor(s2_df, num_rows="fixed", use_container_width=True, hide_index=True, disabled=disabled_flag,
-                                     column_config=_mf_table_titles(list(s2_df.columns)), key="s2_matrix_editor_2_3")
+    edited_step2_df = grid_editor(s2_df, num_rows="fixed", use_container_width=True, hide_index=True, disabled=disabled_flag,
+                                     column_config=_mf_table_titles(list(s2_df.columns)), key="s2_matrix_editor_2_3",
+                                     lock_cols={"검토 항목": "all"})
     st.markdown("**후보별 적합도** *(별 1~5개)*")
     sc = st.columns(3)
     stars = {}
     for i, cand in enumerate(("후보 1", "후보 2", "후보 3")):
         prev = str((star_row or {}).get(cand, "")).count("★")
-        stars[cand] = sc[i].select_slider(f"{cand} 적합도", options=[0, 1, 2, 3, 4, 5], value=prev, disabled=disabled_flag,
-                                          format_func=lambda v: "미평가" if v == 0 else "★" * v + "☆" * (5 - v), key=f"s2_star_{i}")
+        with sc[i]:
+            stars[cand] = _star_picker(f"{cand} 적합도", f"s2_starfb_{i}", prev, disabled_flag)
     s2_records = edited_step2_df.to_dict("records") + [{"검토 항목": "적합도 (☆ 5점 만점)", **{c: "★" * v + "☆" * (5 - v) for c, v in stars.items()}}]
 
     st.markdown("<br>**최종 선정 건물**", unsafe_allow_html=True)
@@ -3833,17 +3999,20 @@ def render_activity3_2nd(user_key, u_info, current_role):
         영향: 인물이나 글자를 크게 넣으면 형태가 깨진다 | 대응: 창틀 격자를 공장 창문으로 역이용해 격자 사이로 빛이 번지는 산업 도시 이미지를 연출한다
     </div>""", unsafe_allow_html=True)
     s3_cols = ["조건 영역", "현장의 실제 조건 (확인한 사실)", "작품에 미치는 영향", "나의 대응 방안"]
-    s3_defaults = ["1. 물리적 조건\n(벽면 형태·재질·구조물)", "2. 빛·환경 조건\n(주변 조명·간판·빛공해)", "3. 시간·계절 조건\n(일몰 시각·강수·바람)",
-                   "4. 주민·이웃 조건\n(인접 주거·상가·소음)", "5. 행정·비용 조건\n(허가·예산·관리 주체)", "6. 접근·안전 조건\n(동선·차도·배리어프리)"]
-    s3_data = list(ans.get("step3_df") or [])
-    for d in s3_defaults[len(s3_data):]:          # 예전에 줄을 지웠어도 6개 조건이 모두 보이도록 보충
+    s3_defaults = ["1. 물리적 조건\n(벽면 형태·재질·구조물)", "2. 빛·환경 조건\n(주변 조명·간판·빛공해)",
+                   "3. 주민·이웃 조건\n(인접 주거·상가·소음)", "4. 행정·비용 조건\n(허가·예산·관리 주체)", "5. 접근·안전 조건\n(동선·차도·배리어프리)"]
+    s3_data = [dict(r) for r in (ans.get("step3_df") or []) if isinstance(r, dict) and "시간·계절" not in str(r.get("조건 영역", ""))]   # '시간·계절 조건' 줄은 삭제됨
+    for i_, r_ in enumerate(s3_data):             # 번호를 1부터 다시 매김 (예전 저장본: 4. 주민 → 3. 주민)
+        r_["조건 영역"] = __import__("re").sub(r"^\s*\d+\.\s*", f"{i_ + 1}. ", str(r_.get("조건 영역", "")))
+    for d in s3_defaults[len(s3_data):]:          # 예전에 줄을 지웠어도 5개 조건이 모두 보이도록 보충
         s3_data.append({"조건 영역": d, s3_cols[1]: "", s3_cols[2]: "", s3_cols[3]: ""})
     s3_df = pd.DataFrame(s3_data)
     for c in s3_cols:
         if c not in s3_df.columns: s3_df[c] = ""
     s3_df = s3_df[s3_cols].fillna("")
-    edited_step3_df = st.data_editor(s3_df, num_rows="fixed", use_container_width=True, hide_index=True, disabled=disabled_flag,
-                                     column_config=_mf_table_titles(s3_cols), key="s3_editor_2_3")
+    edited_step3_df = grid_editor(s3_df, num_rows="fixed", use_container_width=True, hide_index=True, disabled=disabled_flag,
+                                     column_config=_mf_table_titles(s3_cols), key="s3_editor_2_3",
+                                     lock_cols={"조건 영역": "all"})
     st.markdown("<hr style='margin: 30px 0;'>", unsafe_allow_html=True)
 
     # ---------------- Step 4 ----------------
@@ -3911,14 +4080,15 @@ def render_activity3_2nd(user_key, u_info, current_role):
             for k_, f_, lo_, hi_ in [("mf_s_cx", "cx", 0, 100), ("mf_s_cy", "cy", 0, 100), ("mf_s_tw", "top_w", 2, 100), ("mf_s_bw", "bot_w", 2, 100),
                                      ("mf_s_lh", "left_h", 2, 100), ("mf_s_rh", "right_h", 2, 100), ("mf_s_lean", "lean", -50, 50), ("mf_s_rise", "rise", -50, 50)]:
                 st.session_state[k_] = int(max(lo_, min(hi_, round(shp[f_]))))
+        mouse_mode = str(st.session_state.get("mf_preview_mode", "")).startswith("🖱️")   # 마우스로 맞추는 중이면 위치 바는 잠금
         fa, fb = st.columns([1, 1.4])
         with fa:
             facade["mode"] = st.radio("벽면 맞추기 방식", ["사각형", "네 모서리"], **({} if "mf_mode" in st.session_state else {"index": 1 if facade.get("mode") == "네 모서리" else 0}), horizontal=True,
                                       format_func=lambda m: "▭ 반듯한 사각형" if m == "사각형" else "◇ 네 모서리 맞추기 (비스듬한 벽)", key="mf_mode", disabled=disabled_flag)
             if facade["mode"] == "사각형":
                 st.caption("빛을 비출 벽면 위치를 맞추세요 (사진 기준 %)")
-                facade["l"] = st.slider("왼쪽 시작 위치", 0, 95, int(facade["l"]), key="mf_l", disabled=disabled_flag)
-                facade["t"] = st.slider("위쪽 시작 위치", 0, 95, int(facade["t"]), key="mf_t", disabled=disabled_flag)
+                facade["l"] = st.slider("왼쪽 시작 위치", 0, 95, int(facade["l"]), key="mf_l", disabled=disabled_flag or mouse_mode)
+                facade["t"] = st.slider("위쪽 시작 위치", 0, 95, int(facade["t"]), key="mf_t", disabled=disabled_flag or mouse_mode)
                 facade["w"] = st.slider("벽면 너비", 5, 100, int(facade["w"]), key="mf_w", disabled=disabled_flag)
                 facade["h"] = st.slider("벽면 높이", 5, 100, int(facade["h"]), key="mf_h", disabled=disabled_flag)
                 facade["fit"] = st.radio("스케치 맞추기", ["꽉 채우기", "비율 유지"], index=0 if facade.get("fit") != "비율 유지" else 1, horizontal=True, key="mf_fit", disabled=disabled_flag)
@@ -3927,9 +4097,11 @@ def render_activity3_2nd(user_key, u_info, current_role):
                 sh = mf_quad_to_shape(facade.get("q") or mf_rect_to_quad(facade))
                 ri = lambda v, lo, hi: int(max(lo, min(hi, round(v))))
                 st.markdown("**① 위치** — 빛 영역 전체를 옮깁니다")
+                if mouse_mode:
+                    st.caption("🖱️ 지금은 '마우스로 직접 맞추기' 중이라 위치 바가 잠겨 있습니다. 오른쪽 화면에서 노란 영역 안쪽을 끌어 옮기세요.")
                 p1, p2 = st.columns(2)
-                sh["cx"] = p1.slider("↔ 좌우 위치", 0, 100, key="mf_s_cx", **_sv("mf_s_cx", ri(sh["cx"], 0, 100)), disabled=disabled_flag, help="0이면 사진 왼쪽 끝, 100이면 오른쪽 끝")
-                sh["cy"] = p2.slider("↕ 상하 위치", 0, 100, key="mf_s_cy", **_sv("mf_s_cy", ri(sh["cy"], 0, 100)), disabled=disabled_flag, help="0이면 사진 위쪽 끝, 100이면 아래쪽 끝")
+                sh["cx"] = p1.slider("↔ 좌우 위치", 0, 100, key="mf_s_cx", **_sv("mf_s_cx", ri(sh["cx"], 0, 100)), disabled=disabled_flag or mouse_mode, help="0이면 사진 왼쪽 끝, 100이면 오른쪽 끝")
+                sh["cy"] = p2.slider("↕ 상하 위치", 0, 100, key="mf_s_cy", **_sv("mf_s_cy", ri(sh["cy"], 0, 100)), disabled=disabled_flag or mouse_mode, help="0이면 사진 위쪽 끝, 100이면 아래쪽 끝")
                 st.markdown("**② 크기** — 폭과 높이를 맞춥니다")
                 w1, w2 = st.columns(2)
                 sh["top_w"] = w1.slider("⬆ 윗변 폭", 2, 100, key="mf_s_tw", **_sv("mf_s_tw", ri(sh["top_w"], 2, 100)), disabled=disabled_flag,
@@ -4079,7 +4251,7 @@ def render_activity3_2nd(user_key, u_info, current_role):
     for c in ai_cols:
         if c not in ai_df.columns: ai_df[c] = ""
     ai_df = ai_df[ai_cols].fillna("")
-    edited_step6_ai_df = st.data_editor(ai_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key="s6_ai_editor",
+    edited_step6_ai_df = grid_editor(ai_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=disabled_flag, key="s6_ai_editor",
                                         column_config={"사용한 도구명": st.column_config.TextColumn("사용한 도구명", width="small"),
                                                        "입력한 프롬프트": st.column_config.TextColumn("입력한 프롬프트", width="medium"),
                                                        "AI 결과물을 내가 수정·판단한 내용": st.column_config.TextColumn("내가 수정·판단한 내용", width="medium")})
