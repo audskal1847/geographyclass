@@ -1823,6 +1823,7 @@ def _sheet_report_hook(store):
                 if not ans:
                     body.append(base + ["미제출", "", "", "", "", ""]); groups.append((g_first, g_first)); continue
                 ans = _clean_nan(ans)
+                if act == ACT_2_3: ans = mf_normalize_ans(ans)      # 구글 시트에도 지금 항목 이름으로 표시
                 ts = store.meta_ts("data", f"{owner}||{act}")
                 saved = (datetime.datetime.utcfromtimestamp(ts) + datetime.timedelta(hours=9)).strftime("%Y-%m-%d %H:%M") if ts else ""
                 writer = "본인" if owner == k else f"모둠 대표 {owner.split('_')[-1]}"
@@ -2851,12 +2852,50 @@ def _clean_nan(x):
     if isinstance(x, dict): return {k: _clean_nan(v) for k, v in x.items()}
     if isinstance(x, list): return [_clean_nan(v) for v in x]
     return x
+# --- 미디어 파사드 표의 항목 이름: 예전에 저장한 자료도 '지금 코드의 이름'으로 맞춤 (앱 화면·구글 시트·내보내기 공통) ---
+# ✏️ 항목 이름(괄호 안 설명)을 바꾸고 싶으면 아래 두 목록만 고치면 됩니다. 학생이 적은 내용은 그대로 남습니다.
+MF_S2_ITEMS = ["건물명", "벽면 조건\n(면적·재질·창문 비율)", "관람 조건\n(관람 거리, 야간 유동인구)", "접근성\n(대중교통·주차·야간)",
+               "예상되는 제약\n(빛공해, 인접한 주거지와의 거리)", "지역 정체성과의 연관성", "적합도 (☆ 5점 만점)"]
+MF_S3_DEFAULTS = ["1. 물리적 조건\n(벽면 형태·재질·구조물)", "2. 빛·환경 조건\n(주변 조명·간판·빛공해)",
+                  "3. 주민·이웃 조건\n(인접 주거·상가·소음)", "4. 행정·비용 조건\n(허가·예산·관리 주체)", "5. 접근·안전 조건\n(동선·차도·배리어프리)"]
+MF_S3_REMOVED = ["시간·계절"]          # 표에서 지운 조건(이 글자가 들어간 줄은 화면·시트에서 빠짐)
+
+def _mf_head(t):
+    import re as _r
+    return _r.split(r"[\n(]", _r.sub(r"^\s*\d+\.\s*", "", str(t or "")))[0].strip()
+
+def mf_normalize_ans(ans):
+    """저장된 미디어 파사드 자료의 표 항목 이름을 현재 이름으로 바꾸고, 지운 조건 줄은 뺀다 (원본은 건드리지 않음)"""
+    if not isinstance(ans, dict):
+        return ans
+    import re as _r
+    out = dict(ans)
+    s2_name = {_mf_head(it): it for it in MF_S2_ITEMS}
+    if isinstance(ans.get("step2_matrix_df"), list):
+        out["step2_matrix_df"] = [dict(r, **{"검토 항목": s2_name.get(_mf_head(r.get("검토 항목")), r.get("검토 항목", ""))}) if isinstance(r, dict) else r
+                                  for r in ans["step2_matrix_df"]]
+    if isinstance(ans.get("step3_df"), list):
+        s3_name = {_mf_head(it): it for it in MF_S3_DEFAULTS}
+        rows = [dict(r) for r in ans["step3_df"] if isinstance(r, dict) and not any(x in str(r.get("조건 영역", "")) for x in MF_S3_REMOVED)]
+        for i, r in enumerate(rows):
+            lab = str(r.get("조건 영역", ""))
+            if _mf_head(lab) in s3_name:          # 지금 목록에 있는 조건 → 지금 이름(번호 포함) 그대로
+                r["조건 영역"] = s3_name[_mf_head(lab)]
+            elif _r.match(r"^\s*\d+\.", lab):    # 예전 이름(예: 사회적 조건) → 줄 순서대로 번호만 다시 매김
+                r["조건 영역"] = _r.sub(r"^\s*\d+\.\s*", f"{i + 1}. ", lab)
+        out["step3_df"] = rows
+    return out
+
 _get_act_csv_rows_raw = get_act_csv_rows
 def get_act_csv_rows(selected_view, ans, config=None):
-    return _get_act_csv_rows_raw(selected_view, _clean_nan(ans), config)
+    ans = _clean_nan(ans)
+    if selected_view == ACT_2_3: ans = mf_normalize_ans(ans)
+    return _get_act_csv_rows_raw(selected_view, ans, config)
 _generate_html_content_raw = generate_html_content
 def generate_html_content(act_name, ans, config=None):
-    return _generate_html_content_raw(act_name, _clean_nan(ans), config)
+    ans = _clean_nan(ans)
+    if act_name == ACT_2_3: ans = mf_normalize_ans(ans)
+    return _generate_html_content_raw(act_name, ans, config)
 
 def generate_portfolio_html(user_key, u_info, view_subj, config, learning_data):
     u_id = u_info.get('id', '')
@@ -3951,13 +3990,8 @@ def render_activity3_2nd(user_key, u_info, current_role):
         ▶ 최종 건물의 <b>현장 사진 또는 로드뷰 캡처</b>를 아래에 첨부하세요. Step 4의 '건물 합성 시뮬레이션'에 그대로 쓰입니다.
         </span>
     </div>""", unsafe_allow_html=True)
-    s2_items = ["건물명", "벽면 조건\n(면적·재질·창문 비율)", "관람 조건\n(관람 거리, 야간 유동인구)", "접근성\n(대중교통·주차·야간)",
-                "예상되는 제약\n(빛공해, 인접한 주거지와의 거리)", "지역 정체성과의 연관성", "적합도 (☆ 5점 만점)"]
-    s2_data = ans.get("step2_matrix_df") or [{"검토 항목": it, "후보 1": "", "후보 2": "", "후보 3": ""} for it in s2_items]
-    # 예전에 저장한 표도 '검토 항목' 이름은 지금 코드(s2_items)의 이름으로 바꿔서 보여 줌 (학생이 적은 칸 내용은 그대로)
-    import re as _re_s2
-    _s2_name = {_re_s2.split(r"[\n(]", it)[0].strip(): it for it in s2_items}
-    s2_data = [dict(r, **{"검토 항목": _s2_name.get(_re_s2.split(r"[\n(]", str(r.get("검토 항목", "")))[0].strip(), r.get("검토 항목", ""))}) for r in s2_data]
+    s2_items = MF_S2_ITEMS          # 항목 이름은 파일 위쪽의 MF_S2_ITEMS 에서 고칩니다
+    s2_data = mf_normalize_ans({"step2_matrix_df": ans.get("step2_matrix_df") or [{"검토 항목": it, "후보 1": "", "후보 2": "", "후보 3": ""} for it in s2_items]})["step2_matrix_df"]
     star_row = next((r for r in s2_data if str(r.get("검토 항목", "")).startswith("적합도")), None)
     table_rows = [r for r in s2_data if r is not star_row]
     s2_df = pd.DataFrame(table_rows).fillna("")
@@ -4003,11 +4037,8 @@ def render_activity3_2nd(user_key, u_info, current_role):
         영향: 인물이나 글자를 크게 넣으면 형태가 깨진다 | 대응: 창틀 격자를 공장 창문으로 역이용해 격자 사이로 빛이 번지는 산업 도시 이미지를 연출한다
     </div>""", unsafe_allow_html=True)
     s3_cols = ["조건 영역", "현장의 실제 조건 (확인한 사실)", "작품에 미치는 영향", "나의 대응 방안"]
-    s3_defaults = ["1. 물리적 조건\n(벽면 형태·재질·구조물)", "2. 빛·환경 조건\n(주변 조명·간판·빛공해)",
-                   "3. 주민·이웃 조건\n(인접 주거·상가·소음)", "4. 행정·비용 조건\n(허가·예산·관리 주체)", "5. 접근·안전 조건\n(동선·차도·배리어프리)"]
-    s3_data = [dict(r) for r in (ans.get("step3_df") or []) if isinstance(r, dict) and "시간·계절" not in str(r.get("조건 영역", ""))]   # '시간·계절 조건' 줄은 삭제됨
-    for i_, r_ in enumerate(s3_data):             # 번호를 1부터 다시 매김 (예전 저장본: 4. 주민 → 3. 주민)
-        r_["조건 영역"] = __import__("re").sub(r"^\s*\d+\.\s*", f"{i_ + 1}. ", str(r_.get("조건 영역", "")))
+    s3_defaults = MF_S3_DEFAULTS    # 조건 이름은 파일 위쪽의 MF_S3_DEFAULTS 에서 고칩니다
+    s3_data = mf_normalize_ans({"step3_df": list(ans.get("step3_df") or [])})["step3_df"]   # 지운 조건 줄 제외 + 번호·이름 정리
     for d in s3_defaults[len(s3_data):]:          # 예전에 줄을 지웠어도 5개 조건이 모두 보이도록 보충
         s3_data.append({"조건 영역": d, s3_cols[1]: "", s3_cols[2]: "", s3_cols[3]: ""})
     s3_df = pd.DataFrame(s3_data)
@@ -4091,10 +4122,12 @@ def render_activity3_2nd(user_key, u_info, current_role):
                                       format_func=lambda m: "▭ 반듯한 사각형" if m == "사각형" else "◇ 네 모서리 맞추기 (비스듬한 벽)", key="mf_mode", disabled=disabled_flag)
             if facade["mode"] == "사각형":
                 st.caption("빛을 비출 벽면 위치를 맞추세요 (사진 기준 %)")
+                if mouse_mode:
+                    st.caption("🖱️ '마우스로 직접 맞추기' 중이라 위치·크기 바가 잠겨 있습니다.")
                 facade["l"] = st.slider("왼쪽 시작 위치", 0, 95, int(facade["l"]), key="mf_l", disabled=disabled_flag or mouse_mode)
                 facade["t"] = st.slider("위쪽 시작 위치", 0, 95, int(facade["t"]), key="mf_t", disabled=disabled_flag or mouse_mode)
-                facade["w"] = st.slider("벽면 너비", 5, 100, int(facade["w"]), key="mf_w", disabled=disabled_flag)
-                facade["h"] = st.slider("벽면 높이", 5, 100, int(facade["h"]), key="mf_h", disabled=disabled_flag)
+                facade["w"] = st.slider("벽면 너비", 5, 100, int(facade["w"]), key="mf_w", disabled=disabled_flag or mouse_mode)
+                facade["h"] = st.slider("벽면 높이", 5, 100, int(facade["h"]), key="mf_h", disabled=disabled_flag or mouse_mode)
                 facade["fit"] = st.radio("스케치 맞추기", ["꽉 채우기", "비율 유지"], index=0 if facade.get("fit") != "비율 유지" else 1, horizontal=True, key="mf_fit", disabled=disabled_flag)
             else:
                 st.caption("오른쪽 사진의 노란 테두리가 실제 벽면과 겹치도록 ① 위치 → ② 크기 → ③ 기울기 순서로 맞추세요. (사진 크기 기준 %)")
@@ -4102,25 +4135,25 @@ def render_activity3_2nd(user_key, u_info, current_role):
                 ri = lambda v, lo, hi: int(max(lo, min(hi, round(v))))
                 st.markdown("**① 위치** — 빛 영역 전체를 옮깁니다")
                 if mouse_mode:
-                    st.caption("🖱️ 지금은 '마우스로 직접 맞추기' 중이라 위치 바가 잠겨 있습니다. 오른쪽 화면에서 노란 영역 안쪽을 끌어 옮기세요.")
+                    st.caption("🖱️ 지금은 '마우스로 직접 맞추기' 중이라 위치·크기·기울기 바가 모두 잠겨 있습니다. 오른쪽 화면에서 노란 영역 안쪽을 끌어 옮기고, 빨간 점 1~4를 끌어 모서리를 맞추세요. 바로 조절하려면 미리보기 방식을 '한 컷씩 보기'로 바꾸세요.")
                 p1, p2 = st.columns(2)
                 sh["cx"] = p1.slider("↔ 좌우 위치", 0, 100, key="mf_s_cx", **_sv("mf_s_cx", ri(sh["cx"], 0, 100)), disabled=disabled_flag or mouse_mode, help="0이면 사진 왼쪽 끝, 100이면 오른쪽 끝")
                 sh["cy"] = p2.slider("↕ 상하 위치", 0, 100, key="mf_s_cy", **_sv("mf_s_cy", ri(sh["cy"], 0, 100)), disabled=disabled_flag or mouse_mode, help="0이면 사진 위쪽 끝, 100이면 아래쪽 끝")
                 st.markdown("**② 크기** — 폭과 높이를 맞춥니다")
                 w1, w2 = st.columns(2)
-                sh["top_w"] = w1.slider("⬆ 윗변 폭", 2, 100, key="mf_s_tw", **_sv("mf_s_tw", ri(sh["top_w"], 2, 100)), disabled=disabled_flag,
+                sh["top_w"] = w1.slider("⬆ 윗변 폭", 2, 100, key="mf_s_tw", **_sv("mf_s_tw", ri(sh["top_w"], 2, 100)), disabled=disabled_flag or mouse_mode,
                                         help="높은 건물을 올려다 찍어 위로 갈수록 좁아 보이면 윗변 폭을 줄이세요.")
-                sh["bot_w"] = w2.slider("⬇ 아랫변 폭", 2, 100, key="mf_s_bw", **_sv("mf_s_bw", ri(sh["bot_w"], 2, 100)), disabled=disabled_flag)
+                sh["bot_w"] = w2.slider("⬇ 아랫변 폭", 2, 100, key="mf_s_bw", **_sv("mf_s_bw", ri(sh["bot_w"], 2, 100)), disabled=disabled_flag or mouse_mode)
                 h1, h2 = st.columns(2)
-                sh["left_h"] = h1.slider("⬅ 왼쪽 높이", 2, 100, key="mf_s_lh", **_sv("mf_s_lh", ri(sh["left_h"], 2, 100)), disabled=disabled_flag,
+                sh["left_h"] = h1.slider("⬅ 왼쪽 높이", 2, 100, key="mf_s_lh", **_sv("mf_s_lh", ri(sh["left_h"], 2, 100)), disabled=disabled_flag or mouse_mode,
                                          help="벽을 비스듬히 찍으면 멀리 있는 쪽이 작아 보입니다. 먼 쪽의 높이를 줄이세요.")
-                sh["right_h"] = h2.slider("➡ 오른쪽 높이", 2, 100, key="mf_s_rh", **_sv("mf_s_rh", ri(sh["right_h"], 2, 100)), disabled=disabled_flag,
+                sh["right_h"] = h2.slider("➡ 오른쪽 높이", 2, 100, key="mf_s_rh", **_sv("mf_s_rh", ri(sh["right_h"], 2, 100)), disabled=disabled_flag or mouse_mode,
                                           help="벽을 비스듬히 찍으면 멀리 있는 쪽이 작아 보입니다. 먼 쪽의 높이를 줄이세요.")
                 st.markdown("**③ 기울기** — 기울어진 벽에 맞춥니다")
                 t1, t2 = st.columns(2)
-                sh["lean"] = t1.slider("↗ 위쪽 좌우 기울임", -50, 50, key="mf_s_lean", **_sv("mf_s_lean", ri(sh["lean"], -50, 50)), disabled=disabled_flag,
+                sh["lean"] = t1.slider("↗ 위쪽 좌우 기울임", -50, 50, key="mf_s_lean", **_sv("mf_s_lean", ri(sh["lean"], -50, 50)), disabled=disabled_flag or mouse_mode,
                                        help="+로 올리면 윗변이 오른쪽으로, -로 내리면 왼쪽으로 기울어집니다.")
-                sh["rise"] = t2.slider("⤵ 오른쪽 오르내림", -50, 50, key="mf_s_rise", **_sv("mf_s_rise", ri(sh["rise"], -50, 50)), disabled=disabled_flag,
+                sh["rise"] = t2.slider("⤵ 오른쪽 오르내림", -50, 50, key="mf_s_rise", **_sv("mf_s_rise", ri(sh["rise"], -50, 50)), disabled=disabled_flag or mouse_mode,
                                        help="+로 올리면 오른쪽 변 전체가 아래로, -로 내리면 위로 이동합니다.")
                 facade["q"] = mf_shape_to_quad(sh)
                 st.info("📐 **이럴 땐 이렇게!**  \n"
