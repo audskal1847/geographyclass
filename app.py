@@ -3951,8 +3951,8 @@ def render_activity3_2nd(user_key, u_info, current_role):
         ▶ 최종 건물의 <b>현장 사진 또는 로드뷰 캡처</b>를 아래에 첨부하세요. Step 4의 '건물 합성 시뮬레이션'에 그대로 쓰입니다.
         </span>
     </div>""", unsafe_allow_html=True)
-    s2_items = ["건물명", "벽면 조건\n(면적·재질·창문 비율)", "관람 조건\n(관람 거리, 정면성, 야간 유동인구)", "접근성\n(대중교통·주차·야간)",
-                "예상되는 제약\n(빛공해, 주거지 인접, 관리 주체)", "지역 정체성과의 연관성", "적합도 (☆ 5점 만점)"]
+    s2_items = ["건물명", "벽면 조건\n(면적·재질·창문 비율)", "관람 조건\n(관람 거리, 야간 유동인구)", "접근성\n(대중교통·주차·야간)",
+                "예상되는 제약\n(빛공해, 인접한 주거지와의 거리)", "지역 정체성과의 연관성", "적합도 (☆ 5점 만점)"]
     s2_data = ans.get("step2_matrix_df") or [{"검토 항목": it, "후보 1": "", "후보 2": "", "후보 3": ""} for it in s2_items]
     star_row = next((r for r in s2_data if str(r.get("검토 항목", "")).startswith("적합도")), None)
     table_rows = [r for r in s2_data if r is not star_row]
