@@ -3954,6 +3954,10 @@ def render_activity3_2nd(user_key, u_info, current_role):
     s2_items = ["건물명", "벽면 조건\n(면적·재질·창문 비율)", "관람 조건\n(관람 거리, 야간 유동인구)", "접근성\n(대중교통·주차·야간)",
                 "예상되는 제약\n(빛공해, 인접한 주거지와의 거리)", "지역 정체성과의 연관성", "적합도 (☆ 5점 만점)"]
     s2_data = ans.get("step2_matrix_df") or [{"검토 항목": it, "후보 1": "", "후보 2": "", "후보 3": ""} for it in s2_items]
+    # 예전에 저장한 표도 '검토 항목' 이름은 지금 코드(s2_items)의 이름으로 바꿔서 보여 줌 (학생이 적은 칸 내용은 그대로)
+    import re as _re_s2
+    _s2_name = {_re_s2.split(r"[\n(]", it)[0].strip(): it for it in s2_items}
+    s2_data = [dict(r, **{"검토 항목": _s2_name.get(_re_s2.split(r"[\n(]", str(r.get("검토 항목", "")))[0].strip(), r.get("검토 항목", ""))}) for r in s2_data]
     star_row = next((r for r in s2_data if str(r.get("검토 항목", "")).startswith("적합도")), None)
     table_rows = [r for r in s2_data if r is not star_row]
     s2_df = pd.DataFrame(table_rows).fillna("")
