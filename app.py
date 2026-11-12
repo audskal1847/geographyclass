@@ -1851,6 +1851,28 @@ def _sheet_report_hook(store):
             store.sheets.write_table(_sheet_tab_title(act), [header] + body, freeze_cols=3, bold_rows=marks, groups=groups)
 
 STORE.report_hook = _sheet_report_hook
+# 앱 코드(app.py)가 바뀌면 학생 입력이 없어도 응답 탭을 한 번 새로 씀 (항목 이름 변경 등이 시트에 바로 반영되도록)
+try:
+    _app_code_sig = __import__("hashlib").md5(open(__file__, "rb").read()).hexdigest()
+    if getattr(STORE, "_report_code_sig", None) != _app_code_sig:
+        STORE._report_code_sig = _app_code_sig
+        STORE.report_dirty = True
+        STORE.last_report = 0.0
+except Exception:
+    pass
+
+def request_report_refresh(wait=25):
+    """선생님 버튼: 응답 탭을 지금 새로 쓰도록 요청하고 끝날 때까지 잠시 기다림"""
+    import time as _t
+    before = STORE.report_last_ok
+    STORE.report_dirty = True
+    STORE.last_report = 0.0
+    t0 = _t.time()
+    while _t.time() - t0 < wait:
+        _t.sleep(1)
+        if STORE.report_last_ok != before or STORE.report_last_error:
+            break
+    return STORE.report_last_ok != before, STORE.report_last_error
 
 def init_system():
     with db_lock:
@@ -5301,6 +5323,13 @@ else:
                 if _stt.get("report_last_error"):
                     st.warning(f"📊 응답 탭 갱신 오류(30초마다 재시도): {_stt['report_last_error']}")
                 st.caption(f"저장 엔진 버전: {getattr(storage, 'ENGINE_VERSION', '1.0 (재시작 필요)')} · 응답 탭 마지막 갱신: {_stt.get('report_last_ok') or '-'}")
+                if _stt["sheets_enabled"] and st.button("🔄 구글 시트 응답 탭 지금 새로 쓰기", key="btn_report_refresh",
+                                                        help="학생 입력이 없을 때도 응답_ 탭을 지금 앱 기준(항목 이름 등)으로 다시 씁니다. 10~20초 걸립니다."):
+                    with st.spinner("응답 탭을 새로 쓰는 중입니다... (10~20초)"):
+                        _ok, _err = request_report_refresh()
+                    if _ok: st.success("✅ 응답 탭을 새로 썼습니다. 구글 시트 화면을 새로고침(F5)해서 확인하세요.")
+                    elif _err: st.error(f"⚠️ 응답 탭 갱신 오류: {_err}")
+                    else: st.info("⏳ 요청은 보냈지만 아직 끝나지 않았습니다. 1분 뒤 구글 시트를 새로고침해 보세요.")
                 
                 bk_files = sorted([f for f in os.listdir(BACKUP_DIR) if f.startswith("backup_") and f.endswith(".json")], reverse=True)
                 total_bytes = sum([os.path.getsize(os.path.join(BACKUP_DIR, f)) for f in bk_files if os.path.isfile(os.path.join(BACKUP_DIR, f))])
