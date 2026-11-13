@@ -5019,7 +5019,25 @@ def render_custom_activity(user_key, u_info, current_role, act_name, config):
         html_data = f"<!DOCTYPE html><html lang='ko'><head><meta charset='UTF-8'><title>{u_name}</title></head><body><h2>▶ {act_name}</h2>"
         for q in custom_form: html_data += f"<h3>{q['label']}</h3><p>{ans.get(q['id'],'')}</p>"
         html_data += "</body></html>"
-        st.download_button("📥 내 작성 내용 다운로드 (웹문서)", data=html_data.encode('utf-8-sig'), file_name=f"{u_name}_{act_name}.html", mime="text/html")
+        lazy_download("내 작성 내용 다운로드 (웹문서)", f"custom::{user_key}::{act_name}", lambda: html_data, f"{u_name}_{act_name}.html", "text/html")
+
+def lazy_download(label, key, build_fn, file_name, mime="application/octet-stream", **kw):
+    """내려받기 파일은 [만들기]를 눌렀을 때만 만듦.
+    (예전에는 화면을 그릴 때마다 전체 자료·전체 포트폴리오 파일을 미리 만들어 서버 메모리를 수백 MB씩 썼음)"""
+    bk = f"_dl_bytes::{key}"
+    if st.session_state.get(bk) is None:
+        if st.button(f"⚙️ {label} — 파일 만들기", key=f"mk::{key}", **kw):
+            with st.spinner("파일을 만드는 중입니다..."):
+                data = build_fn()
+            st.session_state[bk] = data.encode("utf-8-sig") if isinstance(data, str) else data
+    if st.session_state.get(bk) is not None:
+        c1, c2 = st.columns([4, 1])
+        with c1:
+            st.download_button(f"📥 {label}", data=st.session_state[bk], file_name=file_name, mime=mime, key=f"dl::{key}", **kw)
+        with c2:
+            if st.button("닫기", key=f"cl::{key}", help="만든 파일을 서버 메모리에서 지웁니다"):
+                st.session_state.pop(bk, None)
+                st.rerun()
 
 def render_class_overview(current_role, u_info, view_subj):
     st.markdown(f"<h2 style='font-size: 28px; font-weight: 900; color: #000; margin-bottom: 20px;'>🎯 [{view_subj}] 수행평가 및 활동 모듈</h2>", unsafe_allow_html=True)
@@ -5119,7 +5137,7 @@ elif "current_page" not in st.session_state: st.session_state.current_page = "ma
 st.session_state["_wkey_suffix"] = None       # 학생 화면·관리 화면에서는 입력칸 이름을 바꾸지 않음
 # 다른 화면(메인·다른 활동지)으로 이동했을 때만 활동지 고정 내용을 새로 불러옴
 if st.session_state.get("_last_page_seen") != st.session_state.current_page:
-    for _fk in [k for k in list(st.session_state.keys()) if str(k).startswith("_frozen_ans::")]:
+    for _fk in [k for k in list(st.session_state.keys()) if str(k).startswith(("_frozen_ans::", "_dl_bytes::"))]:
         del st.session_state[_fk]
     st.session_state["_last_page_seen"] = st.session_state.current_page
 st.session_state["_render_prev"] = st.session_state.get("_render_now")
@@ -5255,12 +5273,13 @@ else:
                 owner_key, ans = get_user_activity_data(current_user_key, u_info.get('id', ''), u_info.get('subject', '전체'), u_info.get('class_group', ''), act, learning_data)
                 if ans:
                     has_individual_dl = True
-                    act_html = generate_activity_html(act, ans, u_info['name'])
-                    st.download_button(label=f"📥 [{act}] 결과물 다운로드", data=act_html.encode('utf-8-sig'), file_name=f"{u_info['name']}_{act}.html", mime="text/html", key=f"stu_dl_{act}")
+                    lazy_download(f"[{act}] 결과물 다운로드", f"stu::{current_user_key}::{act}",
+                                  (lambda a=act, x=ans: generate_activity_html(a, x, u_info['name'])), f"{u_info['name']}_{act}.html", "text/html")
             if not has_individual_dl: st.info("아직 제출한 활동지가 없습니다.")
             st.markdown("---")
-            html_content_all = generate_portfolio_html(current_user_key, u_info, u_info['subject'], app_config, learning_data)
-            st.download_button(label=f"📦 {u_info['name']} 학생 전체 포트폴리오 일괄 다운로드 (웹문서)", data=html_content_all.encode('utf-8-sig'), file_name=f"{u_info['name']}_전체_포트폴리오.html", mime="text/html", type="primary")
+            lazy_download(f"{u_info['name']} 학생 전체 포트폴리오 일괄 다운로드 (웹문서)", f"stu_all::{current_user_key}",
+                          lambda: generate_portfolio_html(current_user_key, u_info, u_info['subject'], app_config, learning_data),
+                          f"{u_info['name']}_전체_포트폴리오.html", "text/html", type="primary")
 
         elif current_role == "관리자":
             st.markdown("<h1 style='font-size:36px; font-weight:900; color:#000;'>🛠️ 관리자(교사) 대시보드</h1>", unsafe_allow_html=True)
@@ -5641,19 +5660,19 @@ else:
                     st.info("해당 조건에 등록된 학생이 없습니다.")
                 else:
                     if view_mode == "👤 특정 학생 실시간 집중 분석":
-                        zip_buffer = io.BytesIO()
-                        has_data = False
-                        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-                            for s_uid in student_list:
-                                u_info_iter = all_users[s_uid]
-                                acts_for_iter = load_json(CONFIG_FILE, {}).get("subject_activities", {}).get(view_subj, [])
-                                s_ans_dict = {act: temp_ans for act in acts_for_iter if (temp_ans := get_user_activity_data(s_uid, u_info_iter.get('id',''), view_subj, u_info_iter.get('class_group',''), act, learning_data)[1])}
-                                if s_ans_dict:
-                                    h_content = generate_portfolio_html(s_uid, u_info_iter, view_subj, load_json(CONFIG_FILE, {}), learning_data)
-                                    zip_file.writestr(f"{u_info_iter.get('class_group')}_{u_info_iter.get('name')}_포트폴리오.html", h_content.encode('utf-8-sig'))
-                                    has_data = True
-                        if has_data:
-                            st.download_button(label=f"📦 전체 포트폴리오 일괄 다운로드 (ZIP)", data=zip_buffer.getvalue(), file_name=f"{view_subj}_{view_class}_포트폴리오.zip", mime="application/zip", type="primary")
+                        def _build_all_zip(student_list=student_list, all_users=all_users, learning_data=learning_data, view_subj=view_subj):
+                            zip_buffer = io.BytesIO()
+                            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                                cfg_ = load_json(CONFIG_FILE, {})
+                                acts_for_iter = cfg_.get("subject_activities", {}).get(view_subj, [])
+                                for s_uid in student_list:
+                                    u_info_iter = all_users[s_uid]
+                                    if any(get_user_activity_data(s_uid, u_info_iter.get('id',''), view_subj, u_info_iter.get('class_group',''), act, learning_data)[1] for act in acts_for_iter):
+                                        h_content = generate_portfolio_html(s_uid, u_info_iter, view_subj, cfg_, learning_data)
+                                        zip_file.writestr(f"{u_info_iter.get('class_group')}_{u_info_iter.get('name')}_포트폴리오.html", h_content.encode('utf-8-sig'))
+                            return zip_buffer.getvalue()
+                        lazy_download("전체 포트폴리오 일괄 다운로드 (ZIP)", f"adm_zip::{view_subj}::{view_class}", _build_all_zip,
+                                      f"{view_subj}_{view_class}_포트폴리오.zip", "application/zip", type="primary")
                         st.markdown("---")
                         search_student_tab4 = st.text_input("🔍 학생 검색 (이름 또는 학번 입력)", key="search_student_tab4")
         
@@ -5709,8 +5728,9 @@ else:
                                 st.session_state["_adm_view_keys"] = list(set(st.session_state.get("_adm_view_keys", [])) | (set(st.session_state.keys()) - _keys_before - {"_adm_view_keys", "_adm_view_id"}))
                                 owner_key, ans = get_user_activity_data(selected_student, u_info_sel.get('id', ''), view_subj, u_info_sel.get('class_group', ''), act, learning_data)
                                 if ans:
-                                    act_html = generate_activity_html(act, ans, u_info_sel.get('name'))
-                                    st.download_button(label=f"📥 [{act}] 결과물 다운로드", data=act_html.encode('utf-8-sig'), file_name=f"{u_info_sel.get('name')}_{act}.html", mime="text/html", key=f"teach_dl_{selected_student}_{act}")
+                                    lazy_download(f"[{act}] 결과물 다운로드", f"teach::{selected_student}::{act}",
+                                                  (lambda a=act, x=ans, nm=u_info_sel.get('name'): generate_activity_html(a, x, nm)),
+                                                  f"{u_info_sel.get('name')}_{act}.html", "text/html")
                                 st.markdown("---")
                             st.session_state["_wkey_suffix"] = None
                                 
@@ -5718,73 +5738,83 @@ else:
                         acts_for_subj = load_json(CONFIG_FILE, {}).get("subject_activities", {}).get(view_subj, [])
                         if acts_for_subj:
                             selected_view = st.selectbox("수행평가 선택", acts_for_subj)
-                            csv_data = []
-                            zip_buffer_item = io.BytesIO()
-                            has_html_item = False
-                            with zipfile.ZipFile(zip_buffer_item, "w", zipfile.ZIP_DEFLATED) as zf_item:
-                                for s_uid in student_list:
-                                    u_info_csv = all_users[s_uid]
-                                    owner_key, ans = get_user_activity_data(s_uid, u_info_csv.get('id', ''), view_subj, u_info_csv.get('class_group', ''), selected_view, learning_data)
-                                    st.markdown(f"#### 👤 [{u_info_csv.get('subject')}] {u_info_csv.get('class_group')} - {u_info_csv.get('name')} ({u_info_csv.get('id')})")
-                                    csv_data.append([f"■ {u_info_csv.get('class_group')} - {u_info_csv.get('name')}", ""])
-                                    if not ans:
-                                        st.caption("제출된 내용이 없습니다.")
-                                        csv_data.append(["제출 여부", "미제출"]); csv_data.append(["---", "---"])
-                                        continue
-                                    act_rows = get_act_csv_rows(selected_view, ans, app_config)
-                                    csv_data.extend(act_rows)
-                                    for row in act_rows:
-                                        q_t, a_t = str(row[0]), str(row[1])
-                                        if not q_t and not a_t:
+                            _iv_key = f"{view_subj}|{view_class}|{selected_view}"
+                            if st.session_state.get("_item_view_open") != _iv_key:
+                                st.info("학생 전체의 내용을 한꺼번에 불러오면 서버 메모리를 많이 씁니다. 필요할 때만 불러오세요.")
+                                if st.button("📋 이 수행평가 전체 현황 불러오기", key="btn_item_view_open", type="primary"):
+                                    st.session_state["_item_view_open"] = _iv_key
+                                    st.rerun()
+                            if st.session_state.get("_item_view_open") == _iv_key and st.button("✖ 전체 현황 닫기 (메모리 절약)", key="btn_item_view_close"):
+                                st.session_state.pop("_item_view_open", None)
+                                st.rerun()
+                            if st.session_state.get("_item_view_open") == _iv_key:
+                                csv_data = []
+                                zip_buffer_item = io.BytesIO()
+                                has_html_item = False
+                                with zipfile.ZipFile(zip_buffer_item, "w", zipfile.ZIP_DEFLATED) as zf_item:
+                                    for s_uid in student_list:
+                                        u_info_csv = all_users[s_uid]
+                                        owner_key, ans = get_user_activity_data(s_uid, u_info_csv.get('id', ''), view_subj, u_info_csv.get('class_group', ''), selected_view, learning_data)
+                                        st.markdown(f"#### 👤 [{u_info_csv.get('subject')}] {u_info_csv.get('class_group')} - {u_info_csv.get('name')} ({u_info_csv.get('id')})")
+                                        csv_data.append([f"■ {u_info_csv.get('class_group')} - {u_info_csv.get('name')}", ""])
+                                        if not ans:
+                                            st.caption("제출된 내용이 없습니다.")
+                                            csv_data.append(["제출 여부", "미제출"]); csv_data.append(["---", "---"])
                                             continue
+                                        act_rows = get_act_csv_rows(selected_view, ans, app_config)
+                                        csv_data.extend(act_rows)
+                                        for row in act_rows:
+                                            q_t, a_t = str(row[0]), str(row[1])
+                                            if not q_t and not a_t:
+                                                continue
 
-                                        # 제목/소제목 판별 및 위계 분리 (대괄호[] 자동 제거)
-                                        if not a_t and (q_t.startswith("[") or q_t.startswith("▶")):
-                                            clean_title = q_t.strip("[]")
-                                            is_main = any(k in clean_title for k in [
-                                                "Step", "1. 세계 인식", "2. 특정 대륙", "3. 포용", "4. 목표", 
-                                                "모둠 구성원", "개별 정보"
-                                            ])
+                                            # 제목/소제목 판별 및 위계 분리 (대괄호[] 자동 제거)
+                                            if not a_t and (q_t.startswith("[") or q_t.startswith("▶")):
+                                                clean_title = q_t.strip("[]")
+                                                is_main = any(k in clean_title for k in [
+                                                    "Step", "1. 세계 인식", "2. 특정 대륙", "3. 포용", "4. 목표", 
+                                                    "모둠 구성원", "개별 정보"
+                                                ])
                                            
 
-                                            if is_main:
-                                                # 🔷 [대제목]: 큰 글씨(20px) + 파란색 + 하단 밑줄선
-                                                main_style = (
-                                                    "color: #1e3a8a; font-size: 20px; font-weight: 800; "
-                                                    "margin-top: 30px; margin-bottom: 12px; "
-                                                    "border-bottom: 2px solid #3b82f6; padding-bottom: 6px;"
+                                                if is_main:
+                                                    # 🔷 [대제목]: 큰 글씨(20px) + 파란색 + 하단 밑줄선
+                                                    main_style = (
+                                                        "color: #1e3a8a; font-size: 20px; font-weight: 800; "
+                                                        "margin-top: 30px; margin-bottom: 12px; "
+                                                        "border-bottom: 2px solid #3b82f6; padding-bottom: 6px;"
+                                                    )
+                                                    st.markdown(f"<h3 style='{main_style}'>{clean_title}</h3>", unsafe_allow_html=True)
+                                                else:
+                                                    # 🔹 [소제목]: 대괄호 제거 + 밑줄 없음 + 단정한 크기(16px) + 짙은 회색
+                                                    sub_style = (
+                                                        "color: #334155; font-size: 16px; font-weight: 700; "
+                                                        "margin-top: 18px; margin-bottom: 8px;"
+                                                    )
+                                                    st.markdown(f"<div style='{sub_style}'>▶ {clean_title}</div>", unsafe_allow_html=True)
+                                            elif a_t:
+                                                box_style = (
+                                                    "background-color: #f8f9fa; padding: 12px; "
+                                                    "border-radius: 5px; border: 1px solid #e9ecef; margin-bottom: 8px;"
                                                 )
-                                                st.markdown(f"<h3 style='{main_style}'>{clean_title}</h3>", unsafe_allow_html=True)
-                                            else:
-                                                # 🔹 [소제목]: 대괄호 제거 + 밑줄 없음 + 단정한 크기(16px) + 짙은 회색
-                                                sub_style = (
-                                                    "color: #334155; font-size: 16px; font-weight: 700; "
-                                                    "margin-top: 18px; margin-bottom: 8px;"
-                                                )
-                                                st.markdown(f"<div style='{sub_style}'>▶ {clean_title}</div>", unsafe_allow_html=True)
-                                        elif a_t:
-                                            box_style = (
-                                                "background-color: #f8f9fa; padding: 12px; "
-                                                "border-radius: 5px; border: 1px solid #e9ecef; margin-bottom: 8px;"
-                                            )
-                                            st.markdown(f"<div style='{box_style}'><b>{q_t}</b><br>{a_t}</div>", unsafe_allow_html=True)
+                                                st.markdown(f"<div style='{box_style}'><b>{q_t}</b><br>{a_t}</div>", unsafe_allow_html=True)
                                             
-                                    # 🌟 [복구된 코드] 삭제되었던 HTML 파일 생성 변수 1줄 복구!
-                                    single_html = generate_activity_html(selected_view, ans, u_info_csv.get('name'))
+                                        # 🌟 [복구된 코드] 삭제되었던 HTML 파일 생성 변수 1줄 복구!
+                                        single_html = generate_activity_html(selected_view, ans, u_info_csv.get('name'))
                                     
-                                    zf_item.writestr(f"{u_info_csv.get('class_group')}_{u_info_csv.get('name')}_{selected_view[:8]}.html", single_html.encode('utf-8-sig'))
-                                    has_html_item = True
-                                    csv_data.append(["---", "---"])
+                                        zf_item.writestr(f"{u_info_csv.get('class_group')}_{u_info_csv.get('name')}_{selected_view[:8]}.html", single_html.encode('utf-8-sig'))
+                                        has_html_item = True
+                                        csv_data.append(["---", "---"])
                                         
                                     
-                            col_down1, col_down2 = st.columns(2)
-                            with col_down1:
-                                if csv_data:
-                                    df_csv = pd.DataFrame(csv_data)
-                                    st.download_button(f"📊 엑셀(CSV) 다운로드", data=df_csv.to_csv(index=False, header=False).encode('utf-8-sig'), file_name=f"{view_subj}_{view_class}_{selected_view[:6]}.csv", mime='text/csv', type="primary", use_container_width=True)
-                            with col_down2:
-                                if has_html_item:
-                                    st.download_button(f"📦 웹문서(HTML/ZIP) 다운로드", data=zip_buffer_item.getvalue(), file_name=f"{view_subj}_{view_class}_HTML.zip", mime="application/zip", type="primary", use_container_width=True)
+                                col_down1, col_down2 = st.columns(2)
+                                with col_down1:
+                                    if csv_data:
+                                        df_csv = pd.DataFrame(csv_data)
+                                        st.download_button(f"📊 엑셀(CSV) 다운로드", data=df_csv.to_csv(index=False, header=False).encode('utf-8-sig'), file_name=f"{view_subj}_{view_class}_{selected_view[:6]}.csv", mime='text/csv', type="primary", use_container_width=True, key="dl_item_csv")
+                                with col_down2:
+                                    if has_html_item:
+                                        st.download_button(f"📦 웹문서(HTML/ZIP) 다운로드", data=zip_buffer_item.getvalue(), file_name=f"{view_subj}_{view_class}_HTML.zip", mime="application/zip", type="primary", use_container_width=True)
 
             # --- 💾 탭 4: 데이터 수동 백업 및 복구 ---
             with menu_tabs[4]:
@@ -5815,14 +5845,13 @@ else:
                 col_bk1, col_bk2 = st.columns(2)
                 with col_bk1:
                     st.markdown("#### 1️⃣ 현재 시스템 DB 다운로드 (백업)")
-                    str_data = json.dumps(load_json(DATA_FILE, {}), ensure_ascii=False, indent=2)
-                    st.download_button("📥 학생 학습 데이터 백업 (learning_data.json)", data=str_data.encode('utf-8-sig'), file_name=f"learning_data_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.json", use_container_width=True)
-                    
-                    str_users = json.dumps(load_json(USERS_FILE, {}), ensure_ascii=False, indent=2)
-                    st.download_button("📥 회원 정보 데이터 백업 (users.json)", data=str_users.encode('utf-8-sig'), file_name=f"users_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.json", use_container_width=True)
-                    
-                    str_config = json.dumps(load_json(CONFIG_FILE, {}), ensure_ascii=False, indent=2)
-                    st.download_button("📥 시스템 설정 데이터 백업 (config.json)", data=str_config.encode('utf-8-sig'), file_name=f"config_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.json", use_container_width=True)
+                    _stamp = datetime.datetime.now().strftime('%Y%m%d_%H%M')
+                    lazy_download("학생 학습 데이터 백업 (learning_data.json)", "bk_data",
+                                  lambda: json.dumps(load_json(DATA_FILE, {}), ensure_ascii=False), f"learning_data_{_stamp}.json", "application/json", use_container_width=True)
+                    lazy_download("회원 정보 데이터 백업 (users.json)", "bk_users",
+                                  lambda: json.dumps(load_json(USERS_FILE, {}), ensure_ascii=False, indent=2), f"users_{_stamp}.json", "application/json", use_container_width=True)
+                    lazy_download("시스템 설정 데이터 백업 (config.json)", "bk_config",
+                                  lambda: json.dumps(load_json(CONFIG_FILE, {}), ensure_ascii=False, indent=2), f"config_{_stamp}.json", "application/json", use_container_width=True)
 
                 with col_bk2:
                     st.markdown("#### 2️⃣ 과거 시스템 DB 불러오기 (복구)")
