@@ -3447,12 +3447,59 @@ AUTOSAVE_JS = """<script>
 })();
 </script>"""
 
+# ===================== 🔑 선생님 조회 화면: 학생마다 입력칸을 따로 만들기 =====================
+# Streamlit 은 같은 이름(key)의 입력칸이면 화면(브라우저)에 남아 있던 값을 계속 보여 줌 → 다른 학생을 골라도 앞 학생 이름이 보이는 문제.
+# 선생님이 학생 자료를 볼 때만 모든 입력칸 이름 뒤에 '__학생키'를 붙여, 학생마다 새 입력칸으로 그려지게 함.
+_WK_FUNCS = ["text_input", "text_area", "selectbox", "radio", "number_input", "slider", "select_slider", "checkbox",
+             "multiselect", "date_input", "time_input", "file_uploader", "data_editor", "feedback", "toggle", "pills", "segmented_control"]
+
+def _wk(key):
+    try:
+        sfx = st.session_state.get("_wkey_suffix")
+    except Exception:
+        sfx = None
+    if key is None or not sfx or str(key).endswith(sfx):
+        return key
+    return f"{key}{sfx}"
+
+def _install_widget_scoping():
+    if getattr(st, "_wk_patched", False):
+        return
+    def wrap_bound(f):
+        def w(*a, **k):
+            if k.get("key") is not None:
+                k["key"] = _wk(k["key"])
+            return f(*a, **k)
+        w.__wrapped__ = f
+        return w
+    def wrap_method(f):
+        def w(self, *a, **k):
+            if k.get("key") is not None:
+                k["key"] = _wk(k["key"])
+            return f(self, *a, **k)
+        w.__wrapped__ = f
+        return w
+    try:
+        from streamlit.delta_generator import DeltaGenerator as _DG
+    except Exception:
+        _DG = None
+    for name in _WK_FUNCS:
+        if _DG is not None and hasattr(_DG, name):
+            try: setattr(_DG, name, wrap_method(getattr(_DG, name)))
+            except Exception: pass
+        if hasattr(st, name):
+            try: setattr(st, name, wrap_bound(getattr(st, name)))
+            except Exception: pass
+    st._wk_patched = True
+
+_install_widget_scoping()
+
 def _star_picker(label, key, prev, disabled):
     """별 5개를 직접 눌러 점수를 고르는 칸 (1~5점, 0 = 아직 안 누름)"""
     st.markdown(f"**{label}**")
     if hasattr(st, "feedback"):
-        if key not in st.session_state and prev > 0:
-            st.session_state[key] = int(prev) - 1          # 저장된 별 개수로 시작
+        if _wk(key) not in st.session_state and prev > 0:
+            st.session_state[_wk(key)] = int(prev) - 1     # 저장된 별 개수로 시작
         try:
             v = st.feedback("stars", key=key, disabled=disabled)
         except TypeError:
@@ -4994,6 +5041,7 @@ elif "current_page" not in st.session_state: st.session_state.current_page = "ma
 # 🚀 메인 실행부 및 사이드바 (UI 구성)
 # =====================================================================
 
+st.session_state["_wkey_suffix"] = None       # 학생 화면·관리 화면에서는 입력칸 이름을 바꾸지 않음
 # 다른 화면(메인·다른 활동지)으로 이동했을 때만 활동지 고정 내용을 새로 불러옴
 if st.session_state.get("_last_page_seen") != st.session_state.current_page:
     for _fk in [k for k in list(st.session_state.keys()) if str(k).startswith("_frozen_ans::")]:
@@ -5573,6 +5621,7 @@ else:
                                 st.session_state["_adm_view_id"] = _view_id
                             render_student_doctor(selected_student, u_info_sel, acts_for_subj)
                             _keys_before = set(st.session_state.keys())
+                            st.session_state["_wkey_suffix"] = f"__{selected_student}"     # 이 학생 전용 입력칸으로 그리기
                             for act in acts_for_subj:
                                 if filter_act != "전체 활동지 보기" and act != filter_act: continue
                                 if act == ACT_3_1: render_activity1_3th(selected_student, u_info_sel, current_role)
@@ -5588,6 +5637,7 @@ else:
                                     act_html = generate_activity_html(act, ans, u_info_sel.get('name'))
                                     st.download_button(label=f"📥 [{act}] 결과물 다운로드", data=act_html.encode('utf-8-sig'), file_name=f"{u_info_sel.get('name')}_{act}.html", mime="text/html", key=f"teach_dl_{selected_student}_{act}")
                                 st.markdown("---")
+                            st.session_state["_wkey_suffix"] = None
                                 
                     elif view_mode == "📅 항목별(수행평가) 전체 현황 (엑셀/HTML 다운로드)":
                         acts_for_subj = load_json(CONFIG_FILE, {}).get("subject_activities", {}).get(view_subj, [])
