@@ -1655,16 +1655,50 @@ def apply_draft(user_key, category, ans, enabled=True):
     cur = f"{user_key}::{category}"
     if st.session_state.get("_render_prev") == cur and fk in st.session_state:
         st.session_state["_render_now"] = cur
+        if st.session_state.get(fk + "::note"): st.info(st.session_state[fk + "::note"])
         return st.session_state[fk]
+    st.session_state.pop(fk + "::note", None)
     st.session_state["_render_now"] = cur
     merged = ans
+    viewer = st.session_state.get("user_info", {}) or {}
+    is_teacher_view = viewer.get("role") == "관리자" and viewer.get("user_key") != user_key
     if enabled:
         draft = STORE.get("drafts", user_key, sub=category)
         if draft and _canon(draft) != _canon(ans):
-            merged = dict(ans); merged.update({k: _restore_omitted(v, ans.get(k)) for k, v in draft.items()})
-            st.warning("📝 저장하지 않은 임시 작성 내용을 복원했습니다. 내용을 확인한 뒤 **수업 시간 안에 [저장하기]** 를 눌러야 최종 저장됩니다.", icon="♻️")
+            if is_teacher_view:
+                # 👩‍🏫 선생님 조회 화면은 '저장된 내용'(= 구글 시트 응답 탭과 같은 내용)을 그대로 보여 줌
+                diff = [k for k in set(draft) | set(ans or {}) if _canon(draft.get(k)) != _canon((ans or {}).get(k))]
+                try:
+                    _ts = (STORE.meta.get("drafts", {}).get(f"{user_key}{storage.SEP}{category}") or [None])[0]
+                    _when = storage._kst_str(_ts) if _ts else ""
+                except Exception:
+                    _when = ""
+                _note = (f"📝 이 학생은 아직 [저장하기]를 누르지 않은 임시 작성 내용이 있습니다{(' (마지막 임시저장 ' + _when + ')') if _when else ''}. "
+                         f"지금 화면은 **최종 저장된 내용**(구글 시트와 같은 내용)입니다. 학생이 다시 접속해 [저장하기]를 누르면 반영됩니다. (다른 항목 {len(diff)}개)")
+                st.session_state[fk + "::note"] = _note
+                st.info(_note)
+            else:
+                merged = dict(ans)
+                kept = []
+                for k, v in draft.items():
+                    v = _restore_omitted(v, ans.get(k))
+                    if _table_blank(v) and not _table_blank(ans.get(k)):
+                        kept.append(k)          # 🛟 임시 내용의 표가 통째로 비어 있으면, 저장된 표를 지키고 덮어쓰지 않음
+                        continue
+                    merged[k] = v
+                st.warning("📝 저장하지 않은 임시 작성 내용을 복원했습니다. 내용을 확인한 뒤 **수업 시간 안에 [저장하기]** 를 눌러야 최종 저장됩니다.", icon="♻️")
     st.session_state[fk] = merged
     return merged
+
+def _table_blank(v):
+    """표(줄 목록)인데 맨 왼쪽 열(항목 이름)을 빼고 모든 칸이 비어 있으면 True. 표가 아니면 False"""
+    if not (isinstance(v, list) and v and all(isinstance(r, dict) for r in v)):
+        return False
+    for r in v:
+        vals = list(r.values())[1:]
+        if any(str(x).strip() not in ("", "None", "nan", "False", "☆☆☆☆☆") for x in vals):
+            return False
+    return True
 
 def autosave_draft(user_key, category, new_ans, disabled_flag):
     """입력칸에서 다른 곳을 클릭할 때마다(화면 갱신 시) 서버에 임시저장. 접속이 끊겨도 내용이 남는다."""
@@ -2155,6 +2189,116 @@ def get_user_activity_data(user_key, u_id, u_subj, u_class, act_name, learning_d
                 best = (k, rec, is_leader_rec)
     if best: return best[0], best[1]
     return user_key, own
+
+# ===================== 🩺 학생 자료 점검·복구 (선생님용) =====================
+def _leaf_count(v):
+    """채워진 글 칸 수(첨부 파일 제외) — 자료가 얼마나 들어 있는지 비교용"""
+    if isinstance(v, dict): return sum(_leaf_count(x) for x in v.values())
+    if isinstance(v, list): return sum(_leaf_count(x) for x in v)
+    if isinstance(v, str): return 1 if v.strip() and not v.startswith("data:") and not _is_omitted(v) and v.strip() != "☆☆☆☆☆" else 0
+    if isinstance(v, (int, float)) and not isinstance(v, bool): return 1 if v else 0
+    return 0
+
+def _uid_of(k):
+    return str(k).split(storage.SEP)[0].rsplit("_", 1)[-1]
+
+def sheet_find_records(student_key, act, url=""):
+    """구글 시트(현재 연결된 시트 또는 주소를 넣은 다른 시트)의 data 탭에서 이 학생(같은 학번)의 기록을 찾음.
+    반환: [(학생키, 저장시각, 자료)]  — 큰 시트도 해당 줄만 읽음"""
+    sm = STORE.sheets
+    if sm is None:
+        raise RuntimeError("구글 시트가 연결되어 있지 않습니다.")
+    sh = sm.client.open_by_url(url.strip()) if url and url.strip() else sm.sh
+    ws = sh.worksheet("data")
+    col_a = ws.col_values(1)
+    uid = _uid_of(student_key)
+    out = []
+    for i, k in enumerate(col_a[1:], start=2):
+        if not k or not k.endswith(f"{storage.SEP}{act}"):
+            continue
+        if not (k.split(storage.SEP)[0] == student_key or _same_id(_uid_of(k), uid)):
+            continue
+        row = ws.row_values(i)
+        try:
+            ts = float(row[1]) if len(row) > 1 and row[1] else 0.0
+            deleted = len(row) > 2 and str(row[2]).strip() in ("1", "TRUE", "True")
+            n = int(row[3]) if len(row) > 3 and row[3] else 0
+            val = None if deleted else json.loads("".join(row[5:5 + n]) or "null")
+        except Exception:
+            continue
+        if val:
+            out.append((k.split(storage.SEP)[0], ts, val))
+    return out
+
+def restore_student_record(student_key, act, value, note="구글 시트에서 되살림"):
+    """선택한 자료로 이 학생의 저장 내용을 되돌림. 바꾸기 전 상태는 자동 백업(스냅샷)에 남김."""
+    try: STORE.snapshot_now(f"복구 전 자동 백업: {student_key} / {act}")
+    except Exception: pass
+    cur = STORE.get("data", student_key, sub=act) or {}
+    new = _restore_omitted(value, cur)              # 시트에 안 올린 영상 표시는 앱 서버의 실제 파일로 되돌림
+    STORE.set("data", student_key, new, sub=act)
+    if STORE.get("drafts", student_key, sub=act) is not None:
+        STORE.delete("drafts", student_key, sub=act)
+    st.session_state.pop("_adm_view_id", None)      # 화면 입력칸을 새 자료로 다시 그리도록
+    return new
+
+def render_student_doctor(selected_student, u_info_sel, acts):
+    """선생님 조회 화면: 이 학생의 저장 내용·임시 작성 내용·구글 시트 기록을 비교하고 되살리기"""
+    with st.expander("🩺 이 학생 자료 점검·복구 (앱에서 내용이 안 보일 때)", expanded=False):
+        act = st.selectbox("점검할 수행평가", acts, index=len(acts) - 1 if acts else 0, key=f"doc_act")
+        if not act:
+            return
+        meta = STORE.meta
+        fk = f"{selected_student}{storage.SEP}{act}"
+        saved = STORE.get("data", selected_student, sub=act)
+        draft = STORE.get("drafts", selected_student, sub=act)
+        def _when(ns, k):
+            m = meta.get(ns, {}).get(k)
+            return storage._kst_str(m[0]) if m and m[0] else "-"
+        st.markdown(f"- **앱 서버에 저장된 내용**: 채운 칸 **{_leaf_count(saved)}개** · 마지막 저장 {_when('data', fk)}")
+        if draft is not None:
+            st.markdown(f"- **저장 안 한 임시 작성 내용**: 채운 칸 {_leaf_count(draft)}개 · 마지막 임시저장 {_when('drafts', fk)}")
+            if st.button("🗑️ 임시 작성 내용 지우기 (저장된 내용은 그대로)", key=f"doc_del_draft"):
+                STORE.delete("drafts", selected_student, sub=act)
+                st.session_state.pop("_adm_view_id", None)
+                st.success("임시 작성 내용을 지웠습니다. 학생이 다시 접속하면 저장된 내용이 보입니다.")
+        else:
+            st.markdown("- 저장 안 한 임시 작성 내용: 없음")
+        uid = _uid_of(selected_student)
+        others = [(k, acts_.get(act)) for k, acts_ in load_json(DATA_FILE, {}).items()
+                  if k != selected_student and act in acts_ and _same_id(_uid_of(k), uid)]
+        for k, v in others:
+            st.markdown(f"- ⚠️ **같은 학번의 다른 계정 기록**: `{k}` · 채운 칸 {_leaf_count(v)}개 · 마지막 저장 {_when('data', f'{k}{storage.SEP}{act}')}")
+            if st.button(f"↪️ 이 기록을 지금 계정으로 가져오기", key=f"doc_take_{k}"):
+                restore_student_record(selected_student, act, v, "다른 계정 기록 가져오기")
+                st.success("가져왔습니다. 화면이 새 자료로 다시 그려집니다."); st.rerun()
+        st.markdown("---")
+        st.markdown("**☁️ 구글 시트에 남아 있는 기록 찾기**")
+        old_url = st.text_input("다른(예전) 구글 시트에서 찾으려면 주소 입력 (비우면 지금 연결된 시트)", key="doc_sheet_url",
+                                placeholder="https://docs.google.com/spreadsheets/d/...")
+        rkey = f"_doc_found::{selected_student}::{act}"
+        if st.button("🔎 구글 시트에서 이 학생 기록 찾기", key="doc_find"):
+            with st.spinner("구글 시트를 확인하는 중입니다..."):
+                try:
+                    st.session_state[rkey] = sheet_find_records(selected_student, act, old_url)
+                    if not st.session_state[rkey]: st.warning("시트에서 이 학생의 기록을 찾지 못했습니다.")
+                except Exception as e:
+                    st.error(f"시트를 읽을 수 없습니다: {type(e).__name__}: {str(e)[:200]}")
+        for i, (k, ts, val) in enumerate(st.session_state.get(rkey) or []):
+            more = _leaf_count(val) - _leaf_count(saved)
+            st.markdown(f"- 시트 기록 `{k}` · 저장 시각 {storage._kst_str(ts) if ts else '-'} · 채운 칸 **{_leaf_count(val)}개** "
+                        f"({'앱보다 ' + str(more) + '칸 많음' if more > 0 else '앱과 같거나 적음'})")
+            with st.popover("내용 미리 보기") if hasattr(st, "popover") else st.expander("내용 미리 보기"):
+                for kk, vv in val.items():
+                    if isinstance(vv, str) and (vv.startswith("data:") or _is_omitted(vv)): continue
+                    st.markdown(f"**{kk}**")
+                    if isinstance(vv, list): st.dataframe(pd.DataFrame(vv), hide_index=True)
+                    else: st.write(vv)
+            if st.button("♻️ 이 시트 기록으로 되살리기 (지금 앱 내용은 자동 백업 후 교체)", key=f"doc_restore_{i}"):
+                restore_student_record(selected_student, act, val)
+                st.session_state.pop(rkey, None)
+                st.success("✅ 되살렸습니다. 화면이 새 자료로 다시 그려집니다. (바꾸기 전 내용은 자동 백업 센터에 남아 있습니다)")
+                st.rerun()
 
 def build_group_index(act, learning_data, users, subj):
     """반|모둠장학번 → {records: {학생키: 기록}, leader_key, members}"""
@@ -3043,8 +3187,8 @@ def _clean_nan(x):
 MF_S2_ITEMS = ["건물명", "벽면 조건\n(면적·재질·창문 비율)", "관람 조건\n(관람 거리, 야간 유동인구)", "접근성\n(대중교통·주차·야간)",
                "예상되는 제약\n(빛공해, 인접한 주거지와의 거리)", "지역 정체성과의 연관성", "적합도 (☆ 5점 만점)"]
 MF_S3_DEFAULTS = ["1. 물리적 조건\n(벽면 형태·재질·구조물)", "2. 빛·환경 조건\n(주변 조명·간판·빛공해)",
-                  "3. 주민·이웃 조건\n(인접 주거·상가·소음)", "4. 행정·비용 조건\n(허가·예산·관리 주체)", "5. 접근·안전 조건\n(동선·차도·배리어프리)"]
-MF_S3_REMOVED = ["시간·계절"]          # 표에서 지운 조건(이 글자가 들어간 줄은 화면·시트에서 빠짐)
+                  "3. 주민·이웃 조건\n(인접 주거·상가·소음)", "4. 접근·안전 조건\n(동선·차도·배리어프리)"]
+MF_S3_REMOVED = ["시간·계절", "행정·비용"]   # 표에서 지운 조건: 화면·시트·점검에서는 빠지지만, 학생이 이미 적은 내용은 저장 자료 안에 숨겨서 보관(지우지 않음)
 
 def _mf_head(t):
     import re as _r
@@ -4037,7 +4181,7 @@ def mf_shape_to_quad(s):
 MF_RUBRIC = [
     ("Step 1. 정체성 탐색", "출처가 있는 근거 자료로 지역 정체성 키워드를 찾았는가 / 메시지가 한 문장으로 분명한가", "예시 20"),
     ("Step 2. 캔버스 선정", "후보 3곳을 실제 확인(답사·로드뷰 캡처)하고 비교했는가 / 선정 이유가 Step 1과 연결되는가", "예시 15"),
-    ("Step 3. 조건 진단·대응", "5개 조건을 사실로 확인했는가 / 제약을 작품의 조형 요소로 뒤집어 활용했는가", "예시 20"),
+    ("Step 3. 조건 진단·대응", f"{len(MF_S3_DEFAULTS)}개 조건을 사실로 확인했는가 / 제약을 작품의 조형 요소로 뒤집어 활용했는가", "예시 20"),
     ("Step 4. 스토리보드", "도입-전개-절정-마무리 흐름이 메시지와 연결되는가 / 기술·색감·시간이 구체적인가 / 건물 합성 시뮬레이션", "예시 25"),
     ("Step 5. 작품 설명 카드", "근거를 인용해 설명했는가 / 관람객·주민·상권 변화를 구체적으로 제시했는가", "예시 15"),
     ("Step 6. 성찰·AI 활용", "AI 활용을 정직하게 기록했는가 / 진로와 연결한 성찰이 있는가", "예시 5"),
@@ -4061,10 +4205,10 @@ def _mf_auto_check(n):
     res.append((cand >= 3, "Step 2 후보 건물 3곳 비교", f"후보 {cand}곳 작성"))
     res.append((_mf_filled(n.get("step2_final_building")) and _mf_filled(n.get("step2_reason")), "Step 2 최종 건물·선정 이유", "빈칸 있음"))
     res.append((bool(n.get("step2_site_photo")), "Step 2 현장 사진/로드뷰 캡처 첨부", "사진 없음"))
-    s3 = n.get("step3_df", [])
+    s3 = mf_normalize_ans({"step3_df": n.get("step3_df", [])})["step3_df"]     # 지운 조건 줄은 점검에서 제외
     miss3 = [str(r.get("조건 영역", "")).split("\n")[0] for r in s3
              if not (_mf_filled(r.get("현장의 실제 조건 (확인한 사실)")) and _mf_filled(r.get("나의 대응 방안")))]
-    res.append((len(s3) >= 5 and not miss3, "Step 3 조건 5개 모두 '실제 조건 + 대응 방안'",
+    res.append((len(s3) >= len(MF_S3_DEFAULTS) and not miss3, f"Step 3 조건 {len(MF_S3_DEFAULTS)}개 모두 '실제 조건 + 대응 방안'",
                 ("빈칸: " + ", ".join(miss3)) if miss3 else f"{len(s3)}개"))
     cuts = n.get("step4_df", [])
     no_img = [c.get("컷", "") for c in cuts if not c.get("스케치_img")]
@@ -4225,7 +4369,7 @@ def render_activity3_2nd(user_key, u_info, current_role):
     s3_cols = ["조건 영역", "현장의 실제 조건 (확인한 사실)", "작품에 미치는 영향", "나의 대응 방안"]
     s3_defaults = MF_S3_DEFAULTS    # 조건 이름은 파일 위쪽의 MF_S3_DEFAULTS 에서 고칩니다
     s3_data = mf_normalize_ans({"step3_df": list(ans.get("step3_df") or [])})["step3_df"]   # 지운 조건 줄 제외 + 번호·이름 정리
-    for d in s3_defaults[len(s3_data):]:          # 예전에 줄을 지웠어도 5개 조건이 모두 보이도록 보충
+    for d in s3_defaults[len(s3_data):]:          # 예전에 줄을 지웠어도 모든 조건이 보이도록 보충
         s3_data.append({"조건 영역": d, s3_cols[1]: "", s3_cols[2]: "", s3_cols[3]: ""})
     s3_df = pd.DataFrame(s3_data)
     for c in s3_cols:
@@ -4490,7 +4634,7 @@ def render_activity3_2nd(user_key, u_info, current_role):
         "step1_df": edited_step1_df.to_dict('records'), "step1_keyword": step1_keyword, "step1_message": step1_message,
         "step2_matrix_df": s2_records, "step2_final_building": step2_final_building, "step2_reason": step2_reason,
         "step2_site_photo": site_photo,
-        "step3_df": edited_step3_df.to_dict('records'),
+        "step3_df": edited_step3_df.to_dict('records') + [r for r in (ans.get("step3_df") or []) if isinstance(r, dict) and any(x in str(r.get("조건 영역", "")) for x in MF_S3_REMOVED)],   # 지운 조건 줄은 숨겨서 보관
         "step4_df": step4_data, "step4_video": saved_video, "step4_facade": facade, "step4_total_sec": total,
         "step5_title": step5_title, "step5_place": step5_place, "step5_desc": step5_desc,
         "step5_identity": step5_identity, "step5_condition": step5_condition,
@@ -5295,6 +5439,15 @@ else:
                             acts_for_subj = load_json(CONFIG_FILE, {}).get("subject_activities", {}).get(view_subj, [])
                             filter_act = st.selectbox("활동지 필터링", ["전체 활동지 보기"] + acts_for_subj)
                             lock_table_headers()
+                            # 🔄 다른 학생을 고르면, 앞 학생 화면에 남아 있던 입력칸 값을 모두 지우고 새 학생 자료로 다시 그림
+                            _view_id = f"{selected_student}|{filter_act}"
+                            if st.session_state.get("_adm_view_id") != _view_id:
+                                for _k in st.session_state.get("_adm_view_keys", []):
+                                    if _k in st.session_state: del st.session_state[_k]
+                                st.session_state["_adm_view_keys"] = []
+                                st.session_state["_adm_view_id"] = _view_id
+                            render_student_doctor(selected_student, u_info_sel, acts_for_subj)
+                            _keys_before = set(st.session_state.keys())
                             for act in acts_for_subj:
                                 if filter_act != "전체 활동지 보기" and act != filter_act: continue
                                 if act == ACT_3_1: render_activity1_3th(selected_student, u_info_sel, current_role)
@@ -5304,6 +5457,7 @@ else:
                                 elif act == ACT_2_2: render_activity2_2nd(selected_student, u_info_sel, current_role)
                                 elif act == ACT_2_3: render_activity3_2nd(selected_student, u_info_sel, current_role)
                                 else: render_custom_activity(selected_student, u_info_sel, current_role, act, app_config)
+                                st.session_state["_adm_view_keys"] = list(set(st.session_state.get("_adm_view_keys", [])) | (set(st.session_state.keys()) - _keys_before - {"_adm_view_keys", "_adm_view_id"}))
                                 owner_key, ans = get_user_activity_data(selected_student, u_info_sel.get('id', ''), view_subj, u_info_sel.get('class_group', ''), act, learning_data)
                                 if ans:
                                     act_html = generate_activity_html(act, ans, u_info_sel.get('name'))
