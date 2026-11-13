@@ -967,6 +967,25 @@ def create_storyboard_gif(images_b64_list, duration=1500):
     b64_gif = base64.b64encode(buf.getvalue()).decode("utf-8")
     return f"data:image/gif;base64,{b64_gif}"
 
+def take_upload(label, key, processor, **kw):
+    """파일을 올리면 바로 가볍게 변환해 보관하고, 업로드 칸은 다음 화면부터 비워서 원본 파일이 서버 메모리에 남지 않게 함.
+    (휴대폰 원본 사진·영상이 학생마다 메모리에 계속 남아 있으면 수업 중 앱이 멈춤)  반환: 변환된 값 또는 None"""
+    scope = st.session_state.get("_render_now", "")
+    nkey, vkey = f"{key}::n", f"{key}::val::{scope}"
+    n = st.session_state.get(nkey, 0)
+    up = st.file_uploader(label, key=f"{key}::{n}", **kw)
+    if up is not None:
+        try:
+            val = processor(up)
+        except Exception:
+            val = None
+        if val:
+            st.session_state[vkey] = val
+        st.session_state[nkey] = n + 1              # 다음 화면에서는 새 업로드 칸 → 원본 파일은 메모리에서 지워짐(실패한 파일도)
+    if st.session_state.get(vkey):
+        st.caption("✅ 올린 파일이 반영되었습니다. 하단 [저장하기]를 눌러야 최종 저장됩니다.")
+    return st.session_state.get(vkey)
+
 def process_uploaded_video(uploaded_file, max_mb=10):
     """직접 제작한 시뮬레이션 영상(MP4/GIF)을 Base64로 안전하게 변환 (용량 초과 방지)"""
     if uploaded_file is None:
@@ -4115,13 +4134,8 @@ def render_activity2_2nd(user_key, u_info, current_role):
     # [전] 변경 전 지도 스케치
     with col_map_before:
         st.markdown("#### 🗺️ [전] 변경 전 지도 스케치")
-        up_before = st.file_uploader(
-            "변경 전 스케치 파일 (JPG, PNG)", 
-            type=["png", "jpg", "jpeg", "webp"], 
-            key=f"up_map_before_{user_key if 'user_key' in locals() else current_user_key}",
-            disabled=disabled_flag
-        )
-        current_map_before = process_sketch_image(up_before) if up_before else saved_map_before
+        current_map_before = take_upload("변경 전 스케치 파일 (JPG, PNG)", "up_map_before", process_sketch_image,
+                                         type=["png", "jpg", "jpeg", "webp"], disabled=disabled_flag) or saved_map_before
         if current_map_before:
             st.image(current_map_before, caption="[변경 전] 등록된 지도 스케치", use_container_width=True)
         else:
@@ -4130,13 +4144,8 @@ def render_activity2_2nd(user_key, u_info, current_role):
     # [후] 변경 후 지도 스케치
     with col_map_after:
         st.markdown("#### 🗺️ [후] 변경 후 지도 스케치")
-        up_after = st.file_uploader(
-            "변경 후 스케치 파일 (JPG, PNG)", 
-            type=["png", "jpg", "jpeg", "webp"], 
-            key=f"up_map_after_{user_key if 'user_key' in locals() else current_user_key}",
-            disabled=disabled_flag
-        )
-        current_map_after = process_sketch_image(up_after) if up_after else saved_map_after
+        current_map_after = take_upload("변경 후 스케치 파일 (JPG, PNG)", "up_map_after", process_sketch_image,
+                                        type=["png", "jpg", "jpeg", "webp"], disabled=disabled_flag) or saved_map_after
         if current_map_after:
             st.image(current_map_after, caption="[변경 후] 등록된 지도 스케치", use_container_width=True)
         else:
@@ -4444,8 +4453,9 @@ def render_activity3_2nd(user_key, u_info, current_role):
     st.markdown("**최종 건물 현장 사진 / 로드뷰 캡처** *(정면이 잘 보이는 사진 1장)*")
     ph1, ph2 = st.columns([1, 1])
     with ph1:
-        up_site = st.file_uploader("현장 사진 또는 로드뷰 캡처 (JPG/PNG)", type=["png", "jpg", "jpeg", "webp"], key="s2_site_photo_up", disabled=disabled_flag)
-    site_photo = process_sketch_image(up_site, max_width=1000) if up_site else ans.get("step2_site_photo", "")
+        up_site_val = take_upload("현장 사진 또는 로드뷰 캡처 (JPG/PNG)", "s2_site_photo_up", lambda f: process_sketch_image(f, max_width=1000),
+                                  type=["png", "jpg", "jpeg", "webp"], disabled=disabled_flag)
+    site_photo = up_site_val or ans.get("step2_site_photo", "")
     with ph2:
         if site_photo: st.image(site_photo, caption="최종 선정 건물", use_container_width=True)
         else: st.caption("📷 아직 첨부한 사진이 없습니다.")
@@ -4503,8 +4513,8 @@ def render_activity3_2nd(user_key, u_info, current_role):
         st.markdown(f"#### 🎬 {c_name}")
         col_img, col_txt = st.columns([1, 1.2])
         with col_img:
-            up_file = st.file_uploader(f"[{c_name}] 스케치 파일 (JPG/PNG)", type=["png", "jpg", "jpeg", "webp"], key=f"step4_file_{i}", disabled=disabled_flag)
-            current_img = process_sketch_image(up_file) if up_file else old.get("스케치_img", "")
+            current_img = take_upload(f"[{c_name}] 스케치 파일 (JPG/PNG)", f"step4_file_{i}", process_sketch_image,
+                                      type=["png", "jpg", "jpeg", "webp"], disabled=disabled_flag) or old.get("스케치_img", "")
             current_images.append(current_img)
             if current_img: st.image(current_img, caption=f"{c_name} 스케치", use_container_width=True)
             else: st.caption("📷 등록된 스케치 이미지가 없습니다.")
@@ -4669,10 +4679,12 @@ def render_activity3_2nd(user_key, u_info, current_role):
                 st.success("🎉 시뮬레이션 영상이 만들어졌습니다! 하단 [저장하기]를 눌러 반영하세요. (미리보기는 컷당 최대 5초)")
     with v_col2:
         st.markdown("**방법 B. 직접 제작한 영상(MP4/GIF) 업로드**")
-        up_video = st.file_uploader("편집 영상 업로드 (MP4, WebM, GIF / 최대 10MB)", type=["mp4", "webm", "gif"], key="step4_video_uploader", disabled=disabled_flag)
-        if up_video is not None:
-            saved_video = process_uploaded_video(up_video) or saved_video
+        _up_v = take_upload("편집 영상 업로드 (MP4, WebM, GIF / 최대 10MB)", "step4_video_uploader", process_uploaded_video,
+                            type=["mp4", "webm", "gif"], disabled=disabled_flag)
+        if _up_v and _up_v != st.session_state.get(vkey + "::last_up"):
+            saved_video = _up_v                       # 새로 올린 영상만 반영(자동 생성 영상을 덮어쓰지 않도록)
             st.session_state[vkey] = saved_video
+            st.session_state[vkey + "::last_up"] = _up_v
     saved_video = media_from_datauri(saved_video)              # 예전 방식(긴 data:…)으로 저장된 영상도 파일로 옮김
     if saved_video:
         st.session_state[vkey] = saved_video
