@@ -1603,6 +1603,25 @@ def _sheet_slim(v):
         return [_sheet_slim(x) for x in v]
     return v
 
+def _sheet_slim_all_media(v):
+    if isinstance(v, str):
+        if v.startswith("data:") and len(v) > 20_000:
+            mime = v[5:v.find(";")] if ";" in v[:80] else "media"
+            return f"{MEDIA_OMIT}:{mime}:{len(v)}"
+        return v
+    if isinstance(v, dict):
+        return {k: _sheet_slim_all_media(x) for k, x in v.items()}
+    if isinstance(v, list):
+        return [_sheet_slim_all_media(x) for x in v]
+    return v
+
+def _drop_omitted(v):
+    """남아 있는 '시트에 안 올린 파일' 표시는 빈 값으로 (화면 오류 방지)"""
+    if _is_omitted(v): return ""
+    if isinstance(v, dict): return {k: _drop_omitted(x) for k, x in v.items()}
+    if isinstance(v, list): return [_drop_omitted(x) for x in v]
+    return v
+
 def _restore_omitted(new, base):
     """임시 작성 내용 등에 '시트에 안 올린 표시'가 있으면, 같은 자리의 실제 파일(base)로 되돌림"""
     if _is_omitted(new):
@@ -1620,7 +1639,7 @@ def _is_quota_err(e):
 def _install_sheet_slimming():
     """저장 엔진(재시작 없이 유지되는 모듈)의 시트 쓰기 함수를 바꿔 끼움: 큰 첨부 제외 + 줄어든 칸 비우기 + 나눠 보내기"""
     SM = getattr(storage, "SheetsMirror", None)
-    if SM is None or getattr(SM, "_slim_ver", 0) >= 1:
+    if SM is None or getattr(SM, "_slim_ver", 0) >= 2:
         return
     orig = getattr(SM, "_orig_push", None) or SM.push
     SM._orig_push = orig
@@ -1629,8 +1648,10 @@ def _install_sheet_slimming():
         import time as _t
         if not items:
             return
-        if ns in ("data", "drafts"):
+        if ns == "data":
             items = [(k, ts, d, None if d else _sheet_slim(v)) for k, ts, d, v in items]
+        elif ns == "drafts":   # 임시 작성 내용은 글만 시트에 보관(사진은 저장된 자료에 있음) → 시트 용량 절반 이하로
+            items = [(k, ts, d, None if d else _sheet_slim_all_media(v)) for k, ts, d, v in items]
         ws = self._get_ws(ns)
         old = {}
         try:   # 예전 조각 수(D열) → 이번에 줄어든 만큼 뒤쪽 칸을 비워 용량을 줄임
@@ -1665,7 +1686,7 @@ def _install_sheet_slimming():
             ws.batch_clear(clears[g:g + 200])
 
     SM.push = push
-    SM._slim_ver = 1
+    SM._slim_ver = 2
 
 _install_sheet_slimming()
 
@@ -1801,6 +1822,7 @@ def apply_draft(user_key, category, ans, enabled=True):
                 kept = []
                 for k, v in draft.items():
                     v = _restore_omitted(v, ans.get(k))
+                    if k != "step4_video": v = _drop_omitted(v)
                     if _table_blank(v) and not _table_blank(ans.get(k)):
                         kept.append(k)          # 🛟 임시 내용의 표가 통째로 비어 있으면, 저장된 표를 지키고 덮어쓰지 않음
                         continue
@@ -2897,6 +2919,9 @@ def get_act_csv_rows(selected_view, ans, config=None):
             csv_data.append(["[최종] 미디어 파사드 시뮬레이션 영상", v_tag])
         else:
             csv_data.append(["[최종] 시뮬레이션 영상", "(영상 미등록)"])
+        if str(ans.get("step4_video_link", "")).startswith("http"):
+            _lk = __import__("html").escape(ans["step4_video_link"], quote=True)
+            csv_data.append(["[최종] 직접 만든 영상 링크", f"<a href='{_lk}' target='_blank'>{_lk}</a>"])
             
         csv_data.append(["[Step 5. 작품 설명 카드 작성 및 갤러리 워크]", ""])
         csv_data.extend([
@@ -3258,6 +3283,9 @@ def generate_html_content(act_name, ans, config=None):
             else:
                 html += f"<img src='{sim_v}' style='max-width:520px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.1);'>"
             html += "</div>"
+        if str(ans.get("step4_video_link", "")).startswith("http"):
+            _lk = __import__("html").escape(ans["step4_video_link"], quote=True)
+            html += f"<p style='margin-top:10px;'>🔗 직접 만든 영상 링크: <a href='{_lk}' target='_blank'>{_lk}</a></p>"
 
         html += "<h3>Step 5. 작품 설명 카드 작성 및 갤러리 워크</h3>"
         html += f"<p><b>▶ 작품 제목:</b> {ans.get('step5_title','')}</p>"
@@ -3493,6 +3521,34 @@ def _install_widget_scoping():
     st._wk_patched = True
 
 _install_widget_scoping()
+
+def _rss_mb():
+    """현재 앱이 쓰는 메모리(MB). 리눅스 서버에서만 확인 가능"""
+    try:
+        with open("/proc/self/status") as f:
+            for line in f:
+                if line.startswith("VmRSS:"):
+                    return int(line.split()[1]) / 1024
+    except Exception:
+        pass
+    return None
+
+def _memory_guard():
+    """메모리가 한도(1GB)에 가까워지면 다시 만들 수 있는 임시 자료(미리보기 그림 등)를 비움 — 1분에 한 번만 확인"""
+    import time as _t, gc as _gc
+    now = _t.time()
+    if now - getattr(st, "_mem_checked", 0) < 60:
+        return
+    st._mem_checked = now
+    mb = _rss_mb()
+    st._mem_last = mb
+    if mb and mb > 700:
+        try: st.cache_data.clear()
+        except Exception: pass
+        _gc.collect()
+        st._mem_cleared = (now, mb, _rss_mb())
+
+_memory_guard()
 
 def _star_picker(label, key, prev, disabled):
     """별 5개를 직접 눌러 점수를 고르는 칸 (1~5점, 0 = 아직 안 누름)"""
@@ -4289,7 +4345,7 @@ MF_SHEET_SPEC = [
     ("table", _S2, "", "step2_matrix_df"), ("field", _S2, "최종 선정 건물", "step2_final_building"),
     ("field", _S2, "선정 이유", "step2_reason"), ("field", _S2, "현장 사진/로드뷰 캡처", "step2_site_photo"),
     ("table", _S3, "", "step3_df"),
-    ("table", _S4, "", "step4_df"), ("field", _S4, "작품 전체 길이(초)", "step4_total_sec"), ("field", _S4, "시뮬레이션 영상", "step4_video"),
+    ("table", _S4, "", "step4_df"), ("field", _S4, "작품 전체 길이(초)", "step4_total_sec"), ("field", _S4, "시뮬레이션 영상", "step4_video"), ("field", _S4, "직접 만든 영상 링크", "step4_video_link"),
     ("field", _S5, "작품 제목", "step5_title"), ("field", _S5, "전시 장소", "step5_place"), ("field", _S5, "작품 개요", "step5_desc"),
     ("field", _S5, "지역 정체성 반영", "step5_identity"), ("field", _S5, "현장 조건 반영", "step5_condition"),
     ("field", _S5, "변화 - 관람객 측면", "step5_change_visitor"), ("field", _S5, "변화 - 주민 측면", "step5_change_resident"),
@@ -4379,7 +4435,7 @@ def _mf_auto_check(n):
     no_desc = [c.get("컷", "") for c in cuts if not _mf_filled(c.get("장면 설명"))]
     res.append((len(cuts) == 4 and not no_img, "Step 4 스케치 4컷", ("없음: " + ", ".join(no_img)) if no_img else ""))
     res.append((not no_desc, "Step 4 장면 설명 4컷", ("없음: " + ", ".join(no_desc)) if no_desc else ""))
-    res.append((bool(_media_ok(n.get("step4_video"))), "Step 4 시뮬레이션 영상", "영상 없음"))
+    res.append((bool(_media_ok(n.get("step4_video"))) or str(n.get("step4_video_link", "")).startswith("http"), "Step 4 시뮬레이션 영상(자동 생성 또는 링크)", "영상 없음"))
     s5 = ["step5_title", "step5_place", "step5_desc", "step5_identity", "step5_condition",
           "step5_change_visitor", "step5_change_resident", "step5_change_market"]
     miss5 = sum(1 for k in s5 if not _mf_filled(n.get(k)))
@@ -4733,20 +4789,26 @@ def render_activity3_2nd(user_key, u_info, current_role):
                     st.session_state[vkey] = saved_video
                 st.success("🎉 시뮬레이션 영상이 만들어졌습니다! 하단 [저장하기]를 눌러 반영하세요. (미리보기는 컷당 최대 5초)")
     with v_col2:
-        st.markdown("**방법 B. 직접 제작한 영상(MP4/GIF) 업로드**")
-        _up_v = take_upload("편집 영상 업로드 (MP4, WebM, GIF / 최대 10MB)", "step4_video_uploader", process_uploaded_video,
-                            type=["mp4", "webm", "gif"], disabled=disabled_flag)
-        if _up_v and _up_v != st.session_state.get(vkey + "::last_up"):
-            saved_video = _up_v                       # 새로 올린 영상만 반영(자동 생성 영상을 덮어쓰지 않도록)
-            st.session_state[vkey] = saved_video
-            st.session_state[vkey + "::last_up"] = _up_v
+        st.markdown("**방법 B. 직접 제작한 영상은 '링크'로 제출**")
+        st.caption("영상 파일은 앱에 직접 올리지 않습니다. 학교 구글 드라이브(링크가 있는 사용자 보기 허용) 또는 유튜브(일부 공개)에 올린 뒤 주소를 붙여 넣으세요.")
+        video_link = st.text_input("직접 만든 영상 링크 (구글 드라이브·유튜브 주소)", value=ans.get("step4_video_link", ""),
+                                   key="step4_video_link", disabled=disabled_flag, placeholder="https://")
+        video_link = (video_link or "").strip()
+        if video_link and not video_link.startswith(("http://", "https://")):
+            st.warning("⚠️ 주소는 https:// 로 시작해야 합니다. 주소창의 주소를 그대로 복사해 붙여 넣으세요.")
+        elif video_link:
+            if "youtu" in video_link:
+                try: st.video(video_link)
+                except Exception: st.markdown(f"[▶ 영상 열기]({video_link})")
+            else:
+                st.markdown(f"[▶ 제출한 영상 열어 보기]({video_link})  \n(새 창에서 열립니다. 선생님 계정에서 보이도록 공유 설정을 꼭 확인하세요)")
     saved_video = media_from_datauri(saved_video)              # 예전 방식(긴 data:…)으로 저장된 영상도 파일로 옮김
     if saved_video:
         st.session_state[vkey] = saved_video
         st.markdown("**▶ 등록된 시뮬레이션 영상 미리보기**")
         show_media(saved_video, caption="미디어 파사드 시뮬레이션", width=640)
     else:
-        st.info("ℹ️ 아직 등록된 시뮬레이션 영상이 없습니다. [자동 생성] 버튼을 누르거나 직접 만든 영상 파일을 올려주세요.")
+        st.info("ℹ️ 아직 등록된 자동 생성 영상이 없습니다. [자동 생성] 버튼을 누르거나, 직접 만든 영상은 오른쪽에 링크로 제출하세요.")
     st.markdown("<hr style='margin: 30px 0;'>", unsafe_allow_html=True)
 
     # ---------------- Step 5 ----------------
@@ -4804,7 +4866,7 @@ def render_activity3_2nd(user_key, u_info, current_role):
         "step2_matrix_df": s2_records, "step2_final_building": step2_final_building, "step2_reason": step2_reason,
         "step2_site_photo": site_photo,
         "step3_df": edited_step3_df.to_dict('records') + [r for r in (ans.get("step3_df") or []) if isinstance(r, dict) and any(x in str(r.get("조건 영역", "")) for x in MF_S3_REMOVED)],   # 지운 조건 줄은 숨겨서 보관
-        "step4_df": step4_data, "step4_video": saved_video, "step4_facade": facade, "step4_total_sec": total,
+        "step4_df": step4_data, "step4_video": saved_video, "step4_video_link": video_link, "step4_facade": facade, "step4_total_sec": total,
         "step5_title": step5_title, "step5_place": step5_place, "step5_desc": step5_desc,
         "step5_identity": step5_identity, "step5_condition": step5_condition,
         "step5_change_visitor": step5_change_visitor, "step5_change_resident": step5_change_resident, "step5_change_market": step5_change_market,
@@ -5817,7 +5879,11 @@ else:
                     st.warning(f"🛟 {_w}")
                 if _stt.get("report_last_error"):
                     st.warning(f"📊 응답 탭 갱신 오류(30초마다 재시도): {_stt['report_last_error']}")
-                st.caption(f"저장 엔진 버전: {getattr(storage, 'ENGINE_VERSION', '1.0 (재시작 필요)')} · 응답 탭 마지막 갱신: {_stt.get('report_last_ok') or '-'}")
+                _mb = _rss_mb()
+                st.caption(f"저장 엔진 버전: {getattr(storage, 'ENGINE_VERSION', '1.0 (재시작 필요)')} · 응답 탭 마지막 갱신: {_stt.get('report_last_ok') or '-'}"
+                           f" · 서버 메모리 사용: {f'{_mb:.0f}MB / 1024MB' if _mb else '-'}")
+                if _mb and _mb > 800:
+                    st.warning("⚠️ 서버 메모리가 한도(1GB)에 가깝습니다. 학생들이 모두 [저장하기]를 누른 뒤, 수업이 없는 시간에 Reboot 해 주세요.")
                 if _stt["sheets_enabled"] and st.button("🔄 구글 시트 응답 탭 지금 새로 쓰기", key="btn_report_refresh",
                                                         help="학생 입력이 없을 때도 응답_ 탭을 지금 앱 기준(항목 이름 등)으로 다시 씁니다. 10~20초 걸립니다."):
                     with st.spinner("응답 탭을 새로 쓰는 중입니다... (10~20초)"):
