@@ -32,12 +32,12 @@ import threading
 import time
 import traceback
 
-ENGINE_VERSION = "1.6 (응답 탭: 학생별 한 번만 표시)"
+ENGINE_VERSION = "1.7 (메모리 절약: 큰 파일 나눠 쓰기)"
 SEP = "||"                    # 2단계 키 구분자 (학생키||수행평가명)
 CHUNK = 40000                 # 구글 시트 셀 1칸 최대 5만 자 -> 4만 자씩 분할
 MAX_REQ_CHARS = 1_500_000     # 시트 API 요청 1회당 최대 전송량(여유 있게)
 SNAPSHOT_EVERY = 300          # 변경이 있으면 최대 5분마다 전체 스냅샷
-SNAPSHOT_KEEP = 48            # 스냅샷 보관 개수
+SNAPSHOT_KEEP = 24            # 스냅샷 보관 개수
 FLUSH_EVERY = 2.0             # 전체 파일 반영 주기(초)
 SHEET_PUSH_EVERY = 5.0        # 구글 시트 반영 주기(초)
 REPORT_EVERY = 30.0           # 선생님용 응답 보기 탭 갱신 주기(초)
@@ -63,6 +63,29 @@ def _read_json_file(path):
         except Exception as e:  # noqa
             last = e
     raise last
+
+
+def _atomic_dump(path, obj, indent=None):
+    """큰 자료도 메모리에 한꺼번에 문자열로 만들지 않고 조금씩 파일에 씀 (메모리 절약)"""
+    tmp = f"{path}.tmp{os.getpid()}_{threading.get_ident()}"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False, indent=indent)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
+
+
+def _slim_media(v, limit=700_000):
+    """스냅샷용: 아주 큰 첨부(영상 등)는 표시만 남김"""
+    if isinstance(v, str):
+        if len(v) > limit and v.startswith("data:"):
+            return f"__MEDIA_OMITTED__:{v[5:v.find(';')] if ';' in v[:80] else 'media'}:{len(v)}"
+        return v
+    if isinstance(v, dict):
+        return {k: _slim_media(x, limit) for k, x in v.items()}
+    if isinstance(v, list):
+        return [_slim_media(x, limit) for x in v]
+    return v
 
 
 def _atomic_write(path, text):
@@ -672,7 +695,7 @@ class Store:
         path = os.path.join(self.backup_dir, fname)
         if os.path.exists(path):
             path = path.replace(".json", f"_{int(time.time()*1000) % 1000:03d}.json")
-        _atomic_write(path, json.dumps(bundle, ensure_ascii=False))
+        _atomic_dump(path, _slim_media(bundle))
         files = sorted([f for f in os.listdir(self.backup_dir) if f.startswith("backup_") and f.endswith(".json")])
         for old in files[:-SNAPSHOT_KEEP]:
             try:
@@ -695,7 +718,7 @@ class Store:
         try:
             for ns, obj in todo.items():
                 indent = None if self.depth.get(ns) == 2 else 2
-                _atomic_write(self.paths[ns], json.dumps(obj, ensure_ascii=False, indent=indent))
+                _atomic_dump(self.paths[ns], obj, indent=indent)
             _atomic_write(self.meta_path, json.dumps(meta, ensure_ascii=False))
             with self.lock:
                 if self.journal_pos == pos and not self.dirty:
@@ -951,10 +974,14 @@ def process_uploaded_video(uploaded_file, max_mb=10):
     if uploaded_file.size > max_mb * 1024 * 1024:
         st.error(f"⚠️ 영상 파일 용량이 {max_mb}MB를 초과했습니다. 더 짧거나 작은 파일로 올려주세요.")
         return ""
-    bytes_data = uploaded_file.read()
+    fid = f"_vidref::{getattr(uploaded_file, 'file_id', '')}::{uploaded_file.name}::{uploaded_file.size}"
+    if fid in st.session_state:
+        return st.session_state[fid]               # 같은 파일을 화면 갱신 때마다 다시 처리하지 않음
+    bytes_data = uploaded_file.getvalue() if hasattr(uploaded_file, "getvalue") else uploaded_file.read()
     mime = uploaded_file.type or "video/mp4"
-    b64 = base64.b64encode(bytes_data).decode("utf-8")
-    return f"data:{mime};base64,{b64}"        
+    ref = media_save_bytes(bytes_data, _MIME_EXT.get(mime, (uploaded_file.name.rsplit(".", 1)[-1] if "." in uploaded_file.name else "mp4").lower()))
+    st.session_state[fid] = ref
+    return ref
 
 # ===================== 🎨 미디어 파사드 이미지 도구 =====================
 from PIL import ImageOps, ImageChops, ImageEnhance, ImageFilter, ImageDraw
@@ -1475,9 +1502,75 @@ MEDIA_OMIT = "__MEDIA_OMITTED__"
 def _is_omitted(v):
     return isinstance(v, str) and v.startswith(MEDIA_OMIT)
 
+# 🎬 영상 파일은 메모리(1GB 한도)에 들고 있지 않고 서버 디스크의 파일로 보관, 자료에는 'mediafile:이름'만 저장
+MEDIA_DIR = "media_files"
+MEDIA_REF = "mediafile:"
+_MIME_EXT = {"video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov", "image/gif": "gif", "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}
+_EXT_MIME = {v: k for k, v in _MIME_EXT.items()}
+
+def media_save_bytes(data, ext):
+    import hashlib as _h
+    os.makedirs(MEDIA_DIR, exist_ok=True)
+    name = f"{_h.sha1(data).hexdigest()[:24]}.{ext}"
+    path = os.path.join(MEDIA_DIR, name)
+    if not os.path.exists(path):
+        tmp = path + ".tmp"
+        with open(tmp, "wb") as f:
+            f.write(data)
+        os.replace(tmp, path)
+    return MEDIA_REF + name
+
+def media_from_datauri(v, min_len=200_000):
+    """큰 data:… 문자열(영상·GIF)은 파일로 옮기고 짧은 참조로 바꿈"""
+    if not (isinstance(v, str) and v.startswith("data:") and len(v) > min_len and ";base64," in v[:100]):
+        return v
+    try:
+        mime = v[5:v.index(";")]
+        return media_save_bytes(base64.b64decode(v.split(",", 1)[1]), _MIME_EXT.get(mime, "bin"))
+    except Exception:
+        return v
+
+def media_path(v):
+    if isinstance(v, str) and v.startswith(MEDIA_REF):
+        p = os.path.join(MEDIA_DIR, os.path.basename(v[len(MEDIA_REF):]))
+        return p if os.path.exists(p) else ""
+    return ""
+
 def _media_ok(v):
-    """화면에 보여 줄 수 있는 첨부 파일만 돌려줌 (시트에 올리지 않은 표시는 빈 값)"""
-    return "" if (not isinstance(v, str) or _is_omitted(v)) else v
+    """화면에 보여 줄 수 있는 첨부 파일(파일 경로 또는 data:…)만 돌려줌. 없어진 파일·시트 표시는 빈 값"""
+    if not isinstance(v, str) or _is_omitted(v):
+        return ""
+    if v.startswith(MEDIA_REF):
+        return media_path(v)
+    return v
+
+def media_is_video(src):
+    t = str(src or "").lower()
+    return t.startswith("data:video") or t.endswith((".mp4", ".webm", ".mov"))
+
+def show_media(v, caption=None, width=None, use_container_width=False):
+    src = _media_ok(v)
+    if not src:
+        return False
+    if media_is_video(src):
+        st.video(src)
+    elif use_container_width:
+        st.image(src, caption=caption, use_container_width=True)
+    else:
+        st.image(src, caption=caption, width=width)
+    return True
+
+def media_datauri(v):
+    """내려받기(HTML)용: 파일이면 data:… 로 바꿔 줌"""
+    src = _media_ok(v)
+    if src and not src.startswith("data:"):
+        try:
+            ext = src.rsplit(".", 1)[-1].lower()
+            with open(src, "rb") as f:
+                return f"data:{_EXT_MIME.get(ext, 'application/octet-stream')};base64," + base64.b64encode(f.read()).decode("ascii")
+        except Exception:
+            return ""
+    return src
 
 def _sheet_slim(v):
     if isinstance(v, str):
@@ -1642,8 +1735,15 @@ def create_auto_backup(reason="자동 스냅샷", force=False):
     except Exception: pass
 
 # --- 학생 활동지: 서버 임시저장(draft) + 안전 제출 ---
+def _canon_small(v):
+    if isinstance(v, str) and len(v) > 100_000:
+        return f"<<{len(v)}:{hash(v)}>>"          # 아주 긴 글(첨부 파일)은 길이+지문으로만 비교 → 메모리 절약
+    if isinstance(v, dict): return {k: _canon_small(x) for k, x in v.items()}
+    if isinstance(v, list): return [_canon_small(x) for x in v]
+    return v
+
 def _canon(obj):
-    try: return json.dumps(obj, ensure_ascii=False, sort_keys=True, default=str)
+    try: return json.dumps(_canon_small(obj), ensure_ascii=False, sort_keys=True, default=str)
     except Exception: return str(obj)
 
 def apply_draft(user_key, category, ans, enabled=True):
@@ -1715,8 +1815,8 @@ def autosave_draft(user_key, category, new_ans, disabled_flag):
         cur_draft = STORE.get("drafts", user_key, sub=category)
         if _canon(new_ans) == _canon(saved if saved is not None else {}):
             if cur_draft is not None: STORE.delete("drafts", user_key, sub=category)
-        elif _canon(new_ans) != _canon(cur_draft):
-            STORE.set("drafts", user_key, new_ans, sub=category)
+        elif _canon(_sheet_slim(new_ans)) != _canon(cur_draft):
+            STORE.set("drafts", user_key, _sheet_slim(new_ans), sub=category)     # 임시저장에는 큰 영상을 넣지 않음
     except Exception:
         pass
 
@@ -1744,7 +1844,7 @@ import re as _re
 def _sheet_cell(v):
     """시트 셀용 정리: 이미지/영상은 표시만, HTML 태그 제거, 5만 자 제한"""
     t = str(v if v is not None else "")
-    if t.startswith("__MEDIA_OMITTED__"):
+    if t.startswith("__MEDIA_OMITTED__") or t.startswith("mediafile:"):
         return "[영상 첨부 – 용량이 커서 앱에서만 확인]"
     if "<" in t:
         t = _re.sub(r"<video[^>]*>.*?</video>|<video[^>]*>", "[영상 첨부]", t, flags=_re.S)
@@ -2761,7 +2861,7 @@ def get_act_csv_rows(selected_view, ans, config=None):
             csv_data.append(["스토리보드", "(미작성)"])
 
         # 최종 시뮬레이션 영상 출력
-        sim_video = _media_ok(ans.get("step4_video", ""))
+        sim_video = media_datauri(ans.get("step4_video", ""))
         if sim_video:
             if "data:video" in sim_video:
                 v_tag = f"<video src='{sim_video}' controls style='max-width:450px; border-radius:8px; border:1px solid #94a3b8;'></video>"
@@ -3122,7 +3222,7 @@ def generate_html_content(act_name, ans, config=None):
         html += "</table>"
 
         # 시뮬레이션 영상 HTML 출력
-        sim_v = _media_ok(ans.get("step4_video", ""))
+        sim_v = media_datauri(ans.get("step4_video", ""))
         if sim_v:
             html += "<div style='margin-top:15px; padding:15px; background-color:#f8fafc; border-radius:8px; border:1px solid #e2e8f0; text-align:center;'>"
             html += "<p style='font-weight:bold; font-size:15px; margin-bottom:10px; color:#1e293b;'>🎬 미디어 파사드 모션 시뮬레이션</p>"
@@ -4215,7 +4315,7 @@ def _mf_auto_check(n):
     no_desc = [c.get("컷", "") for c in cuts if not _mf_filled(c.get("장면 설명"))]
     res.append((len(cuts) == 4 and not no_img, "Step 4 스케치 4컷", ("없음: " + ", ".join(no_img)) if no_img else ""))
     res.append((not no_desc, "Step 4 장면 설명 4컷", ("없음: " + ", ".join(no_desc)) if no_desc else ""))
-    res.append((bool(n.get("step4_video")), "Step 4 시뮬레이션 영상", "영상 없음"))
+    res.append((bool(_media_ok(n.get("step4_video"))), "Step 4 시뮬레이션 영상", "영상 없음"))
     s5 = ["step5_title", "step5_place", "step5_desc", "step5_identity", "step5_condition",
           "step5_change_visitor", "step5_change_resident", "step5_change_market"]
     miss5 = sum(1 for k in s5 if not _mf_filled(n.get(k)))
@@ -4544,11 +4644,12 @@ def render_activity3_2nd(user_key, u_info, current_role):
 
     st.markdown("#### 🎥 최종 미디어 파사드 시뮬레이션 영상")
     vkey = f"_mf_video::{user_key}"
-    saved_video = _media_ok(st.session_state.get(vkey)) or _media_ok(ans.get("step4_video", ""))
-    if not saved_video and _is_omitted(ans.get("step4_video")):
+    _raw_v = st.session_state.get(vkey) or ans.get("step4_video", "")
+    saved_video = _raw_v if _media_ok(_raw_v) else ""          # 저장용 값(파일 참조 또는 data:…)
+    if not saved_video and (_is_omitted(_raw_v) or str(_raw_v).startswith(MEDIA_REF)):
         st.warning("⚠️ 서버가 다시 시작되면서 등록했던 영상 파일이 지워졌습니다. [자동 생성]을 다시 누르거나 영상을 다시 올린 뒤 [저장하기]를 눌러 주세요.")
     if register_gif:
-        saved_video = register_gif
+        saved_video = media_from_datauri(register_gif)
         st.session_state[vkey] = saved_video
         st.success("🎉 건물 합성 연속 재생 영상을 최종 시뮬레이션 영상으로 등록했습니다. 하단 [저장하기]를 눌러 반영하세요.")
     v_col1, v_col2 = st.columns([1, 1])
@@ -4563,7 +4664,7 @@ def render_activity3_2nd(user_key, u_info, current_role):
             else:
                 with st.spinner("시뮬레이션 영상을 만드는 중입니다..."):
                     frames = [mf_cached_composite(site_photo, img, json.dumps(facade, sort_keys=True, ensure_ascii=False)) if gif_mode.startswith("건물") else img for img, _ in pairs]
-                    saved_video = make_facade_gif(frames, [s or 3 for _, s in pairs]) or saved_video
+                    saved_video = media_from_datauri(make_facade_gif(frames, [s or 3 for _, s in pairs])) or saved_video
                     st.session_state[vkey] = saved_video
                 st.success("🎉 시뮬레이션 영상이 만들어졌습니다! 하단 [저장하기]를 눌러 반영하세요. (미리보기는 컷당 최대 5초)")
     with v_col2:
@@ -4572,10 +4673,11 @@ def render_activity3_2nd(user_key, u_info, current_role):
         if up_video is not None:
             saved_video = process_uploaded_video(up_video) or saved_video
             st.session_state[vkey] = saved_video
+    saved_video = media_from_datauri(saved_video)              # 예전 방식(긴 data:…)으로 저장된 영상도 파일로 옮김
     if saved_video:
+        st.session_state[vkey] = saved_video
         st.markdown("**▶ 등록된 시뮬레이션 영상 미리보기**")
-        if "data:video" in saved_video: st.video(saved_video)
-        else: st.image(saved_video, caption="미디어 파사드 시뮬레이션", width=640)
+        show_media(saved_video, caption="미디어 파사드 시뮬레이션", width=640)
     else:
         st.info("ℹ️ 아직 등록된 시뮬레이션 영상이 없습니다. [자동 생성] 버튼을 누르거나 직접 만든 영상 파일을 올려주세요.")
     st.markdown("<hr style='margin: 30px 0;'>", unsafe_allow_html=True)
@@ -4700,8 +4802,7 @@ def _mf_gallery(user_key, u_info, current_role, disabled_flag, learning_data):
         g1, g2 = st.columns([1.2, 1])
         with g1:
             media = _media_ok(ta.get("step4_video")) or next((c.get("스케치_img") for c in ta.get("step4_df", []) if c.get("스케치_img")), "")
-            if media and "data:video" in media: st.video(media)
-            elif media: st.image(media, use_container_width=True)
+            if media: show_media(media, use_container_width=True)
         with g2:
             st.markdown(f"### {ta.get('step5_title')}")
             st.markdown(f"📍 **{ta.get('step5_place', '')}**")
