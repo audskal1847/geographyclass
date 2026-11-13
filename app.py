@@ -36,11 +36,11 @@ ENGINE_VERSION = "1.7 (메모리 절약: 큰 파일 나눠 쓰기)"
 SEP = "||"                    # 2단계 키 구분자 (학생키||수행평가명)
 CHUNK = 40000                 # 구글 시트 셀 1칸 최대 5만 자 -> 4만 자씩 분할
 MAX_REQ_CHARS = 1_500_000     # 시트 API 요청 1회당 최대 전송량(여유 있게)
-SNAPSHOT_EVERY = 300          # 변경이 있으면 최대 5분마다 전체 스냅샷
+SNAPSHOT_EVERY = 900          # 변경이 있으면 최대 15분마다 전체 스냅샷
 SNAPSHOT_KEEP = 24            # 스냅샷 보관 개수
-FLUSH_EVERY = 2.0             # 전체 파일 반영 주기(초)
+FLUSH_EVERY = 10.0            # 전체 파일 반영 주기(초) — 저장 즉시 기록(저널)이 있어 자주 쓸 필요 없음, CPU 절약
 SHEET_PUSH_EVERY = 5.0        # 구글 시트 반영 주기(초)
-REPORT_EVERY = 30.0           # 선생님용 응답 보기 탭 갱신 주기(초)
+REPORT_EVERY = 120.0          # 선생님용 응답 보기 탭 갱신 주기(초) — CPU 절약
 
 
 def _now():
@@ -1772,7 +1772,7 @@ def apply_draft(user_key, category, ans, enabled=True):
     다른 화면에 갔다 오거나 접속이 끊겼다 다시 들어오면 그때 최신 임시저장 내용으로 새로 복원한다."""
     fk = f"_frozen_ans::{user_key}::{category}"
     cur = f"{user_key}::{category}"
-    if st.session_state.get("_render_prev") == cur and fk in st.session_state:
+    if fk in st.session_state:          # 같은 화면에 머무는 동안은 처음 연 내용으로 고정 (화면 갱신이 중간에 끊겨도 유지)
         st.session_state["_render_now"] = cur
         if st.session_state.get(fk + "::note"): st.info(st.session_state[fk + "::note"])
         return st.session_state[fk]
@@ -2168,6 +2168,10 @@ def _sheet_report_hook(store):
         raise RuntimeError(" / ".join(errors))    # 30초 뒤 실패한 탭만 다시 시도(성공한 탭은 내용이 같아 건너뜀)
 
 STORE.report_hook = _sheet_report_hook
+# ⚙️ 이미 실행 중인 저장 엔진의 작업 주기를 늦춰 CPU 절약 (재시작 없이 적용)
+for _n, _v in (("FLUSH_EVERY", 10.0), ("REPORT_EVERY", 120.0), ("SNAPSHOT_EVERY", 900)):
+    try: setattr(storage, _n, _v)
+    except Exception: pass
 # 앱 코드(app.py)가 바뀌면 학생 입력이 없어도 응답 탭을 한 번 새로 씀 (항목 이름 변경 등이 시트에 바로 반영되도록)
 try:
     _app_code_sig = __import__("hashlib").md5(open(__file__, "rb").read()).hexdigest()
@@ -2321,14 +2325,17 @@ def _leaf_count(v):
 def _uid_of(k):
     return str(k).split(storage.SEP)[0].rsplit("_", 1)[-1]
 
-def sheet_find_records(student_key, act, url=""):
+def sheet_find_records(student_key, act, url="", tab="data"):
     """구글 시트(현재 연결된 시트 또는 주소를 넣은 다른 시트)의 data 탭에서 이 학생(같은 학번)의 기록을 찾음.
     반환: [(학생키, 저장시각, 자료)]  — 큰 시트도 해당 줄만 읽음"""
     sm = STORE.sheets
     if sm is None:
         raise RuntimeError("구글 시트가 연결되어 있지 않습니다.")
     sh = sm.client.open_by_url(url.strip()) if url and url.strip() else sm.sh
-    ws = sh.worksheet("data")
+    try:
+        ws = sh.worksheet(tab)
+    except Exception:
+        return []
     col_a = ws.col_values(1)
     uid = _uid_of(student_key)
     out = []
@@ -2399,13 +2406,14 @@ def render_student_doctor(selected_student, u_info_sel, acts):
         if st.button("🔎 구글 시트에서 이 학생 기록 찾기", key="doc_find"):
             with st.spinner("구글 시트를 확인하는 중입니다..."):
                 try:
-                    st.session_state[rkey] = sheet_find_records(selected_student, act, old_url)
-                    if not st.session_state[rkey]: st.warning("시트에서 이 학생의 기록을 찾지 못했습니다.")
+                    st.session_state[rkey] = ([("저장된 내용",) + r for r in sheet_find_records(selected_student, act, old_url, "data")] +
+                                              [("저장 안 한 임시 작성 내용",) + r for r in sheet_find_records(selected_student, act, old_url, "drafts")])
+                    if not st.session_state[rkey]: st.warning("시트에서 이 학생의 기록(저장된 내용·임시 작성 내용)을 찾지 못했습니다.")
                 except Exception as e:
                     st.error(f"시트를 읽을 수 없습니다: {type(e).__name__}: {str(e)[:200]}")
-        for i, (k, ts, val) in enumerate(st.session_state.get(rkey) or []):
+        for i, (kind, k, ts, val) in enumerate(st.session_state.get(rkey) or []):
             more = _leaf_count(val) - _leaf_count(saved)
-            st.markdown(f"- 시트 기록 `{k}` · 저장 시각 {storage._kst_str(ts) if ts else '-'} · 채운 칸 **{_leaf_count(val)}개** "
+            st.markdown(f"- 시트의 **{kind}** `{k}` · 저장 시각 {storage._kst_str(ts) if ts else '-'} · 채운 칸 **{_leaf_count(val)}개** "
                         f"({'앱보다 ' + str(more) + '칸 많음' if more > 0 else '앱과 같거나 적음'})")
             with st.popover("내용 미리 보기") if hasattr(st, "popover") else st.expander("내용 미리 보기"):
                 for kk, vv in val.items():
@@ -4986,7 +4994,11 @@ elif "current_page" not in st.session_state: st.session_state.current_page = "ma
 # 🚀 메인 실행부 및 사이드바 (UI 구성)
 # =====================================================================
 
-# 직전 화면 갱신에서 그린 활동지 기억(같은 활동지를 계속 보고 있으면 내용 고정 유지)
+# 다른 화면(메인·다른 활동지)으로 이동했을 때만 활동지 고정 내용을 새로 불러옴
+if st.session_state.get("_last_page_seen") != st.session_state.current_page:
+    for _fk in [k for k in list(st.session_state.keys()) if str(k).startswith("_frozen_ans::")]:
+        del st.session_state[_fk]
+    st.session_state["_last_page_seen"] = st.session_state.current_page
 st.session_state["_render_prev"] = st.session_state.get("_render_now")
 st.session_state["_render_now"] = None
 
