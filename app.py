@@ -3533,20 +3533,33 @@ def _rss_mb():
         pass
     return None
 
+def memory_release():
+    """다 쓰고 버린 메모리를 운영체제에 돌려줌.
+    (파이썬은 큰 자료를 처리한 뒤 버린 메모리를 붙잡고 있어서, 구글 시트에서 자료를 불러온 직후 등에 사용량이 크게 보임)"""
+    import gc as _gc
+    _gc.collect()
+    try:
+        import ctypes
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except Exception:
+        pass
+    return _rss_mb()
+
 def _memory_guard():
-    """메모리가 한도(1GB)에 가까워지면 다시 만들 수 있는 임시 자료(미리보기 그림 등)를 비움 — 1분에 한 번만 확인"""
-    import time as _t, gc as _gc
+    """1분에 한 번 메모리 확인: 400MB 넘으면 버린 메모리 반납, 그래도 700MB 넘으면 미리보기 그림 등 임시 자료도 비움"""
+    import time as _t
     now = _t.time()
     if now - getattr(st, "_mem_checked", 0) < 60:
         return
     st._mem_checked = now
     mb = _rss_mb()
-    st._mem_last = mb
+    if mb and mb > 400:
+        mb = memory_release()
     if mb and mb > 700:
         try: st.cache_data.clear()
         except Exception: pass
-        _gc.collect()
-        st._mem_cleared = (now, mb, _rss_mb())
+        mb = memory_release()
+    st._mem_last = mb
 
 _memory_guard()
 
@@ -5883,7 +5896,10 @@ else:
                 st.caption(f"저장 엔진 버전: {getattr(storage, 'ENGINE_VERSION', '1.0 (재시작 필요)')} · 응답 탭 마지막 갱신: {_stt.get('report_last_ok') or '-'}"
                            f" · 서버 메모리 사용: {f'{_mb:.0f}MB / 1024MB' if _mb else '-'}")
                 if _mb and _mb > 800:
-                    st.warning("⚠️ 서버 메모리가 한도(1GB)에 가깝습니다. 학생들이 모두 [저장하기]를 누른 뒤, 수업이 없는 시간에 Reboot 해 주세요.")
+                    st.warning("⚠️ 서버 메모리가 한도(1GB)에 가깝습니다. 아래 [🧹 메모리 정리]를 먼저 눌러 보세요. 그래도 높으면 학생들이 [저장하기]를 누른 뒤 수업이 없는 시간에 Reboot 해 주세요.")
+                if _mb and st.button("🧹 메모리 정리 (다 쓴 메모리 반납 · 학생 자료에는 영향 없음)", key="btn_mem_release"):
+                    _after = memory_release()
+                    st.success(f"정리했습니다: {_mb:.0f}MB → {(_after or 0):.0f}MB")
                 if _stt["sheets_enabled"] and st.button("🔄 구글 시트 응답 탭 지금 새로 쓰기", key="btn_report_refresh",
                                                         help="학생 입력이 없을 때도 응답_ 탭을 지금 앱 기준(항목 이름 등)으로 다시 씁니다. 10~20초 걸립니다."):
                     with st.spinner("응답 탭을 새로 쓰는 중입니다... (10~20초)"):
